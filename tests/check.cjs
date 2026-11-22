@@ -185,6 +185,14 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  await C('R','0,0','10,10','20,20','30,30');E=await ents();ok(E.length===4&&E[3].t==='pline','Rechteck: zweites Rechteck direkt hinterher');
  await p.keyboard.press('Escape');ok(!(await p.evaluate(()=>__cad.REQ)),'Esc beendet den Befehl');
 
+ console.log('Auswahlmodus');
+ await fresh();await C('L','0,0','100,0','');await p.evaluate(()=>__cad.zoomAll());await p.keyboard.press('Shift+A');
+ ok(!(await p.evaluate(()=>__cad.REQ))&&(await p.evaluate(()=>__cad.inp.value))==='','Shift+A beendet den Befehl, nichts landet in der Befehlszeile');
+ ok(await p.evaluate(()=>document.getElementById('bSel').classList.contains('on')),'Pfeil links ist hervorgehoben');
+ const pt=await p.evaluate(()=>__cad.w2s([50,0]));const box=await p.locator('#cv').boundingBox();await p.mouse.click(box.x+pt[0],box.y+pt[1]);
+ ok((await p.evaluate(()=>__cad.sel.size))===1,'Danach Linie anklicken wählt sie aus');
+ await C('TX');await p.keyboard.press('Shift+A');ok((await p.evaluate(()=>__cad.inp.value))==='A','Beim Text-Tippen bleibt Shift+A ein großes A');await p.keyboard.press('Escape');
+
  console.log('Darstellung');
  for(const[n,vp]of[['tablet',{width:1024,height:768}],['handy',{width:390,height:844}]]){const q=await open(vp);await q.evaluate(()=>__cad.act('cam'));
   const o=await q.evaluate(()=>({sw:document.documentElement.scrollWidth,w:innerWidth,cv:document.getElementById('cv').clientHeight}));ok(o.sw<=o.w&&o.cv>150,`${n}: nichts läuft seitlich über, Zeichenfläche sichtbar`,JSON.stringify(o));

@@ -62,6 +62,8 @@ Live: https://noahfa.github.io/origin-cad/ (installierbar auf iPad/PC, läuft da
 
 - **Zeichenbefehle bleiben aktiv** (L, PL, R, K, B, PG, LL, BM, BA, MS): nach dem Fertigstellen startet derselbe Befehl neu, Esc oder Enter ohne Punkt beendet. Liste `REPEAT` in cad.js.
 
+- **Auswahlmodus** mit Shift+A (oder Pfeil oben in der Werkzeugleiste): beendet den laufenden Befehl, danach Objekte anklicken/Rahmen.
+
 ## Ideen / offen
 - An der echten Origin prüfen: Wird die SVG mit Frästyp, Tiefe und Fräser-Ø richtig erkannt? (Format nach Shaper-Vorgabe gebaut, aber noch nicht an der Maschine getestet.)
 - Stutzen zerlegt Polylinien noch in Einzelstücke (danach `VB`)

@@ -379,9 +379,9 @@ function buildTools(){const grp={Z:'Zeichnen',A:'Ändern',M:'Maße',F:'Fräsen'}
  for(const[k,c]of Object.entries(CMDS)){if(!c.g)continue;if(c.g!==last){h+=`<div class="grp">${grp[c.g]}</div>`;last=c.g}
   h+=`<button class="tb" data-r="${k}" data-tip="${esc(c.n)}  (${CTRL_OF[k]?'Strg+'+CTRL_OF[k]+' · ':''}${k})" aria-label="${esc(c.n)}">${ICON(c.i)}</button>`;
   (c.g==='Z'?mZ:c.g==='F'?mF:mA).push(`<li><button data-r="${k}">${esc(c.n)}<kbd>${keyLabel(k)}</kbd></button></li>`)}
- $('tools').innerHTML=h;$('mZ').innerHTML=mZ.join('');$('mA').innerHTML=mA.join('');$('mF').innerHTML=mF.join('')+'<hr><li><button data-a="cam">Fräsvorschau<kbd>F6</kbd></button></li>';
+ $('tools').innerHTML=`<button class="tb" data-a="select" id="bSel" data-tip="Auswählen  (Shift+A · Esc)" aria-label="Auswählen"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6.5 1.5L16 20l-2.5 1-3.5-7.5L5 18z"/></svg></button>`+h;$('mZ').innerHTML=mZ.join('');$('mA').innerHTML=mA.join('');$('mF').innerHTML=mF.join('')+'<hr><li><button data-a="cam">Fräsvorschau<kbd>F6</kbd></button></li>';
  $('helpT').innerHTML='<tr><th>Tasten</th><th>Befehl</th><th>Tasten</th><th>Befehl</th></tr>'+(()=>{const l=Object.entries(CMDS).map(([k,c])=>`<td>${CTRL_OF[k]?`<code>Strg+${CTRL_OF[k]}</code> `:''}<code>${k}</code></td><td>${esc(c.n)}</td>`);let o='';for(let i=0;i<l.length;i+=2)o+=`<tr>${l[i]}${l[i+1]||'<td></td><td></td>'}</tr>`;return o})()}
-function updTools(){document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('on',b.dataset.r===curCmd));for(const k in tg)$('t_'+k).classList.toggle('on',tg[k])}
+function updTools(){document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('on',b.id==='bSel'?!curCmd:b.dataset.r===curCmd));for(const k in tg)$('t_'+k).classList.toggle('on',tg[k])}
 
 /* Eigenschaften */
 const TN={line:'Linie',pline:'Polylinie',rect:'Rechteck',circle:'Kreis',arc:'Bogen',slot:'Langloch',dim:'Bemaßung',text:'Text'};
@@ -584,8 +584,9 @@ function onEnter(){inp.dataset.raw=inp.value.trim();const t=inp.value.trim();inp
    let dir=polarHit?polarHit.u:sub(orthoP(cursorW),REQ.base);if(len(dir)<1e-9)dir=[1,0];const q=add(REQ.base,mul(nrm(dir),p.n));lastPt=q;adv({p:q});return}
   lastPt=p.p;adv({p:p.p});return}
  log('Eingabe nicht verstanden: '+t,'e')}
+function selectMode(){inp.value='';const was=!!G;cancel(true);mouse.in&&computeSnap();log(was?'Auswahlmodus: Befehl beendet – jetzt Objekte anklicken oder Rahmen aufziehen.':'Auswahlmodus: Objekte anklicken oder Rahmen aufziehen. Shift+Klick nimmt wieder heraus.');updTools();render()}
 function act(a){const T={osnap:1,polar:1,ortho:1,grid:1,gsnap:1,cam:1};if(T[a]){tg[a]=!tg[a];log(({osnap:'Objektfang',polar:'Winkelfang',ortho:'Ortho',grid:'Raster',gsnap:'Rasterfang',cam:'Fräsvorschau'})[a]+(tg[a]?' an':' aus')+(a==='cam'&&tg[a]?' – gestrichelt: Weg der Fräsermitte · rot: hier bleibt Material stehen':''));updTools();computeSnap();render();saveUI();return}
- ({enter:onEnter,esc:()=>{inp.value='';cancel(false)},neu:()=>$('dNew').classList.add('open'),oeffnen:()=>{fileMode='open';$('file').click()},importieren:()=>{fileMode='import';$('file').click()},
+ ({select:selectMode,enter:onEnter,esc:()=>{inp.value='';cancel(false)},neu:()=>$('dNew').classList.add('open'),oeffnen:()=>{fileMode='open';$('file').click()},importieren:()=>{fileMode='import';$('file').click()},
   exportSvg:openExport,exportDxf:exportDXF,tpl:openTpls,tplSave:openSaveTpl,speichern:saveFile,undo,redo,zoomAll,help:()=>$('dHelp').classList.add('open'),
   alle:()=>{S.ents.filter(vis).forEach(e=>sel.add(e.id));updProps();render()}})[a]?.()}
 window.addEventListener('keydown',e=>{const t=e.target,inProp=t!==inp&&(t.tagName==='INPUT'||t.tagName==='SELECT'||t.tagName==='TEXTAREA');
@@ -599,6 +600,7 @@ window.addEventListener('keydown',e=>{const t=e.target,inProp=t!==inp&&(t.tagNam
    if(CTRL[K]&&!(inp.value&&'CVX'.includes(K))){e.preventDefault();inp.value='';run(CTRL[K]);return}}
   if(k==='z'){e.preventDefault();e.shiftKey?redo():undo()}else if(k==='y'){e.preventDefault();redo()}else if(k==='s'){e.preventDefault();saveFile()}else if(k==='a'&&!inp.value){e.preventDefault();act('alle')}return}
  if(e.key==='Escape'){e.preventDefault();inp.value='';cancel(false);return}
+ if(e.shiftKey&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&(e.code==='KeyA'||e.key==='A')&&!inp.value&&!(REQ&&REQ.k==='str')){e.preventDefault();selectMode();return}
  if(e.key==='Enter'){e.preventDefault();onEnter();return}
  if(e.key===' '&&!inp.value){e.preventDefault();if(!e.repeat){spaceDown=true;spaceUsed=false}return}
  if((e.key==='Delete')&&!inp.value&&!REQ&&sel.size){e.preventDefault();run('E');return}

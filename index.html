@@ -10,9 +10,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Origin CAD">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.webmanifest?v=6">
-<link rel="icon" href="icon.svg?v=6" type="image/svg+xml">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=6">
+<link rel="manifest" href="manifest.webmanifest?v=7">
+<link rel="icon" href="icon.svg?v=7" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=7">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -210,6 +210,7 @@ button,input,select{font:inherit;color:inherit}
   <tr><td><code>250</code></td><td>250 mm in Richtung der Maus (mit ORTHO schön gerade)</td></tr>
   <tr><td><code>720-2*19</code></td><td>Rechnen in jeder Zahl</td></tr>
   <tr><td>Strg+O · S · E · 0</td><td>Öffnen · Speichern · SVG für Origin · Zoom alles</td></tr>
+  <tr><td>Shift+A</td><td>Auswahlmodus: laufenden Befehl beenden und Linien, Kreise usw. anklicken oder mit Rahmen wählen (Shift+Klick nimmt heraus). Esc geht auch, oder oben links den Pfeil antippen.</td></tr>
   <tr><td>Strg+Z · Y · A</td><td>Rückgängig · Wiederholen · Alles wählen</td></tr>
   <tr><td>F3 · F6 · F7 · F8 · F9 · F10</td><td>Objektfang · Fräsvorschau · Raster · Ortho · Rasterfang · Winkelfang</td></tr>
   <tr><td>Winkelfang</td><td>Beim Zeichnen rastet die Richtung auf 0°, 45°, 90° … ein, sobald du nah dran bist (grüne Hilfslinie). Schrittweite unten neben „WINKEL“ wählbar. Dann einfach die Länge tippen, z. B. <code>250</code>. ORTHO erzwingt immer waagrecht/senkrecht.</td></tr>
@@ -255,9 +256,9 @@ button,input,select{font:inherit;color:inherit}
  <div class="row"><button class="btn" data-close>Abbrechen</button><button class="btn pri" id="newB">Leeren</button></div>
 </div></div>
 
-<script src="vendor/clipper.js?v=6"></script>
-<script src="font.js?v=6"></script>
-<script src="cad.js?v=6"></script>
+<script src="vendor/clipper.js?v=7"></script>
+<script src="font.js?v=7"></script>
+<script src="cad.js?v=7"></script>
 <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>
