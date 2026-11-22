@@ -4,16 +4,16 @@
    Koordinaten im Raum: X = Breite (links→rechts), Y = Tiefe (vorn = 0), Z = Höhe. */
 window.KORPUS=(()=>{
 const A=window.__cad.kp,$=id=>document.getElementById(id),S=()=>window.__cad.S;
-const newCab=(o={})=>Object.assign({b:600,h:720,d:560,mw:[],fb:[],eb:[{x:300,y:350}],front:'2',sn:3,nm:0,nf:0,ne:1},o);
+const newCab=(o={})=>Object.assign({b:600,h:720,d:560,ks:[],mw:[],fb:[],eb:[{x:300,y:350}],front:'2',sn:3,nm:0,nf:0,ne:1},o);
 const DEF=()=>({...BT,t:19,rw:8,nt:10,na:20,fuge:3,sockel:false,sh:100,sr:50,lr:'boden',dub:true,topf:true,nut:true,cabs:[newCab()]});
 const DUB_D=8,DUB_T=12,LR_D=5,LR_T=13,TOPF_D=35,TOPF_T=13,SK=16,TANDEM_NL=[250,270,300,350,400,450,500,550,600];
 let cur=0,pick=null,mode='sel',showFront=true,V3=null,drag=null,view={s:1,ox:0,oy:0},cache3=new Map(),timer=0;
 /* Bodenträger: Häfele „Jimmy“ (282.25.716) zum Einstecken, Bohr-Ø 4 mm – btD Bohr-Ø, btT Bohrtiefe, btA Lochmitte unter der Boden-Unterkante */
-const BT={btD:4,btT:10,btA:2,sv:true,svT:14,svX:9.5,svO:0,svB:13};
+const BT={ksD:25,btD:4,btT:10,btA:2,sv:true,svT:14,svX:9.5,svO:0,svB:13};
 /* Würth Systemverbinder SV 20 E: Gehäuse Ø20 in der Fläche des waagrechten Teils (svT tief, Mitte svX von der Stirnkante),
    Systembolzen in Ø5-Bohrung der Seite (svB tief), 37 mm von vorn und hinten; svO = Bolzen über (+) / unter (−) der Plattenmitte */
 const SV_D=20,SV_BD=5;
-const K=()=>{const s=S();if(!s.korpus)s.korpus=DEF();for(const f in BT)if(s.korpus[f]==null)s.korpus[f]=BT[f];return s.korpus};
+const K=()=>{const s=S();if(!s.korpus)s.korpus=DEF();for(const f in BT)if(s.korpus[f]==null)s.korpus[f]=BT[f];for(const c of s.korpus.cabs)if(!c.ks)c.ks=[];return s.korpus};
 const num=v=>Math.round(v*100)/100,de=v=>String(num(v)).replace('.',',');
 const clampN=(v,a,b)=>Math.max(a,Math.min(b,v));
 
@@ -27,8 +27,9 @@ function spread(c,k){const iw=c.b-2*k.t,ih=c.h-2*k.t;c.mw=[];for(let i=0;i<c.nm;
 function isFixedSlot(i,all,nf){const pos=[];for(let j=0;j<nf;j++)pos.push(Math.round((all-1)*(j+1)/(nf+1)));return pos.includes(i)}
 function tidy(k){for(const c of k.cabs){c.b=clampN(c.b,150,3000);c.h=clampN(c.h,150,3000);c.d=clampN(c.d,120,1200);
   c.mw=c.mw.map(x=>num(clampN(x,k.t+40,c.b-2*k.t-40))).filter((x,i,a)=>a.indexOf(x)===i);
-  for(const l of[c.fb,c.eb])for(const s of l){s.y=num(clampN(s.y,k.t+20,c.h-2*k.t-20));s.x=clampN(s.x,k.t+1,c.b-k.t-1)}
-  if(c.front==='s'){c.mw=[];c.fb=[];c.eb=[]}c.sn=clampN(Math.round(c.sn)||1,1,8)}}
+  if(!c.ks)c.ks=[];for(const l of[c.fb,c.eb])for(const s of l){s.y=num(clampN(s.y,k.t+20,c.h-2*k.t-20));s.x=clampN(s.x,k.t+1,c.b-k.t-1)}
+  for(const s of c.ks){s.y=num(clampN(s.y,k.t+30,c.h-k.t-25));s.x=clampN(s.x,k.t+1,c.b-k.t-1)}
+  if(c.front==='s'){c.mw=[];c.fb=[];c.eb=[];c.ks=[]}c.sn=clampN(Math.round(c.sn)||1,1,8)}}
 
 /* ----- Teile erzeugen ----- */
 function dubPos(len){const steps=Math.floor((len-64)/32);if(steps<1)return[num(len/2)];const n=Math.max(2,Math.round(steps*32/192)+1),o=[];for(let i=0;i<n;i++)o.push(32+32*Math.round(i*steps/(n-1)));return[...new Set(o)]}
@@ -39,11 +40,11 @@ function parts(k){k=k||K();const out=[],t=k.t;let x0=0;const z0=k.sockel?k.sh:0;
  k.cabs.forEach((c,ci)=>{const dE=k.nut?c.d-k.na-k.rw:c.d,svs=k.sv&&dE>=140?[37,dE-37]:[],xs=!k.dub?[]:svs.length?dubSv(dE):dubPos(dE);
   const SL=mk(ci,'Seite links',c.d,c.h,t,[x0,0,z0],[0,1,0],[0,0,1],{front:'x0'}),SR=mk(ci,'Seite rechts',c.d,c.h,t,[x0+c.b,c.d,z0],[0,-1,0],[0,0,1],{front:'xW'});
   const BO=mk(ci,'Boden',c.b-2*t,c.d,t,[x0+t,0,z0],[1,0,0],[0,1,0],{front:'y0'}),DE=mk(ci,'Deckel',c.b-2*t,c.d,t,[x0+t,c.d,z0+c.h],[1,0,0],[0,-1,0],{front:'yH'});
-  const hole=(p,x,y,d,depth,back)=>p.holes.push({x:num(x),y:num(y),d,depth,back:!!back});
+  const hole=(p,x,y,d,depth,back,mark)=>p.holes.push({x:num(x),y:num(y),d,depth,back:!!back,...(mark?{mark:1}:{})});
   /* Flächen, in die von links/rechts gebohrt wird: face(xKante, 'l'|'r') liefert Funktion (Tiefe, Höhe, Ø, Bohrtiefe) */
   const walls=[...c.mw].sort((a,b)=>a-b).map(x=>({x,p:mk(ci,'Mittelwand',dE,c.h-2*t,t,[x0+x,0,z0+t],[0,1,0],[0,0,1],{front:'x0'})}));
-  const faceL=xEdge=>{if(Math.abs(xEdge-t)<1e-6)return(dp,z,d,dt)=>hole(SL,dp,z,d,dt);const w=walls.find(w=>Math.abs(w.x+t-xEdge)<1e-6);return w?(dp,z,d,dt)=>hole(w.p,dp,z-t,d,dt):()=>{}};
-  const faceR=xEdge=>{if(Math.abs(xEdge-(c.b-t))<1e-6)return(dp,z,d,dt)=>hole(SR,c.d-dp,z,d,dt);const w=walls.find(w=>Math.abs(w.x-xEdge)<1e-6);return w?(dp,z,d,dt)=>hole(w.p,dp,z-t,d,dt,true):()=>{}};
+  const faceL=xEdge=>{if(Math.abs(xEdge-t)<1e-6)return(dp,z,d,dt,m)=>hole(SL,dp,z,d,dt,false,m);const w=walls.find(w=>Math.abs(w.x+t-xEdge)<1e-6);return w?(dp,z,d,dt,m)=>hole(w.p,dp,z-t,d,dt,false,m):()=>{}};
+  const faceR=xEdge=>{if(Math.abs(xEdge-(c.b-t))<1e-6)return(dp,z,d,dt,m)=>hole(SR,c.d-dp,z,d,dt,false,m);const w=walls.find(w=>Math.abs(w.x-xEdge)<1e-6);return w?(dp,z,d,dt,m)=>hole(w.p,dp,z-t,d,dt,true,m):()=>{}};
   /* Dübel Boden/Deckel ↔ Seiten */
   for(const zc of[t/2,c.h-t/2])for(const dx of xs){hole(SL,dx,zc,DUB_D,DUB_T);hole(SR,c.d-dx,zc,DUB_D,DUB_T)}
   for(const dx of xs){BO.ticks.push({x:0,y:dx,e:'l'},{x:BO.W,y:dx,e:'r'});DE.ticks.push({x:0,y:c.d-dx,e:'l'},{x:DE.W,y:c.d-dx,e:'r'})}
@@ -67,6 +68,9 @@ function parts(k){k=k||K();const out=[],t=k.t;let x0=0;const z0=k.sockel?k.sh:0;
    if(k.lr==='boden'){const L=faceL(f.x0),R=faceR(f.x1);for(const dz of[-32,0,32]){const z=s.y-k.btA+dz;if(z<t+15||z>c.h-t-15)continue;for(const dp of cols){L(dp,z,k.btD,k.btT);R(dp,z,k.btD,k.btT)}}}}
   if(k.lr==='voll')for(const f of comps(c,k)){const L=faceL(f.x0),R=faceR(f.x1),fix=c.fb.filter(s=>Math.abs(compAt(c,k,s.x).x0-f.x0)<1e-6);
    for(let z=t+64;z<=c.h-t-64+1e-6;z+=32){if(fix.some(s=>z>s.y-12&&z<s.y+t+12))continue;for(const dp of cols){L(dp,z,k.btD,k.btT);R(dp,z,k.btD,k.btT)}}}
+  /* Kleiderstangen: Stange in der Mitte der Tiefe, Lagermitte an den Seiten nur angezeichnet */
+  for(const s of c.ks||[]){const f=compAt(c,k,s.x),D=k.ksD;mk(ci,'Kleiderstange Ø'+de(D),f.x1-f.x0-4,D,D,[x0+f.x0+2,dE/2+D/2,z0+s.y-D/2],[1,0,0],[0,0,1],{rod:true,mat:'Stange',tint:[0.9,0.95,1.05]});
+   faceL(f.x0)(dE/2,s.y,D,0,1);faceR(f.x1)(dE/2,s.y,D,0,1)}
   /* Fronten */
   const fg=k.fuge,door=(xRight,Wd,side)=>{const Hd=c.h-2*fg,p=mk(ci,'Tür '+(side==='l'?'links':'rechts'),Wd,Hd,t,[x0+xRight,-t-2,z0+fg],[-1,0,0],[0,0,1],{front:1,isFront:true,tint:[1.1,1.07,1.02]});
    if(!k.topf)return;const hx=side==='l'?Wd-21.5:21.5,sg=side==='l'?-1:1;
@@ -95,7 +99,8 @@ function parts(k){k=k||K();const out=[],t=k.t;let x0=0;const z0=k.sockel?k.sh:0;
 function partEnts(p,qty){const es=[],tool=S().def.tool;
  es.push({t:'pline',ly:'Kontur',pts:[[0,0],[p.W,0],[p.W,p.H],[0,p.H]],closed:true,rect:true,ct:'outside',cd:p.T});
  for(const g of p.grooves)es.push({t:'pline',ly:'Kontur',pts:[[g.x,g.y],[g.x+g.w,g.y],[g.x+g.w,g.y+g.h],[g.x,g.y+g.h]],closed:true,rect:true,ct:'pocket',cd:g.depth,...(tool>Math.min(g.w,g.h)?{tool:Math.min(6,Math.min(g.w,g.h))}:{})});
- for(const h of p.holes){if(h.back)es.push({t:'circle',ly:'Rückseite',c:[h.x,h.y],r:h.d/2,ct:'guide'});else es.push({t:'circle',ly:'Kontur',c:[h.x,h.y],r:h.d/2,ct:'pocket',cd:h.depth,...(tool<h.d-1e-9?{}:{tool:3})})}
+ for(const h of p.holes){if(h.mark){es.push({t:'circle',ly:'Hilfslinien',c:[h.x,h.y],r:h.d/2,ct:'guide'},{t:'line',ly:'Hilfslinien',a:[h.x-h.d,h.y],b:[h.x+h.d,h.y]},{t:'line',ly:'Hilfslinien',a:[h.x,h.y-h.d],b:[h.x,h.y+h.d]});continue}
+  if(h.back)es.push({t:'circle',ly:'Rückseite',c:[h.x,h.y],r:h.d/2,ct:'guide'});else es.push({t:'circle',ly:'Kontur',c:[h.x,h.y],r:h.d/2,ct:'pocket',cd:h.depth,...(tool<h.d-1e-9?{}:{tool:3})})}
  for(const k of p.ticks){const d={l:[14,0],r:[-14,0],b:[0,14],t:[0,-14]}[k.e];es.push({t:'line',ly:'Hilfslinien',a:[k.x,k.y],b:[k.x+d[0],k.y+d[1]]})}
  const th=clampN(Math.min(p.W,p.H)/12,6,16);es.push({t:'text',ly:'Hilfslinien',p:[Math.min(60,p.W*0.15),Math.min(70,p.H*0.3)],s:`${p.name} ${de(p.W)} x ${de(p.H)} x ${de(p.T)}${qty>1?'  ('+qty+' Stück)':''}`,h:th,a:0,ct:'guide'});
  if(typeof p.front==='string'){const m=p.front,hv=clampN(th*0.8,5,12),pos={x0:[4,p.H/2],xW:[p.W-4-hv,p.H/2],y0:[p.W/2,4],yH:[p.W/2,p.H-4-hv]}[m];es.push({t:'text',ly:'Hilfslinien',p:pos,s:'VORN',h:hv,a:m[0]==='x'?Math.PI/2:0,ct:'guide'});if(m[0]==='x')es[es.length-1].p=[pos[0]+hv,pos[1]]}
@@ -108,7 +113,7 @@ function list(k){const m=new Map();for(const p of parts(k)){const key=pKey(p);if
 function circlePoly(x,y,r){const n=r>10?40:20,o=[];for(let i=0;i<n;i++)o.push([x+r*Math.cos(i*2*Math.PI/n),y+r*Math.sin(i*2*Math.PI/n)]);return o}
 function model3(k){const ps=parts(k),out=[];let b=[1e9,1e9,1e9,-1e9,-1e9,-1e9];if(cache3.size>600)cache3.clear();
  for(const p of ps){const key=[p.W,p.H,p.T,JSON.stringify(p.holes),JSON.stringify(p.grooves)].join('|');let sec=cache3.get(key);
-  if(!sec){const cuts=[...p.holes.filter(h=>!h.back).map(h=>({d:h.depth,polys:[circlePoly(h.x,h.y,h.d/2)]})),...p.grooves.map(g=>({d:g.depth,polys:[[[g.x,g.y],[g.x+g.w,g.y],[g.x+g.w,g.y+g.h],[g.x,g.y+g.h]]]}))];
+  if(!sec){const cuts=[...p.holes.filter(h=>!h.back&&!h.mark).map(h=>({d:h.depth,polys:[circlePoly(h.x,h.y,h.d/2)]})),...p.grooves.map(g=>({d:g.depth,polys:[[[g.x,g.y],[g.x+g.w,g.y],[g.x+g.w,g.y+g.h],[g.x,g.y+g.h]]]}))];
    sec=A.sectionsOf([[[0,0],[p.W,0],[p.W,p.H],[0,p.H]]],cuts,p.T).sections;cache3.set(key,sec)}
   const w=[p.u[1]*p.v[2]-p.u[2]*p.v[1],p.u[2]*p.v[0]-p.u[0]*p.v[2],p.u[0]*p.v[1]-p.u[1]*p.v[0]];
   for(const[x,y,z]of[[0,0,0],[p.W,p.H,p.T]])for(let i=0;i<3;i++){const val=p.o[i]+p.u[i]*x+p.v[i]*y+w[i]*z;b[i]=Math.min(b[i],val);b[i+3]=Math.max(b[i+3],val)}
@@ -124,7 +129,8 @@ function fitView(){const c=cv(),k=K(),W=rowW(k),H=Math.max(...k.cabs.map(c=>c.h)
 const sx=x=>view.ox+x*view.s,sy=z=>view.oy-z*view.s;
 function items(k){/* anklickbare Dinge: {type:'fb'|'eb'|'mw', ci, i, rect:[x,z,w,h] in mm (Zeile)} */const o=[],z0=k.sockel?k.sh:0;
  k.cabs.forEach((c,ci)=>{const X=cabX(k,ci);c.mw.forEach((x,i)=>o.push({type:'mw',ci,i,rect:[X+x,z0+k.t,k.t,c.h-2*k.t]}));
-  for(const ty of['fb','eb'])c[ty].forEach((s,i)=>{const f=compAt(c,k,s.x);o.push({type:ty,ci,i,rect:[X+f.x0,z0+s.y,f.x1-f.x0,k.t]})})});return o}
+  for(const ty of['fb','eb'])c[ty].forEach((s,i)=>{const f=compAt(c,k,s.x);o.push({type:ty,ci,i,rect:[X+f.x0,z0+s.y,f.x1-f.x0,k.t]})});
+  (c.ks||[]).forEach((s,i)=>{const f=compAt(c,k,s.x);o.push({type:'ks',ci,i,rect:[X+f.x0,z0+s.y-k.ksD/2,f.x1-f.x0,k.ksD]})})});return o}
 function draw(){const c=cv(),k=K();if(!c.clientWidth)return;const dpr=window.devicePixelRatio||1;if(c.width!==Math.round(c.clientWidth*dpr)||c.height!==Math.round(c.clientHeight*dpr)){c.width=Math.round(c.clientWidth*dpr);c.height=Math.round(c.clientHeight*dpr)}
  if(!drag)fitView();const g=c.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.fillStyle='#16191d';g.fillRect(0,0,c.clientWidth,c.clientHeight);
  const R=(x,z,w,h,fill,stroke,lw=1,dash)=>{g.beginPath();g.rect(sx(x),sy(z+h),w*view.s,h*view.s);if(fill){g.fillStyle=fill;g.fill()}if(stroke){g.strokeStyle=stroke;g.lineWidth=lw;g.setLineDash(dash||[]);g.stroke();g.setLineDash([])}};
@@ -141,17 +147,18 @@ function draw(){const c=cv(),k=K();if(!c.clientWidth)return;const dpr=window.dev
   T(de(c.b),sx(X+c.b/2),sy(0)+22,act?'#e4e7eb':'#9aa3ad');T('Korpus '+(ci+1),sx(X+c.b/2),sy(z0+c.h)-18,act?'#ff8a70':'#9aa3ad');
   if(act&&(ci===0||ci===k.cabs.length-1))T(de(c.h),ci===0?sx(X)-22:sx(X+c.b)+22,sy(z0+c.h/2),'#e4e7eb','center',-Math.PI/2)});
  for(const it of items(k)){const sel=pick&&pick.type===it.type&&pick.ci===it.ci&&pick.i===it.i,[x,z,w,h]=it.rect;
-  R(x,z,w,h,it.type==='eb'?'rgba(201,168,119,.55)':wood,sel?'#e5482d':woodD,sel?2:1,it.type==='eb'?[5,3]:null);
-  if(sel){const c=k.cabs[it.ci];if(it.type==='mw')T(de(c.mw[it.i])+' von links',sx(x+w/2),sy(z+h)-34,'#ffb020');else T(de(c[it.type][it.i].y)+' ab Unterkante',sx(x+w/2),sy(z+h)-12,'#ffb020')}}
+  if(it.type==='ks'){R(x,z,w,h,'#b9c2cc',sel?'#e5482d':'#7d8792',sel?2:1);R(x,z-6,8,h+12,'#7d8792',null);R(x+w-8,z-6,8,h+12,'#7d8792',null)}
+  else R(x,z,w,h,it.type==='eb'?'rgba(201,168,119,.55)':wood,sel?'#e5482d':woodD,sel?2:1,it.type==='eb'?[5,3]:null);
+  if(sel){const c=k.cabs[it.ci];if(it.type==='mw')T(de(c.mw[it.i])+' von links',sx(x+w/2),sy(z+h)-34,'#ffb020');else T(de(c[it.type][it.i].y)+(it.type==='ks'?' Stangenmitte':' ab Unterkante'),sx(x+w/2),sy(z+h)-12,'#ffb020')}}
  if(k.sockel)T('Sockel '+de(k.sh),sx(rowW(k)/2),sy(k.sh/2),'#9aa3ad');
- $('kphint').textContent={sel:'Korpus anklicken = bearbeiten · Boden oder Mittelwand ziehen = verschieben · anklicken + Entf = löschen',fb:'In ein Fach klicken: fester Boden auf dieser Höhe',eb:'In ein Fach klicken: Einlegeboden auf dieser Höhe',mw:'In einen Korpus klicken: Mittelwand an dieser Stelle'}[mode]}
+ $('kphint').textContent={sel:'Korpus anklicken = bearbeiten · Boden oder Mittelwand ziehen = verschieben · anklicken + Entf = löschen',fb:'In ein Fach klicken: fester Boden auf dieser Höhe',eb:'In ein Fach klicken: Einlegeboden auf dieser Höhe',ks:'In ein Fach klicken: Kleiderstange auf dieser Höhe',mw:'In einen Korpus klicken: Mittelwand an dieser Stelle'}[mode]}
 function hitAt(px,py){const k=K(),x=(px-view.ox)/view.s,z=(view.oy-py)/view.s,tol=6/view.s,z0=k.sockel?k.sh:0;
  const it=items(k).find(i=>x>=i.rect[0]-tol&&x<=i.rect[0]+i.rect[2]+tol&&z>=i.rect[1]-tol&&z<=i.rect[1]+i.rect[3]+tol);let ci=-1;k.cabs.forEach((c,i)=>{const X=cabX(k,i);if(x>=X&&x<=X+c.b&&z>=z0&&z<=z0+c.h)ci=i});
  return{it,ci,x,z,lx:ci>=0?x-cabX(k,ci):0,lz:z-z0}}
 function bindCanvas(){const c=cv();
  c.addEventListener('pointerdown',e=>{c.setPointerCapture(e.pointerId);const h=hitAt(e.offsetX,e.offsetY),k=K();
-  if(mode!=='sel'){if(h.ci<0)return;const cb=k.cabs[h.ci];if(cb.front==='s'){msg('Ein Schubkasten-Korpus hat keine Böden oder Mittelwände.');return}cur=h.ci;
-   A.commit(()=>{if(mode==='mw'){cb.mw.push(num(Math.round(h.lx-k.t/2)));pick={type:'mw',ci:cur,i:cb.mw.length-1}}else{cb[mode].push({x:num(h.lx),y:num(Math.round(h.lz-k.t/2))});pick={type:mode,ci:cur,i:cb[mode].length-1}}tidy(k)});
+  if(mode!=='sel'){if(h.ci<0)return;const cb=k.cabs[h.ci];if(cb.front==='s'){msg('Ein Schubkasten-Korpus hat keine Böden, Mittelwände oder Kleiderstangen.');return}cur=h.ci;
+   A.commit(()=>{if(mode==='mw'){cb.mw.push(num(Math.round(h.lx-k.t/2)));pick={type:'mw',ci:cur,i:cb.mw.length-1}}else{if(!cb[mode])cb[mode]=[];cb[mode].push({x:num(h.lx),y:num(Math.round(mode==='ks'?h.lz:h.lz-k.t/2))});pick={type:mode,ci:cur,i:cb[mode].length-1}}tidy(k)});
    setMode('sel');refresh();return}
   if(h.it){cur=h.it.ci;pick={type:h.it.type,ci:h.it.ci,i:h.it.i};const cb=k.cabs[cur];drag={it:h.it,sx:e.offsetX,sy:e.offsetY,orig:JSON.stringify(cb),moved:false,start:h.it.type==='mw'?cb.mw[h.it.i]:cb[h.it.type][h.it.i].y}}
   else{pick=null;if(h.ci>=0)cur=h.ci}refresh(true)});
@@ -195,9 +202,9 @@ function spreadWalls(c,k){const n=c.mw.length,iw=c.b-2*k.t;c.mw=c.mw.map(x=>Math
 function tandemInfo(c,k){const dE=k.nut?c.d-k.na-k.rw:c.d,NL=[...TANDEM_NL].reverse().find(l=>l+3<=dE),LW=c.b-2*k.t;
  return`<div class="kpsel"><b>Blum TANDEM (Holzschubkasten)</b><span class="muted">${NL?`Nennlänge ${NL} · Schubkasten ${de(LW-10)} breit (innen ${de(LW-42)}), ${NL-10} lang · Seiten 16 mm · Boden 13 zurückgesetzt`:`Korpus zu flach: mindestens ${TANDEM_NL[0]+3+(k.nut?k.na+k.rw:0)} mm Tiefe nötig`}</span></div>`}
 function fillPick(){const el=$('kppick');if(!el)return;const k=K();if(!pick||!k.cabs[pick.ci]||(pick.type==='mw'?k.cabs[pick.ci].mw[pick.i]==null:!k.cabs[pick.ci][pick.type][pick.i])){el.innerHTML='';return}
- const c=k.cabs[pick.ci],isW=pick.type==='mw',v=isW?c.mw[pick.i]:c[pick.type][pick.i].y,nm={mw:'Mittelwand',fb:'Fester Boden',eb:'Einlegeboden'}[pick.type];
+ const c=k.cabs[pick.ci],isW=pick.type==='mw',v=isW?c.mw[pick.i]:c[pick.type][pick.i].y,nm={mw:'Mittelwand',fb:'Fester Boden',eb:'Einlegeboden',ks:'Kleiderstange'}[pick.type];
  if(document.activeElement&&document.activeElement.id==='kp_pos')return;
- el.innerHTML=`<div class="kpsel"><b>${nm} gewählt</b><div class="pr"><label for="kp_pos">${isW?'Abstand von links':'Höhe ab Unterkante'}</label><input id="kp_pos" type="text" inputmode="decimal" value="${de(v)}"></div><button class="btn" id="kp_rm">Löschen (Entf)</button></div>`;
+ el.innerHTML=`<div class="kpsel"><b>${nm} gewählt</b><div class="pr"><label for="kp_pos">${isW?'Abstand von links':pick.type==='ks'?'Höhe Stangenmitte':'Höhe ab Unterkante'}</label><input id="kp_pos" type="text" inputmode="decimal" value="${de(v)}"></div><button class="btn" id="kp_rm">Löschen (Entf)</button></div>`;
  const p=$('kp_pos');p.addEventListener('keydown',e=>{if(e.key==='Enter')p.blur()});p.addEventListener('change',()=>{const n=parseFloat(p.value.replace(',','.'));if(!isFinite(n))return;A.commit(()=>{if(isW)c.mw[pick.i]=n;else c[pick.type][pick.i].y=n;tidy(k)});refresh()});$('kp_rm').onclick=removePick}
 function removePick(){if(!pick)return;const k=K(),c=k.cabs[pick.ci];A.commit(()=>{if(pick.type==='mw')c.mw.splice(pick.i,1);else c[pick.type].splice(pick.i,1);tidy(k)});pick=null;refresh()}
 function setMode(m){mode=m;document.querySelectorAll('[data-kpm]').forEach(b=>b.classList.toggle('on',b.dataset.kpm===m));draw()}
@@ -207,17 +214,17 @@ function refresh(light){const k=K();cur=clampN(cur,0,k.cabs.length-1);if(!light)
 
 /* ----- Stückliste ----- */
 function openList(){const k=K(),rows=list(k);
- $('kplT').innerHTML='<tr><th>Nr.</th><th>Teil</th><th>Länge</th><th>Breite</th><th>Stärke</th><th>Stück</th><th>Korpus</th><th>Bohrungen</th><th></th></tr>'+rows.map((r,i)=>{const p=r.p,L=Math.max(p.W,p.H),B=Math.min(p.W,p.H),nb=p.holes.length,ng=p.grooves.length;
-  return`<tr><td>${i+1}</td><td>${A.esc(p.name)}</td><td>${de(L)}</td><td>${de(B)}</td><td>${de(p.T)}</td><td>${r.n}</td><td>${[...r.cabs].join(', ')||'–'}</td><td>${nb?nb+' Löcher':''}${nb&&ng?', ':''}${ng?'Nut':''}${p.holes.some(h=>h.back)?' (auch Rückseite)':''}${!nb&&!ng?'–':''}</td><td><button class="btn" data-kpsvg="${i}">SVG</button></td></tr>`}).join('');
- const area=rows.reduce((s,r)=>s+(r.p.mat?0:r.p.W*r.p.H*r.n),0)/1e6,areaR=rows.reduce((s,r)=>s+(r.p.mat?r.p.W*r.p.H*r.n:0),0)/1e6;
+ $('kplT').innerHTML='<tr><th>Nr.</th><th>Teil</th><th>Länge</th><th>Breite</th><th>Stärke</th><th>Stück</th><th>Korpus</th><th>Bohrungen</th><th></th></tr>'+rows.map((r,i)=>{const p=r.p,L=Math.max(p.W,p.H),B=Math.min(p.W,p.H),nb=p.holes.filter(h=>!h.mark).length,ng=p.grooves.length;
+  return`<tr><td>${i+1}</td><td>${A.esc(p.name)}</td><td>${de(L)}</td><td>${de(B)}</td><td>${de(p.T)}</td><td>${r.n}</td><td>${[...r.cabs].join(', ')||'–'}</td><td>${nb?nb+' Löcher':''}${nb&&ng?', ':''}${ng?'Nut':''}${p.holes.some(h=>h.back)?' (auch Rückseite)':''}${!nb&&!ng?'–':''}</td><td>${p.rod?'':`<button class="btn" data-kpsvg="${i}">SVG</button>`}</td></tr>`}).join('');
+ const area=rows.reduce((s,r)=>s+(r.p.mat?0:r.p.W*r.p.H*r.n),0)/1e6,areaR=rows.reduce((s,r)=>s+(r.p.mat==='Rückwand'?r.p.W*r.p.H*r.n:0),0)/1e6;
  $('kplsum').textContent=`${rows.reduce((s,r)=>s+r.n,0)} Teile · Platte ${de(k.t)} mm (Schubkasten-Zargen 16 mm mitgezählt): ${de(area)} m² · Rückwand/Böden ${de(k.rw)} mm: ${de(areaR)} m² (ohne Verschnitt)`;
  $('dKpl').classList.add('open')}
-function csv(sep,cut){const rows=list(K());if(cut)return'Length,Width,Qty,Material,Label,Enabled\n'+rows.map(r=>[Math.max(r.p.W,r.p.H),Math.min(r.p.W,r.p.H),r.n,r.p.T+'mm',r.p.name,'true'].join(',')).join('\n')+'\n';
+function csv(sep,cut){let rows=list(K());if(cut)rows=rows.filter(r=>!r.p.rod);if(cut)return'Length,Width,Qty,Material,Label,Enabled\n'+rows.map(r=>[Math.max(r.p.W,r.p.H),Math.min(r.p.W,r.p.H),r.n,r.p.T+'mm',r.p.name,'true'].join(',')).join('\n')+'\n';
  return'﻿Nr;Teil;Länge;Breite;Stärke;Stück;Korpus\n'+rows.map((r,i)=>[i+1,r.p.name,de(Math.max(r.p.W,r.p.H)),de(Math.min(r.p.W,r.p.H)),de(r.p.T),r.n,[...r.cabs].join(' ')].join(sep)).join('\n')+'\n'}
 function printList(){const w=window.open('','_blank');if(!w){msg('Das Druckfenster wurde vom Browser blockiert.');return}
  w.document.write(`<!doctype html><meta charset="utf-8"><title>Stückliste</title><style>body{font:14px system-ui,sans-serif;margin:24px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:5px 8px;text-align:left}td:last-child,th:last-child{display:none}</style><h2>Stückliste ${A.esc(A.baseName())}</h2>${$('kplT').outerHTML}<p>${A.esc($('kplsum').textContent)}</p>`);w.document.close();w.focus();setTimeout(()=>w.print(),300)}
-function toDrawing(){const rows=list(K()),all=[];let x=0,y=0,rowH=0;const b=A.bbox(S().ents),bx=b?b[2]+150:0,by=b?b[1]:0;
- for(const r of rows){if(x>0&&x+r.p.W>3200){x=0;y+=rowH+80;rowH=0}for(const e of partEnts(r.p,r.n)){const mv=p=>[p[0]+bx+x,p[1]+by+y],n=JSON.parse(JSON.stringify(e));
+function toDrawing(){const rows=list(K()).filter(r=>!r.p.rod),all=[];let x=0,y=0,rowH=0;const b=A.bbox(S().ents),bx=b?b[2]+150:0,by=b?b[1]:0;
+ for(const r of rows){if(r.p.rod)continue;if(x>0&&x+r.p.W>3200){x=0;y+=rowH+80;rowH=0}for(const e of partEnts(r.p,r.n)){const mv=p=>[p[0]+bx+x,p[1]+by+y],n=JSON.parse(JSON.stringify(e));
    if(n.pts)n.pts=n.pts.map(mv);if(n.c)n.c=mv(n.c);if(n.a&&n.b){n.a=mv(n.a);n.b=mv(n.b)}if(n.p)n.p=mv(n.p);all.push(n)}x+=r.p.W+80;rowH=Math.max(rowH,r.p.H)}
  let made;A.commit(()=>{made=A.addEnts(all)});close();A.after();A.select(made);A.log(`Korpusplaner: ${rows.length} verschiedene Teile in die Zeichnung gelegt (sind gewählt). Jedes Teil einzeln wählen und mit EX als SVG ausgeben – oder im Planer in der Stückliste „SVG“ je Teil.`,'ok')}
 
