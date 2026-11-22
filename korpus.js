@@ -6,7 +6,7 @@ window.KORPUS=(()=>{
 const A=window.__cad.kp,$=id=>document.getElementById(id),S=()=>window.__cad.S;
 const newCab=(o={})=>Object.assign({b:600,h:720,d:560,mw:[],fb:[],eb:[{x:300,y:350}],front:'2',sn:3,nm:0,nf:0,ne:1},o);
 const DEF=()=>({t:19,rw:8,nt:10,na:20,fuge:3,sockel:false,sh:100,sr:50,lr:'boden',dub:true,topf:true,nut:true,cabs:[newCab()]});
-const DUB_D=8,DUB_T=12,LR_D=5,LR_T=13,TOPF_D=35,TOPF_T=13,SK=16;
+const DUB_D=8,DUB_T=12,LR_D=5,LR_T=13,TOPF_D=35,TOPF_T=13,SK=16,TANDEM_NL=[250,270,300,350,400,450,500,550,600];
 let cur=0,pick=null,mode='sel',showFront=true,V3=null,drag=null,view={s:1,ox:0,oy:0},cache3=new Map(),timer=0;
 const K=()=>{const s=S();if(!s.korpus)s.korpus=DEF();return s.korpus};
 const num=v=>Math.round(v*100)/100,de=v=>String(num(v)).replace('.',',');
@@ -64,12 +64,16 @@ function parts(k){k=k||K();const out=[],t=k.t;let x0=0;const z0=k.sockel?k.sh:0;
     for(const dz of[-16,16])side==='l'?hole(SL,37,fg+y+dz,LR_D,LR_T):hole(SR,c.d-37,fg+y+dz,LR_D,LR_T)}};
   if(c.front==='l')door(c.b-fg,c.b-2*fg,'l');else if(c.front==='r')door(c.b-fg,c.b-2*fg,'r');
   else if(c.front==='2'){const Wd=(c.b-3*fg)/2;door(fg+Wd,Wd,'l');door(c.b-fg,Wd,'r')}
-  else if(c.front==='s'){const n=c.sn,Hf=(c.h-(n+1)*fg)/n,bw=c.b-2*t-26,bh=Math.max(60,num(Hf-40)),bd=Math.max(150,Math.floor((dE-10)/50)*50);
-   for(let i=0;i<n;i++){const zf=z0+fg+i*(Hf+fg),bx=x0+t+13,bz=zf+20;
-    mk(ci,'Schubkastenfront',c.b-2*fg,Hf,t,[x0+c.b-fg,-t-2,zf],[-1,0,0],[0,0,1],{isFront:true,tint:[1.1,1.07,1.02]});
-    mk(ci,'Schubkasten Seite',bd,bh-k.rw,SK,[bx,0,bz+k.rw],[0,1,0],[0,0,1],{box:true});mk(ci,'Schubkasten Seite',bd,bh-k.rw,SK,[bx+bw-SK,0,bz+k.rw],[0,1,0],[0,0,1],{box:true});
-    mk(ci,'Schubkasten Vorder-/Hinterstück',bw-2*SK,bh-k.rw,SK,[bx+SK,SK,bz+k.rw],[1,0,0],[0,0,1],{box:true});mk(ci,'Schubkasten Vorder-/Hinterstück',bw-2*SK,bh-k.rw,SK,[bx+SK,bd,bz+k.rw],[1,0,0],[0,0,1],{box:true});
-    mk(ci,'Schubkasten Boden',bw,bd,k.rw,[bx,0,bz],[1,0,0],[0,1,0],{box:true,mat:'Rückwand'})}}
+  else if(c.front==='s'){/* Holzschubkasten auf Blum TANDEM (Vollauszug 560H): Innenbreite = lichte Weite − 42, Länge = Nennlänge − 10,
+     Einbautiefe mind. Nennlänge + 3, Boden 13 zurückgesetzt, unten 14 und oben 7 Luft, Seitenstärke 16 */
+   const n=c.sn,Hf=(c.h-(n+1)*fg)/n,LW=c.b-2*t,bw=LW-10,NL=[...TANDEM_NL].reverse().find(l=>l+3<=dE)||TANDEM_NL[0],bl=NL-10,GR=6;
+   for(let i=0;i<n;i++){const zf=fg+i*(Hf+fg),lo=i===0?t:zf-fg/2,hi=i===n-1?c.h-t:zf+Hf+fg/2,hS=Math.max(60,Math.floor(hi-lo-14-7-9)),bx=x0+t+5,bz=z0+lo+14;
+    mk(ci,'Schubkastenfront',c.b-2*fg,Hf,t,[x0+c.b-fg,-t-2,z0+zf],[-1,0,0],[0,0,1],{isFront:true,tint:[1.1,1.07,1.02]});
+    const gS={x:-4,y:13,w:bl+8,h:k.rw,depth:GR};
+    mk(ci,'Schubkasten Seite',bl,hS,SK,[bx,0,bz],[0,1,0],[0,0,1],{box:true,nl:NL}).grooves.push(gS);mk(ci,'Schubkasten Seite',bl,hS,SK,[bx+bw,bl,bz],[0,-1,0],[0,0,1],{box:true,nl:NL}).grooves.push({...gS});
+    mk(ci,'Schubkasten Vorderstück',bw-2*SK,hS,SK,[bx+bw-SK,0,bz],[-1,0,0],[0,0,1],{box:true}).grooves.push({x:-4,y:13,w:bw-2*SK+8,h:k.rw,depth:GR});
+    const hk=mk(ci,'Schubkasten Hinterstück',bw-2*SK,hS-13-k.rw,SK,[bx+SK,bl,bz+13+k.rw],[1,0,0],[0,0,1],{box:true});hole(hk,7,7,6,10,true);hole(hk,hk.W-7,7,6,10,true);
+    mk(ci,'Schubkasten Boden',bw-2*SK+2*GR-1,bl-SK+GR-0.5,k.rw,[bx+SK-GR+0.5,SK-GR+0.5,bz+13],[1,0,0],[0,1,0],{box:true,mat:'Rückwand'})}}
   x0+=c.b});
  if(k.sockel&&k.cabs.length){const W=x0,dm=Math.min(...k.cabs.map(c=>c.d)),yb=dm-50,len=yb-t-(k.sr+t);
   mk(-1,'Sockelblende vorn',W,k.sh,t,[0,k.sr+t,0],[1,0,0],[0,0,1],{tint:[0.8,0.8,0.8]});mk(-1,'Sockelblende hinten',W,k.sh,t,[0,yb,0],[1,0,0],[0,0,1],{tint:[0.8,0.8,0.8]});
@@ -154,8 +158,8 @@ function form(){const k=K(),c=k.cabs[cur],inp=(id,lab,val,x='')=>`<div class="pr
  chk=(id,lab,on)=>`<label class="kpchk"><input type="checkbox" id="${id}" ${on?'checked':''}> ${lab}</label>`;
  $('kpform').innerHTML=`<h2>Korpus ${cur+1} <span>von ${k.cabs.length}</span></h2>
  ${F_CAB.map(([f,l])=>inp('kc_'+f,l+' mm',c[f])).join('')}
- <div class="pr"><label for="kc_front">Front</label><select id="kc_front">${[['n','Offen (keine Front)'],['l','1 Tür, Band links'],['r','1 Tür, Band rechts'],['2','2 Türen'],['s','Schubkästen']].map(([v,l])=>`<option value="${v}" ${c.front===v?'selected':''}>${l}</option>`).join('')}</select></div>
- ${c.front==='s'?inp('kc_sn','Schubkästen',c.sn):`<h2 style="margin-top:14px">Innenaufteilung</h2>${inp('kc_nm','Mittelwände',c.nm)}${inp('kc_nf','Feste Böden je Fach',c.nf)}${inp('kc_ne','Einlegeböden je Fach',c.ne)}
+ <div class="pr"><label for="kc_front">Front</label><select id="kc_front">${[['n','Offen (keine Front)'],['l','1 Tür, Band links'],['r','1 Tür, Band rechts'],['2','2 Türen'],['s','Schubkästen (Blum TANDEM)']].map(([v,l])=>`<option value="${v}" ${c.front===v?'selected':''}>${l}</option>`).join('')}</select></div>
+ ${c.front==='s'?inp('kc_sn','Schubkästen',c.sn)+tandemInfo(c,k):`<h2 style="margin-top:14px">Innenaufteilung</h2>${inp('kc_nm','Mittelwände',c.nm)}${inp('kc_nf','Feste Böden je Fach',c.nf)}${inp('kc_ne','Einlegeböden je Fach',c.ne)}
  <button class="btn" id="kc_spread" style="width:100%">Gleichmäßig verteilen</button><p class="muted" style="margin-top:6px">Danach einzelne Böden und Wände in der Zeichnung mit der Maus verschieben.</p>`}
  <div id="kppick"></div>
  <div class="row" style="justify-content:flex-start;margin-top:14px"><button class="btn" id="kc_add">+ Korpus daneben</button><button class="btn" id="kc_del" ${k.cabs.length<2?'disabled style="opacity:.4"':''}>Korpus löschen</button></div>
@@ -177,6 +181,8 @@ function form(){const k=K(),c=k.cabs[cur],inp=(id,lab,val,x='')=>`<div class="pr
 function scaleX(c,k){/* bei neuer Breite: Mittelwände neu verteilen, Böden bleiben in ihrem Fach */spreadWalls(c,k)}
 function spreadWalls(c,k){const n=c.mw.length,iw=c.b-2*k.t;c.mw=c.mw.map(x=>Math.min(x,c.b-2*k.t-1));const fx=[c.fb,c.eb].map(l=>l.map(s=>{const cs=comps(c,k);return Math.max(0,cs.findIndex(f=>s.x>=f.x0&&s.x<=f.x1))}));
  c.mw=[];for(let i=0;i<n;i++)c.mw.push(num(k.t+(iw-n*k.t)/(n+1)*(i+1)+i*k.t));const cs=comps(c,k);[c.fb,c.eb].forEach((l,li)=>l.forEach((s,i)=>{const f=cs[Math.min(fx[li][i],cs.length-1)];s.x=num((f.x0+f.x1)/2)}))}
+function tandemInfo(c,k){const dE=k.nut?c.d-k.na-k.rw:c.d,NL=[...TANDEM_NL].reverse().find(l=>l+3<=dE),LW=c.b-2*k.t;
+ return`<div class="kpsel"><b>Blum TANDEM (Holzschubkasten)</b><span class="muted">${NL?`Nennlänge ${NL} · Schubkasten ${de(LW-10)} breit (innen ${de(LW-42)}), ${NL-10} lang · Seiten 16 mm · Boden 13 zurückgesetzt`:`Korpus zu flach: mindestens ${TANDEM_NL[0]+3+(k.nut?k.na+k.rw:0)} mm Tiefe nötig`}</span></div>`}
 function fillPick(){const el=$('kppick');if(!el)return;const k=K();if(!pick||!k.cabs[pick.ci]||(pick.type==='mw'?k.cabs[pick.ci].mw[pick.i]==null:!k.cabs[pick.ci][pick.type][pick.i])){el.innerHTML='';return}
  const c=k.cabs[pick.ci],isW=pick.type==='mw',v=isW?c.mw[pick.i]:c[pick.type][pick.i].y,nm={mw:'Mittelwand',fb:'Fester Boden',eb:'Einlegeboden'}[pick.type];
  if(document.activeElement&&document.activeElement.id==='kp_pos')return;
@@ -193,7 +199,7 @@ function openList(){const k=K(),rows=list(k);
  $('kplT').innerHTML='<tr><th>Nr.</th><th>Teil</th><th>Länge</th><th>Breite</th><th>Stärke</th><th>Stück</th><th>Korpus</th><th>Bohrungen</th><th></th></tr>'+rows.map((r,i)=>{const p=r.p,L=Math.max(p.W,p.H),B=Math.min(p.W,p.H),nb=p.holes.length,ng=p.grooves.length;
   return`<tr><td>${i+1}</td><td>${A.esc(p.name)}</td><td>${de(L)}</td><td>${de(B)}</td><td>${de(p.T)}</td><td>${r.n}</td><td>${[...r.cabs].join(', ')||'–'}</td><td>${nb?nb+' Löcher':''}${nb&&ng?', ':''}${ng?'Nut':''}${p.holes.some(h=>h.back)?' (auch Rückseite)':''}${!nb&&!ng?'–':''}</td><td><button class="btn" data-kpsvg="${i}">SVG</button></td></tr>`}).join('');
  const area=rows.reduce((s,r)=>s+(r.p.mat?0:r.p.W*r.p.H*r.n),0)/1e6,areaR=rows.reduce((s,r)=>s+(r.p.mat?r.p.W*r.p.H*r.n:0),0)/1e6;
- $('kplsum').textContent=`${rows.reduce((s,r)=>s+r.n,0)} Teile · Platte ${de(k.t)} mm (ohne Schubkasten 16 mm getrennt gezählt): ${de(area)} m² · Rückwand/Böden ${de(k.rw)} mm: ${de(areaR)} m² (ohne Verschnitt)`;
+ $('kplsum').textContent=`${rows.reduce((s,r)=>s+r.n,0)} Teile · Platte ${de(k.t)} mm (Schubkasten-Zargen 16 mm mitgezählt): ${de(area)} m² · Rückwand/Böden ${de(k.rw)} mm: ${de(areaR)} m² (ohne Verschnitt)`;
  $('dKpl').classList.add('open')}
 function csv(sep,cut){const rows=list(K());if(cut)return'Length,Width,Qty,Material,Label,Enabled\n'+rows.map(r=>[Math.max(r.p.W,r.p.H),Math.min(r.p.W,r.p.H),r.n,r.p.T+'mm',r.p.name,'true'].join(',')).join('\n')+'\n';
  return'﻿Nr;Teil;Länge;Breite;Stärke;Stück;Korpus\n'+rows.map((r,i)=>[i+1,r.p.name,de(Math.max(r.p.W,r.p.H)),de(Math.min(r.p.W,r.p.H)),de(r.p.T),r.n,[...r.cabs].join(' ')].join(sep)).join('\n')+'\n'}
