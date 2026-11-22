@@ -10,9 +10,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Origin CAD">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.webmanifest?v=19">
-<link rel="icon" href="icon.svg?v=19" type="image/svg+xml">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=19">
+<link rel="manifest" href="manifest.webmanifest?v=20">
+<link rel="icon" href="icon.svg?v=20" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=20">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -129,6 +129,10 @@ button,input,select{font:inherit;color:inherit}
 .v3hint{position:absolute;left:10px;bottom:8px;color:#9aa3ad;font-size:12.5px;pointer-events:none;background:#16191dcc;padding:4px 8px;border-radius:5px}
 .dlg .box.v3 .warn{margin:0}
 /* 3D-Modus */
+.rmprim{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.rmprim button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px 6px;border:1px solid var(--line);background:var(--chrome);border-radius:7px;cursor:pointer;font-size:12.5px}.rmprim button:hover{background:var(--hov);border-color:var(--acc)}
+.rmprim svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
+.kpview .btn.on{background:var(--acc);border-color:var(--acc);color:#fff}.kpview .vsep{width:1px;height:20px;background:#353b44;margin:0 4px}
+#rmpull{background:#e5482d;color:#fff!important;padding:3px 8px;border-radius:6px;font-weight:500}#rmpull input{width:74px;padding:3px 6px;border:0;border-radius:4px;text-align:right;color:#111;background:#fff}
 .rm{position:fixed;inset:0;z-index:35;background:var(--chrome);display:none;grid-template-rows:auto minmax(0,1fr);grid-template-columns:300px minmax(0,1fr)}.rm.open{display:grid}
 .rmmain{position:relative;min-height:0;background:#16191d;overflow:hidden}.rmmain canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}#rm3d{cursor:grab}#rmov{pointer-events:none}
 .rmsep{height:1px;background:var(--line);margin:12px 0}.rmlist{display:grid;gap:4px}
@@ -347,8 +351,8 @@ button,input,select{font:inherit;color:inherit}
   <button class="btn" data-rm="list">Stückliste und Zuschnitt</button><button class="btn" data-rm="pic">Bild speichern</button><button class="btn" data-rm="print">Drucken</button><button class="btn pri" data-rm="close">Zurück zum Zeichnen</button></div>
  <div class="kpside" id="rmside"></div>
  <div class="rmmain"><canvas id="rm3d"></canvas><canvas id="rmov"></canvas>
-  <div class="kpview"><button class="btn" data-rm="iso">Schräg</button><button class="btn" data-rm="front">Vorn</button><button class="btn" data-rm="top">Oben</button><button class="btn" data-rm="fit" title="Alles ins Bild holen">Alles zeigen</button><label><input type="checkbox" id="rmdims" checked> Maße zeigen</label></div>
-  <div class="kphint"><span>Körper anklicken = wählen · gewählten Körper ziehen = verschieben (rastet ein) · Shift + ziehen = hoch/runter · neben die Körper ziehen = Ansicht drehen · Mausrad = Zoom</span></div></div>
+  <div class="kpview"><button class="btn" data-rm="iso">Schräg</button><button class="btn" data-rm="front">Vorn</button><button class="btn" data-rm="top">Oben</button><button class="btn on" data-rmm="move" title="Körper wählen und verschieben">Verschieben</button><button class="btn" data-rmm="pull" title="Eine Fläche anklicken und ziehen – der Körper wird in dieser Richtung größer oder kleiner">Fläche ziehen</button><label id="rmpull" hidden>Maß <input id="rmpv" type="text" inputmode="decimal" aria-label="Maß in Zugrichtung" title="120 = neues Maß · +50 = um 50 weiter ziehen · Enter übernimmt"> mm</label><span class="vsep"></span><button class="btn" data-rm="fit" title="Alles ins Bild holen">Alles zeigen</button><label><input type="checkbox" id="rmdims" checked> Maße zeigen</label></div>
+  <div class="kphint"><span id="rmhint"></span></div></div>
 </div>
 <div class="dlg" id="dRml" style="z-index:45"><div class="box" style="max-width:980px">
  <h3>Stückliste und Zuschnitt</h3><div id="rmlBody"></div>
@@ -360,13 +364,13 @@ button,input,select{font:inherit;color:inherit}
  <div class="row"><button class="btn" data-close>Abbrechen</button><button class="btn pri" id="newB">Leeren</button></div>
 </div></div>
 
-<script src="vendor/clipper.js?v=19"></script>
-<script src="font.js?v=19"></script>
-<script src="vendor/earcut.min.js?v=19"></script>
-<script src="view3d.js?v=19"></script>
-<script src="cad.js?v=19"></script>
-<script src="korpus.js?v=19"></script>
-<script src="raum.js?v=19"></script>
+<script src="vendor/clipper.js?v=20"></script>
+<script src="font.js?v=20"></script>
+<script src="vendor/earcut.min.js?v=20"></script>
+<script src="view3d.js?v=20"></script>
+<script src="cad.js?v=20"></script>
+<script src="korpus.js?v=20"></script>
+<script src="raum.js?v=20"></script>
 <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>

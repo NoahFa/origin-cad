@@ -11,6 +11,7 @@ function mesh(m){const P=[],Nn=[],C=[],L=[];
   const X=(x,y,z)=>[o[0]+u[0]*x+v[0]*y+w[0]*z,o[1]+u[1]*x+v[1]*y+w[1]*z,o[2]+u[2]*x+v[2]*y+w[2]*z],col=k=>pc?[Math.min(1,pc[0]*F[k]*tint[0]),Math.min(1,pc[1]*F[k]*tint[1]),Math.min(1,pc[2]*F[k]*tint[2])]:[BASE[k][0]*tint[0],BASE[k][1]*tint[1],BASE[k][2]*tint[2]];
   const tri=(a,b,c,n,cl)=>{P.push(...a,...b,...c);for(let i=0;i<3;i++){Nn.push(...n);C.push(...cl)}};
   const nUp=w,nDn=[-w[0],-w[1],-w[2]],cT=col('top'),cF=col('floor'),cW=col('wall'),cB=col('bottom');let prev=new Set();
+  if(pt.tris){const t=pt.tris,D=(x,y,z)=>[u[0]*x+v[0]*y+w[0]*z,u[1]*x+v[1]*y+w[1]*z,u[2]*x+v[2]*y+w[2]*z];for(let i=0;i<t.length;i+=18){for(let k=0;k<3;k++){const j=i+k*6;P.push(...X(t[j],t[j+1],t[j+2]));Nn.push(...D(t[j+3],t[j+4],t[j+5]));C.push(...cT)}}continue}
   for(const s of pt.sections){const za=pt.T-s.z0,zb=pt.T-s.z1,last=s===pt.sections[pt.sections.length-1],cur=new Set();
    for(const pg of s.polys){const rings=[pg.outer,...pg.holes],flat=[],holes=[];let n=0;
     for(let r=0;r<rings.length;r++){if(r)holes.push(n);for(const p of rings[r]){flat.push(p[0],p[1]);n++}}

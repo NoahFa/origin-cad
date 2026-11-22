@@ -109,7 +109,9 @@ Eigener Bereich (Knopf „3D-Modus“), Datei `raum.js`, Daten in `S.raum = {bod
 - **Bedienung:** anklicken = wählen, gewählten Körper ziehen = in der Ebene verschieben, Shift = Höhe; Einrasten an Flächen anderer Körper und am Boden (`snap`); Pfeiltasten 1 mm (Shift 10), Bild↑/↓ Höhe; drehen in 90°-Schritten; Lage/Maße/Material über Felder.
 - **Maße im Bild** (`drawOver`, eigene Zeichenfläche über dem 3D-Bild): Gesamtmaße und Maße des gewählten Körpers.
 - **Ausgabe:** Stückliste (größtes Maß = Länge, kleinstes = Stärke; Formteile mit umschließendem Rechteck), Zuschnittplan über `KORPUS.nestOf`, Bild speichern (PNG), Drucken mit Bild.
-- **Bewusst nicht:** Flächen drücken/ziehen, Körper verschneiden, schräge Drehungen, automatische Verbinder.
+- **Grundkörper** (`PRIM`, `kind`): `box` Quader, `sph` Kugel, `cyl` Zylinder, `cone` Kegel (`D2` = Ø oben), `tor` Torus (L = Außen-Ø, H = Rohr-Ø), `plane` Ebene (H = 0). Runde Körper als Dreiecksnetz (`trisOf`, im Betrachter `part.tris`).
+- **Fläche ziehen** (Werkzeug oben, `mode='pull'`): Fläche des umschließenden Quaders anklicken und ziehen → `resize(b,face,d)`; Maßfeld: Zahl = neues Maß in Zugrichtung, `+/-Zahl` = um so viel weiter. Quader/Ebene in jede Richtung (Ebene wird beim Hochziehen zum Quader), Zylinder/Kegel/Formteil in der Höhe, runde Körper ändern den Durchmesser um die Mitte. Rastet an Flächen anderer Körper ein.
+- **Bewusst nicht:** Körper verschneiden, schräge Drehungen, automatische Verbinder.
 - Der 3D-Betrachter (`view3d.js`) hat dafür Haken (`down/move/up/draw`), `project()`, `ray()`, `shot()`.
 
 ## Ideen / offen
