@@ -1,6 +1,6 @@
 // Origin CAD – macht die App ohne Internet nutzbar (Werkstatt). Bei jeder Änderung an Dateien CACHE und ?v= gemeinsam hochzählen.
-const CACHE='ocad-v24';
-const ASSETS=['./','./index.html','./cad.js?v=24','./font.js?v=24','./vendor/clipper.js?v=24','./vendor/earcut.min.js?v=24','./view3d.js?v=24','./korpus.js?v=24','./raum.js?v=24','./manifest.webmanifest?v=24','./icon.svg?v=24','./apple-touch-icon.png?v=24','./icon-192.png?v=24','./icon-512.png?v=24','./icon-maskable-512.png?v=24'];
+const CACHE='ocad-v25';
+const ASSETS=['./','./index.html','./cad.js?v=25','./font.js?v=25','./vendor/clipper.js?v=25','./vendor/earcut.min.js?v=25','./view3d.js?v=25','./korpus.js?v=25','./raum.js?v=25','./manifest.webmanifest?v=25','./icon.svg?v=25','./apple-touch-icon.png?v=25','./icon-192.png?v=25','./icon-512.png?v=25','./icon-maskable-512.png?v=25'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('ocad-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{const r=e.request;if(r.method!=='GET')return;const u=new URL(r.url);

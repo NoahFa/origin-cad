@@ -285,6 +285,16 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  const jsK=await p.evaluate(()=>JSON.stringify({app:'OriginCAD',v:3,...__cad.S}));await fresh();await p.setInputFiles('#file',{name:'Schrank.json',mimeType:'application/json',buffer:Buffer.from(jsK)});await p.waitForFunction(()=>document.getElementById('fname').textContent.startsWith('Schrank.json'));
  ok((await p.evaluate(()=>__cad.S.korpus&&__cad.S.korpus.cabs.length))===2,'Planung wird mit der Zeichnung gespeichert und wieder geladen');
 
+ console.log('Anlegen an Kante');
+ await fresh();await C('PL','0,0','300,0','100,300','S');await C('LL','150,100','220,140','30');await p.keyboard.press('Escape');
+ await C('AN');await p.evaluate(()=>{const S=__cad.S,sl=S.ents[1];__cad.adv({e:sl,p:[200,145]});__cad.adv({e:S.ents[0],p:[200,150]})});await C('');
+ r=await p.evaluate(()=>{const S=__cad.S,sl=S.ents[1],k=S.ents[0],a=[300,0],b=[100,300],u=[(b[0]-a[0])/Math.hypot(200,300),(b[1]-a[1])/Math.hypot(200,300)],n=[-u[1],u[0]],d=q=>(q[0]-a[0])*n[0]+(q[1]-a[1])*n[1],ax=[sl.b[0]-sl.a[0],sl.b[1]-sl.a[1]];
+  return{par:Math.abs(ax[0]*n[0]+ax[1]*n[1])/Math.hypot(...ax),da:d(sl.a),db:d(sl.b),r:sl.r,in:d([100,50])}});
+ ok(r.par<1e-6&&Math.abs(Math.abs(r.da)-15)<1e-6&&Math.abs(r.da-r.db)<1e-6&&Math.sign(r.da)===Math.sign(r.in),'Langloch an die schräge Kante angelegt: parallel, Außenkante liegt genau auf der Linie, bleibt innen',JSON.stringify(r));
+ await p.keyboard.press('Control+z');await C('AN');await p.evaluate(()=>{const S=__cad.S;__cad.adv({e:S.ents[1],p:[200,145]});__cad.adv({e:S.ents[0],p:[200,150]})});await C('5');
+ r=await p.evaluate(()=>{const sl=__cad.S.ents[1],a=[300,0],L=Math.hypot(200,300),n=[-300/L,-200/L];return Math.abs((sl.a[0]-a[0])*n[0]+(sl.a[1]-a[1])*n[1])});ok(Math.abs(r-20)<1e-6,'Mit Abstand 5: Außenkante 5 mm von der Linie entfernt',String(r));
+ await C('AN');await p.evaluate(()=>{const S=__cad.S;__cad.adv({e:S.ents[1],p:[185,120]})});ok((await p.evaluate(()=>__cad.REQ&&__cad.REQ.k))==='pick'||/Bogen/.test(await p.evaluate(()=>document.getElementById('hist').lastChild.textContent)),'Klick auf einen Bogen wird abgefangen');await p.keyboard.press('Escape');
+
  console.log('Bemaßung und Drucken');
  await fresh();await C('R','0,0','300,200','K','150,100','40','BK','0,0','100,0','50,-40','200,0','300,0','');await p.keyboard.press('Escape');E=await ents();
  let Dm=E.filter(e=>e.t==='dim');ok(Dm.length===3&&Dm.every(d=>d.m==='h'&&d.p[1]===-40)&&Dm[1].a[0]===100&&Dm[1].b[0]===200&&Dm[2].b[0]===300,'Kettenmaß: drei Maße auf einer Linie (100 · 100 · 100)',JSON.stringify(Dm).slice(0,200));

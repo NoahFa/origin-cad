@@ -114,6 +114,8 @@ Eigener Bereich (Knopf „3D-Modus“), Datei `raum.js`, Daten in `S.raum = {bod
 - **Bewusst nicht:** Körper verschneiden, schräge Drehungen, automatische Verbinder.
 - Der 3D-Betrachter (`view3d.js`) hat dafür Haken (`down/move/up/draw`), `project()`, `ray()`, `shot()`.
 
+- **Anlegen an Kante** (`AN`, Ändern): gerade Kante eines Objekts → Zielkante → Abstand (0 = bündig). `edgeAt()` findet die Kante, `alignTo()` dreht um die Kantenmitte (kleinster Winkel, max. ±90°) und schiebt senkrecht auf die Ziellinie; das Objekt bleibt auf seiner Seite. Gewählte Objekte wandern gemeinsam mit.
+
 ## Ideen / offen
 - An der echten Origin prüfen: Wird die SVG mit Frästyp, Tiefe und Fräser-Ø richtig erkannt? (Format nach Shaper-Vorgabe gebaut, aber noch nicht an der Maschine getestet.)
 - Stutzen zerlegt Polylinien noch in Einzelstücke (danach `VB`)

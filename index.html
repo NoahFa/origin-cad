@@ -10,9 +10,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Origin CAD">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.webmanifest?v=24">
-<link rel="icon" href="icon.svg?v=24" type="image/svg+xml">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=24">
+<link rel="manifest" href="manifest.webmanifest?v=25">
+<link rel="icon" href="icon.svg?v=25" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=25">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -291,6 +291,7 @@ button,input,select{font:inherit;color:inherit}
   <tr><td>3D-Modus (Inhalt)</td><td>Oben „3D-Modus“: Quader über Maße anlegen oder eine gezeichnete Kontur hochziehen, dann im Raum verschieben, drehen und stapeln. Schränke aus dem Korpusplaner lassen sich holen und ergänzen. Mit Stückliste, Zuschnittplan, Maßen im Bild und Bild zum Speichern.</td></tr>
   <tr><td>Korpusplaner</td><td>Oben „Korpusplaner“: Schrank über Maße anlegen, Böden und Mittelwände mit der Maus setzen, mehrere Korpusse nebeneinander. Rechts läuft die 3D-Ansicht mit. „Stückliste“ liefert Zuschnittliste und je Teil eine SVG mit allen Bohrungen.</td></tr>
   <tr><td>3D-Ansicht</td><td><code>F4</code> oder Knopf „3D“ unten: zeigt die Platte räumlich mit allen Ausschnitten, Bohrungen, Taschen und Gravuren in der eingetragenen Tiefe. Plattenstärke oben im 3D-Fenster eintragen.</td></tr>
+  <tr><td>Anlegen</td><td><code>AN</code> (Ändern › Anlegen an Kante): gerade Kante eines Teils anklicken, dann die Zielkante – das Teil wird gedreht und verschoben, bis die Kanten bündig aufeinanderliegen (oder mit eingegebenem Abstand). Sind mehrere Objekte gewählt, wandern sie gemeinsam mit.</td></tr>
   <tr><td>Bemaßen</td><td><code>BM</code> waagrecht/senkrecht · <code>BA</code> schräg · <code>BK</code> Kettenmaß (nach dem ersten Maß einfach die nächsten Punkte anklicken) · <code>BR</code> Radius oder Durchmesser (Kreis anklicken). Maße wandern beim Verschieben (<code>V</code>) mit.</td></tr>
   <tr><td>Drucken</td><td>Datei › „Drucken / PDF“: Zeichnung mit Bemaßung schwarz auf weiß, auf eine A4-Seite eingepasst. Im Druckfenster „Als PDF speichern“ wählen.</td></tr>
   <tr><td>Zur Origin</td><td>Datei › „SVG für Shaper Origin“ (oder <code>EX</code>). Die Datei auf einen USB-Stick kopieren oder bei hub.shapertools.com hochladen. Frästyp, Tiefe und Fräser-Ø stehen in der Datei; Bemaßung wird nicht ausgegeben.</td></tr>
@@ -381,13 +382,13 @@ button,input,select{font:inherit;color:inherit}
  <div class="row"><button class="btn" data-close>Abbrechen</button><button class="btn pri" id="newB">Leeren</button></div>
 </div></div>
 
-<script src="vendor/clipper.js?v=24"></script>
-<script src="font.js?v=24"></script>
-<script src="vendor/earcut.min.js?v=24"></script>
-<script src="view3d.js?v=24"></script>
-<script src="cad.js?v=24"></script>
-<script src="korpus.js?v=24"></script>
-<script src="raum.js?v=24"></script>
+<script src="vendor/clipper.js?v=25"></script>
+<script src="font.js?v=25"></script>
+<script src="vendor/earcut.min.js?v=25"></script>
+<script src="view3d.js?v=25"></script>
+<script src="cad.js?v=25"></script>
+<script src="korpus.js?v=25"></script>
+<script src="raum.js?v=25"></script>
 <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>

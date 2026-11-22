@@ -32,7 +32,7 @@ let sel=new Set(),undoS=[],redoS=[];
 const view={s:1,ox:0,oy:0};
 const tg={osnap:true,polar:true,ortho:false,grid:true,gsnap:false,cam:false};let gstep=10,pstep=45,polarHit=null;
 let mouse={sp:[0,0],in:false},cursorW=[0,0],curP=[0,0],snapHit=null,hoverE=null,drag=null,pan=null,spaceDown=false,spaceUsed=false;
-let lastPt=null,mem={pg:6,off:10,rad:5,cha:5,cols:3,rows:1,dx:100,dy:100,dia:35,sk:2,cupP:'O',cupK:'L',th:20,td:1,bb:'L',
+let lastPt=null,mem={gap:0,pg:6,off:10,rad:5,cha:5,cols:3,rows:1,dx:100,dy:100,dia:35,sk:2,cupP:'O',cupK:'L',th:20,td:1,bb:'L',
  rowD:5,rowN:5,rowS:32,rowT:13,dwD:8,dwN:2,dwS:32,dwT:12,cupD:35,cupT:13,lkN:6,lkD:5,lkT:10};
 const lyr=n=>S.layers.find(l=>l.n===n);
 const byId=id=>S.ents.find(e=>e.id===id);
@@ -286,6 +286,12 @@ const CMDS={
   doCommit(()=>es.forEach(e=>Object.assign(e,xf(e,rotF(b,t),'rot'))))}},
  SK:{n:'Skalieren',g:'A',i:'M4 20h7v-7H4zM4 20L20 4M13 4h7v7',*run(){const es=yield* needSel();if(!es.length)return;const b=(yield P('Basispunkt (bleibt stehen)')).p;if(!b)return;
   const k=yield N('Faktor (2 = doppelt, 0.5 = halb, 25.4 = Zoll → mm)',mem.sk);if(!k||k<=0)return;mem.sk=k;doCommit(()=>es.forEach(e=>{Object.assign(e,scaleEnt(e,b,k))}));es.forEach(e=>sel.add(e.id));updProps();render()}},
+ AN:{n:'Anlegen an Kante',g:'A',i:'M3 21L21 3M6 12l6-6 4 4-6 6zM14 14l2 2',*run(){
+  const r1=yield PK('Gerade Kante des Teils anklicken, das bewegt werden soll');if(!r1.e)return;const e=r1.e,s=edgeAt(e,r1.p);if(!s){log('Bitte eine gerade Kante anklicken (nicht einen Bogen).','e');return}hlE=e;
+  const r2=yield PK('Zielkante anklicken, an die es angelegt werden soll');hlE=null;if(!r2.e)return;if(r2.e===e){log('Bitte eine Kante eines anderen Objekts anklicken.','e');return}const t=edgeAt(r2.e,r2.p);if(!t){log('Die Zielkante muss gerade sein.','e');return}
+  const gap=yield N('Abstand zur Zielkante (0 = bündig)',mem.gap||0);if(gap==null)return;mem.gap=gap;
+  const es=sel.has(e.id)?[...sel].map(byId).filter(x=>x&&x.t!=='dim'||x===e):[e];
+  const res=alignTo(es,s,t,gap);doCommit(()=>es.forEach((x,i)=>Object.assign(x,res[i])));log(`Angelegt: um ${fmtDE(deg(res.rot))}° gedreht${gap?`, ${fmtDE(gap)} mm Abstand`:', bündig'}.`,'ok')}},
  SP:{n:'Spiegeln',g:'A',i:'M12 3v18M9 7L4 17h5zM15 7l5 10h-5z',*run(){const es=yield* needSel();if(!es.length)return;const a=(yield P('Erster Punkt der Spiegelachse')).p;if(!a)return;
   const r=yield P('Zweiter Punkt der Spiegelachse',{base:a,prev:p=>dist(p,a)<1e-9?[]:[tmp('line',{a,b:p}),...es.map(e=>xf(e,mirF(a,p),'mir'))]});if(!r.p||dist(r.p,a)<1e-9)return;const b=r.p;
   const o=yield OP('Original löschen?  [J]a / [N]ein <N>',['J','N'],'N');if(!o)return;
@@ -328,7 +334,7 @@ const CMDS={
  PR:{n:'Drucken / PDF',now:()=>printDrawing()},
  ZA:{n:'Zoom alles',now:()=>zoomAll()},
 };
-const ALIAS={KETTENMASS:'BK',KETTE:'BK',RADIUS:'BR',DURCHMESSER:'BR',DRUCKEN:'PR','3D':'DD',ANSICHT3D:'DD',HILFSLINIE:'HL',XL:'HL',XLINE:'HL',SKALIEREN:'SK',SC:'SK',VORLAGE:'VO',EXPORT:'EX',SVG:'EX',VERBINDEN:'VB',VEREINIGEN:'VE',ABZIEHEN:'AB',SCHNITTMENGE:'SM',BOHRBILD:'BB',BOHREN:'BB',TEXT:'TX',GRAVUR:'TX',JOIN:'VB',UNION:'VE',SUBTRACT:'AB',
+const ALIAS={ANLEGEN:'AN',AUSRICHTEN:'AN',ALIGN:'AN',KETTENMASS:'BK',KETTE:'BK',RADIUS:'BR',DURCHMESSER:'BR',DRUCKEN:'PR','3D':'DD',ANSICHT3D:'DD',HILFSLINIE:'HL',XL:'HL',XLINE:'HL',SKALIEREN:'SK',SC:'SK',VORLAGE:'VO',EXPORT:'EX',SVG:'EX',VERBINDEN:'VB',VEREINIGEN:'VE',ABZIEHEN:'AB',SCHNITTMENGE:'SM',BOHRBILD:'BB',BOHREN:'BB',TEXT:'TX',GRAVUR:'TX',JOIN:'VB',UNION:'VE',SUBTRACT:'AB',
  LINIE:'L',POLYLINIE:'PL',RECHTECK:'R',KREIS:'K',BOGEN:'B',POLYGON:'PG',LANGLOCH:'LL',VERSCHIEBEN:'V',KOPIEREN:'KO',DREHEN:'D',SPIEGELN:'SP',VERSATZ:'VS',ABRUNDEN:'AR',FASEN:'FA',STUTZEN:'ST',REIHE:'RK',ZERLEGEN:'ZL',LÖSCHEN:'E',ENTF:'E',BEMASSUNG:'BM',BEMAßUNG:'BM',MESSEN:'MS',ZOOM:'ZA',
  C:'K',A:'B',M:'V',CO:'KO',RO:'D',MI:'SP',O:'VS',F:'AR',CHA:'FA',TR:'ST',X:'ZL',DI:'MS'};
 /* Strg + Buchstabe (auf dem Mac/iPad: ⌘). Strg+T, N, W, Q gehören dem Browser und gehen nicht. */
@@ -337,6 +343,14 @@ const CTRL_OF=Object.fromEntries(Object.entries(CTRL).map(([k,v])=>[v,k]));
 const keyLabel=k=>CTRL_OF[k]?'Strg+'+CTRL_OF[k]:k;
 const alias=t=>{const u=t.toUpperCase();return CMDS[u]?u:ALIAS[u]||null};
 let hlE=null;
+/* gerade Kante eines Objekts an der Klickstelle (Linie, Polylinien-Segment, Rechteck-, Langloch-Seite, Hilfslinie) */
+function edgeAt(e,p){const ls=prims(e).filter(q=>q.a&&dist(q.a,q.b)>1e-6);if(!ls.length)return null;let b=null,bd=Infinity;for(const q of ls){const d=dSeg(p,q.a,q.b);if(d<bd){bd=d;b=q}}
+ /* liegt ein Bogen näher, war keine gerade Kante gemeint */for(const q of prims(e))if(!q.a&&dPrim(p,q)<bd-1e-6)return null;return b}
+/* Objekte so drehen und schieben, dass Kante s auf der Geraden durch Kante t liegt (mit Abstand gap, zur Seite des Objekts hin) */
+function alignTo(es,s,t,gap){const ts=ang(sub(s.b,s.a)),tt=ang(sub(t.b,t.a));let r=tt-ts;while(r>Math.PI/2)r-=Math.PI;while(r<=-Math.PI/2)r+=Math.PI;
+ const m=mid(s.a,s.b),rot=es.map(x=>xf(x,rotF(m,r),'rot')),u=nrm(sub(t.b,t.a)),n=[-u[1],u[0]],dd=dot(sub(m,t.a),n);
+ const bb=bbox(rot.filter(x=>x.t!=='dim'))||[m[0],m[1],m[0],m[1]],c=[(bb[0]+bb[2])/2,(bb[1]+bb[3])/2],side=Math.sign(dot(sub(c,t.a),n)-dd)||Math.sign(dd)||1;
+ const mv=mul(n,-dd+side*gap),out=rot.map(x=>xf(x,mvF(mv)));out.rot=r;return out}
 const holeTool=d=>S.def.tool<d-1e-9?{}:{tool:Math.min(3,+(d*0.6).toFixed(1))};
 /* lose Linien/Bögen/offene Polylinien zu Polylinien verketten */
 function joinEnts(es,tol=0.05){const pc=[];
