@@ -57,6 +57,9 @@ Live: https://noahfa.github.io/origin-cad/ (installierbar auf iPad/PC, läuft da
 ## Danach ergänzt
 - **Winkelfang** (F10, Knopf „WINKEL“ unten, Schritt 90/45/30/15°): Richtung rastet beim Zeichnen ein, grüne Hilfslinie; Länge tippen geht in die gerastete Richtung. Standard an, 45°.
 
+- **Strg + Buchstabe** (Mac/iPad ⌘): L Linie, P Polylinie, R Rechteck, K Kreis, B Bogen, G Text/Gravur, H Bohrbild, V Verschieben, C Kopieren, D Drehen, I Spiegeln, U Abrunden, F Fasen, X Stutzen, M Bemaßung, J Verbinden, E SVG-Export, O Öffnen, S Speichern, 0 Zoom alles. Tabelle `CTRL` in cad.js. Strg+T/N/W/Q sind vom Browser belegt. Getippte Kürzel gehen weiter.
+- **Knöpfe Rückgängig/Wiederholen** in der Menüleiste.
+
 ## Ideen / offen
 - An der echten Origin prüfen: Wird die SVG mit Frästyp, Tiefe und Fräser-Ø richtig erkannt? (Format nach Shaper-Vorgabe gebaut, aber noch nicht an der Maschine getestet.)
 - Stutzen zerlegt Polylinien noch in Einzelstücke (danach `VB`)

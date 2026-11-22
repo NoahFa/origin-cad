@@ -10,9 +10,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Origin CAD">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.webmanifest?v=4">
-<link rel="icon" href="icon.svg?v=4" type="image/svg+xml">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=4">
+<link rel="manifest" href="manifest.webmanifest?v=5">
+<link rel="icon" href="icon.svg?v=5" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=5">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -129,10 +129,10 @@ button,input,select{font:inherit;color:inherit}
   <div class="brand"><i></i><span>Origin CAD</span></div>
   <div class="dd"><button>Datei</button><ul>
    <li><button data-a="neu">Neu</button></li>
-   <li><button data-a="oeffnen">Öffnen … <kbd>json · svg · dxf</kbd></button></li>
+   <li><button data-a="oeffnen">Öffnen … <kbd>Strg+O</kbd></button></li>
    <li><button data-a="importieren">Dazuladen …</button></li>
    <li><button data-a="speichern">Speichern<kbd>Strg+S</kbd></button></li><hr>
-   <li><button data-a="exportSvg">SVG für Shaper Origin …<kbd>EX</kbd></button></li>
+   <li><button data-a="exportSvg">SVG für Shaper Origin …<kbd>Strg+E</kbd></button></li>
    <li><button data-a="exportDxf">Als DXF speichern</button></li><hr>
    <li><button data-a="tpl">Vorlage einfügen …<kbd>VO</kbd></button></li>
    <li><button data-a="tplSave">Als Vorlage speichern …</button></li>
@@ -147,7 +147,7 @@ button,input,select{font:inherit;color:inherit}
   <div class="dd wide"><button>Ändern</button><ul id="mA"></ul></div>
   <div class="dd"><button>Fräsen</button><ul id="mF"></ul></div>
   <div class="dd"><button>Ansicht</button><ul>
-   <li><button data-a="zoomAll">Zoom alles<kbd>ZA</kbd></button></li>
+   <li><button data-a="zoomAll">Zoom alles<kbd>Strg+0</kbd></button></li>
    <li><button data-a="cam">Fräsvorschau<kbd>F6</kbd></button></li>
    <li><button data-a="osnap">Objektfang<kbd>F3</kbd></button></li>
    <li><button data-a="grid">Raster anzeigen<kbd>F7</kbd></button></li>
@@ -200,7 +200,7 @@ button,input,select{font:inherit;color:inherit}
 
 <div class="dlg" id="dHelp"><div class="box">
  <h3>Befehle &amp; Eingabe</h3>
- <p class="muted">Kürzel in die Befehlszeile tippen und Enter drücken – oder links aufs Werkzeug klicken. Enter (oder Leertaste, Rechtsklick) auf leerer Zeile wiederholt den letzten Befehl. Esc bricht ab.</p>
+ <p class="muted">Am schnellsten mit <b>Strg + Buchstabe</b> (Mac/iPad: ⌘). Oder das Kürzel in die Befehlszeile tippen und Enter drücken – oder links aufs Werkzeug klicken. Enter (oder Leertaste, Rechtsklick) auf leerer Zeile wiederholt den letzten Befehl. Esc bricht ab.</p>
  <table id="helpT"></table>
  <table><tr><th>Eingabe</th><th>Bedeutung</th></tr>
   <tr><td><code>600,400</code></td><td>Punkt absolut (X,Y). Dezimal mit Punkt: <code>12.5,30</code></td></tr>
@@ -208,6 +208,8 @@ button,input,select{font:inherit;color:inherit}
   <tr><td><code>@500&lt;30</code></td><td>500 mm Länge unter 30° (0° = rechts, 90° = oben)</td></tr>
   <tr><td><code>250</code></td><td>250 mm in Richtung der Maus (mit ORTHO schön gerade)</td></tr>
   <tr><td><code>720-2*19</code></td><td>Rechnen in jeder Zahl</td></tr>
+  <tr><td>Strg+O · S · E · 0</td><td>Öffnen · Speichern · SVG für Origin · Zoom alles</td></tr>
+  <tr><td>Strg+Z · Y · A</td><td>Rückgängig · Wiederholen · Alles wählen</td></tr>
   <tr><td>F3 · F6 · F7 · F8 · F9 · F10</td><td>Objektfang · Fräsvorschau · Raster · Ortho · Rasterfang · Winkelfang</td></tr>
   <tr><td>Winkelfang</td><td>Beim Zeichnen rastet die Richtung auf 0°, 45°, 90° … ein, sobald du nah dran bist (grüne Hilfslinie). Schrittweite unten neben „WINKEL“ wählbar. Dann einfach die Länge tippen, z. B. <code>250</code>. ORTHO erzwingt immer waagrecht/senkrecht.</td></tr>
   <tr><td>Fräsen</td><td>Objekt wählen, rechts unter „Fräsen“ Frästyp, Tiefe und Fräser-Ø eintragen. Leer = Fräser-Standard. „Automatisch“: geschlossene Kontur = Außen, liegt sie in einer anderen = Innen, offene Linie = Auf Linie, Ebene „Hilfslinien“ = Hilfslinie.</td></tr>
@@ -252,9 +254,9 @@ button,input,select{font:inherit;color:inherit}
  <div class="row"><button class="btn" data-close>Abbrechen</button><button class="btn pri" id="newB">Leeren</button></div>
 </div></div>
 
-<script src="vendor/clipper.js?v=4"></script>
-<script src="font.js?v=4"></script>
-<script src="cad.js?v=4"></script>
+<script src="vendor/clipper.js?v=5"></script>
+<script src="font.js?v=5"></script>
+<script src="cad.js?v=5"></script>
 <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>

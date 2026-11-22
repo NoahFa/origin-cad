@@ -171,6 +171,13 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  await fresh();await C('R','0,0','100,50','K','50,25','10');await p.click('#bUndo');E=await ents();ok(E.length===1,'Knopf „Rückgängig“ nimmt den Kreis zurück');
  await p.click('#bRedo');E=await ents();ok(E.length===2&&(await p.evaluate(()=>document.getElementById('bRedo').disabled)),'Knopf „Wiederholen“ holt ihn wieder, danach grau');
 
+ console.log('Strg-Tasten');
+ await fresh();await p.locator('#cv').click({position:{x:400,y:300}});await p.keyboard.press('Control+r');ok((await p.evaluate(()=>__cad.REQ&&__cad.REQ.prompt))==='Erste Ecke','Strg+R startet Rechteck');
+ await C('0,0','100,50');await p.keyboard.press('Control+k');await C('50,25','10');E=await ents();ok(E.length===2&&E[1].t==='circle','Strg+K startet Kreis');
+ await p.keyboard.press('Control+l');ok((await p.evaluate(()=>__cad.REQ.prompt))==='Startpunkt','Strg+L startet Linie (auch mitten in einem Befehl)');await p.keyboard.press('Escape');
+ await p.evaluate(()=>__cad.inp.focus());await p.keyboard.type('12,5');await p.keyboard.press('Control+c');ok((await p.evaluate(()=>!__cad.REQ&&__cad.inp.value==='12,5')),'Strg+C mit Text in der Befehlszeile kopiert normal');await p.evaluate(()=>__cad.inp.value='');
+ r=await p.evaluate(()=>document.querySelector('#mZ').textContent);ok(/LinieStrg\+L/.test(r)&&/RechteckStrg\+R/.test(r),'Menü zeigt die Strg-Tasten');
+
  console.log('Darstellung');
  for(const[n,vp]of[['tablet',{width:1024,height:768}],['handy',{width:390,height:844}]]){const q=await open(vp);await q.evaluate(()=>__cad.act('cam'));
   const o=await q.evaluate(()=>({sw:document.documentElement.scrollWidth,w:innerWidth,cv:document.getElementById('cv').clientHeight}));ok(o.sw<=o.w&&o.cv>150,`${n}: nichts läuft seitlich über, Zeichenfläche sichtbar`,JSON.stringify(o));

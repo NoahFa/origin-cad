@@ -308,6 +308,10 @@ const CMDS={
 const ALIAS={SKALIEREN:'SK',SC:'SK',VORLAGE:'VO',EXPORT:'EX',SVG:'EX',VERBINDEN:'VB',VEREINIGEN:'VE',ABZIEHEN:'AB',SCHNITTMENGE:'SM',BOHRBILD:'BB',BOHREN:'BB',TEXT:'TX',GRAVUR:'TX',JOIN:'VB',UNION:'VE',SUBTRACT:'AB',
  LINIE:'L',POLYLINIE:'PL',RECHTECK:'R',KREIS:'K',BOGEN:'B',POLYGON:'PG',LANGLOCH:'LL',VERSCHIEBEN:'V',KOPIEREN:'KO',DREHEN:'D',SPIEGELN:'SP',VERSATZ:'VS',ABRUNDEN:'AR',FASEN:'FA',STUTZEN:'ST',REIHE:'RK',ZERLEGEN:'ZL',LÖSCHEN:'E',ENTF:'E',BEMASSUNG:'BM',BEMAßUNG:'BM',MESSEN:'MS',ZOOM:'ZA',
  C:'K',A:'B',M:'V',CO:'KO',RO:'D',MI:'SP',O:'VS',F:'AR',CHA:'FA',TR:'ST',X:'ZL',DI:'MS'};
+/* Strg + Buchstabe (auf dem Mac/iPad: ⌘). Strg+T, N, W, Q gehören dem Browser und gehen nicht. */
+const CTRL={L:'L',P:'PL',R:'R',K:'K',B:'B',G:'TX',H:'BB',V:'V',C:'KO',D:'D',I:'SP',U:'AR',F:'FA',X:'ST',M:'BM',J:'VB',E:'EX'};
+const CTRL_OF=Object.fromEntries(Object.entries(CTRL).map(([k,v])=>[v,k]));
+const keyLabel=k=>CTRL_OF[k]?'Strg+'+CTRL_OF[k]:k;
 const alias=t=>{const u=t.toUpperCase();return CMDS[u]?u:ALIAS[u]||null};
 let hlE=null;
 const holeTool=d=>S.def.tool<d-1e-9?{}:{tool:Math.min(3,+(d*0.6).toFixed(1))};
@@ -371,10 +375,10 @@ function updPrompt(){$('prompt').textContent=REQ?REQ.prompt+':':'Befehl:'}
 const ICON=d=>`<svg viewBox="0 0 24 24"><path d="${d}"/></svg>`;
 function buildTools(){const grp={Z:'Zeichnen',A:'Ändern',M:'Maße',F:'Fräsen'};let h='',last='';const mZ=[],mA=[],mF=[];
  for(const[k,c]of Object.entries(CMDS)){if(!c.g)continue;if(c.g!==last){h+=`<div class="grp">${grp[c.g]}</div>`;last=c.g}
-  h+=`<button class="tb" data-r="${k}" data-tip="${esc(c.n)}  (${k})" aria-label="${esc(c.n)}">${ICON(c.i)}</button>`;
-  (c.g==='Z'?mZ:c.g==='F'?mF:mA).push(`<li><button data-r="${k}">${esc(c.n)}<kbd>${k}</kbd></button></li>`)}
+  h+=`<button class="tb" data-r="${k}" data-tip="${esc(c.n)}  (${CTRL_OF[k]?'Strg+'+CTRL_OF[k]+' · ':''}${k})" aria-label="${esc(c.n)}">${ICON(c.i)}</button>`;
+  (c.g==='Z'?mZ:c.g==='F'?mF:mA).push(`<li><button data-r="${k}">${esc(c.n)}<kbd>${keyLabel(k)}</kbd></button></li>`)}
  $('tools').innerHTML=h;$('mZ').innerHTML=mZ.join('');$('mA').innerHTML=mA.join('');$('mF').innerHTML=mF.join('')+'<hr><li><button data-a="cam">Fräsvorschau<kbd>F6</kbd></button></li>';
- $('helpT').innerHTML='<tr><th>Kürzel</th><th>Befehl</th><th>Kürzel</th><th>Befehl</th></tr>'+(()=>{const l=Object.entries(CMDS).map(([k,c])=>`<td><code>${k}</code></td><td>${esc(c.n)}</td>`);let o='';for(let i=0;i<l.length;i+=2)o+=`<tr>${l[i]}${l[i+1]||'<td></td><td></td>'}</tr>`;return o})()}
+ $('helpT').innerHTML='<tr><th>Tasten</th><th>Befehl</th><th>Tasten</th><th>Befehl</th></tr>'+(()=>{const l=Object.entries(CMDS).map(([k,c])=>`<td>${CTRL_OF[k]?`<code>Strg+${CTRL_OF[k]}</code> `:''}<code>${k}</code></td><td>${esc(c.n)}</td>`);let o='';for(let i=0;i<l.length;i+=2)o+=`<tr>${l[i]}${l[i+1]||'<td></td><td></td>'}</tr>`;return o})()}
 function updTools(){document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('on',b.dataset.r===curCmd));for(const k in tg)$('t_'+k).classList.toggle('on',tg[k])}
 
 /* Eigenschaften */
@@ -586,7 +590,12 @@ window.addEventListener('keydown',e=>{const t=e.target,inProp=t!==inp&&(t.tagNam
  if(document.querySelector('.dlg.open')){if(e.key==='Escape')document.querySelectorAll('.dlg.open').forEach(d=>d.classList.remove('open'));return}
  const F={F1:'help',F3:'osnap',F6:'cam',F7:'grid',F8:'ortho',F9:'gsnap',F10:'polar'};if(F[e.key]){e.preventDefault();act(F[e.key]);return}
  if(inProp)return;
- if(e.ctrlKey||e.metaKey){const k=e.key.toLowerCase();if(k==='z'){e.preventDefault();e.shiftKey?redo():undo()}else if(k==='y'){e.preventDefault();redo()}else if(k==='s'){e.preventDefault();saveFile()}else if(k==='a'&&!inp.value){e.preventDefault();act('alle')}return}
+ if(e.ctrlKey||e.metaKey){const k=e.key.toLowerCase(),K=(e.code||'').startsWith('Key')?e.code.slice(3):k.toUpperCase();
+  if(!e.altKey&&!e.shiftKey){
+   if(K==='O'){e.preventDefault();act('oeffnen');return}
+   if(e.key==='0'){e.preventDefault();zoomAll();return}
+   if(CTRL[K]&&!(inp.value&&'CVX'.includes(K))){e.preventDefault();inp.value='';run(CTRL[K]);return}}
+  if(k==='z'){e.preventDefault();e.shiftKey?redo():undo()}else if(k==='y'){e.preventDefault();redo()}else if(k==='s'){e.preventDefault();saveFile()}else if(k==='a'&&!inp.value){e.preventDefault();act('alle')}return}
  if(e.key==='Escape'){e.preventDefault();inp.value='';cancel(false);return}
  if(e.key==='Enter'){e.preventDefault();onEnter();return}
  if(e.key===' '&&!inp.value){e.preventDefault();if(!e.repeat){spaceDown=true;spaceUsed=false}return}
