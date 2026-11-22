@@ -10,9 +10,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Origin CAD">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.webmanifest?v=23">
-<link rel="icon" href="icon.svg?v=23" type="image/svg+xml">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=23">
+<link rel="manifest" href="manifest.webmanifest?v=24">
+<link rel="icon" href="icon.svg?v=24" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=24">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -135,9 +135,18 @@ button,input,select{font:inherit;color:inherit}
 .rmfloat input{width:80px;padding:4px 7px;border:0;border-radius:5px;text-align:right;color:#111;background:#fff;font:600 14px "IBM Plex Sans",system-ui,sans-serif}.rmfloat button{border:0;background:#fff3;color:#fff;border-radius:5px;padding:4px 9px;cursor:pointer;font-weight:600}.rmfloat button:hover{background:#fff5}
 .rmctx{position:absolute;left:50%;transform:translateX(-50%);bottom:40px;z-index:2;display:flex;align-items:center;gap:4px;background:#21252b;border:1px solid #353b44;border-radius:10px;padding:5px;box-shadow:0 6px 20px #0007;max-width:calc(100% - 20px);flex-wrap:wrap;justify-content:center}.rmctx[hidden]{display:none}
 .rmctx b{color:#e4e7eb;font-size:13px;padding:0 8px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rmctx button{border:0;background:none;color:#e4e7eb;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap}.rmctx button:hover{background:#353b44}.rmctx .del{color:#ff8a70}
-.rmempty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#c9ced6;text-align:center;padding:20px}.rmempty[hidden]{display:none}.rmempty b{font-size:18px;color:#e4e7eb}
-.rmempty div{display:flex;gap:8px}.rmempty button{border:1px solid #353b44;background:#21252b;color:#e4e7eb;padding:9px 16px;border-radius:8px;cursor:pointer;font-size:14px}.rmempty button:hover{border-color:var(--acc)}
-.rm{position:fixed;inset:0;z-index:35;background:var(--chrome);display:none;grid-template-rows:auto minmax(0,1fr);grid-template-columns:300px minmax(0,1fr)}.rm.open{display:grid}
+.rmempty{pointer-events:none;position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#c9ced6;text-align:center;padding:20px}.rmempty[hidden]{display:none}.rmempty b{font-size:18px;color:#e4e7eb}
+.rmempty div{display:flex;gap:8px}.rmempty button{pointer-events:auto;margin:3px;border:1px solid #353b44;background:#21252b;color:#e4e7eb;padding:9px 16px;border-radius:8px;cursor:pointer;font-size:14px}.rmempty button:hover{border-color:var(--acc)}
+.rm{position:fixed;inset:0;z-index:35;background:var(--chrome);display:none;grid-template-rows:auto minmax(0,1fr) 34px;grid-template-columns:50px minmax(0,1fr) 290px;grid-template-areas:"bar bar bar" "tools main tray" "stat stat stat"}.rm.open{display:grid}
+.rm .kpbar{grid-area:bar}.rm .rmmain{grid-area:main}.rm .rmtray{grid-area:tray;border-right:0;border-left:1px solid var(--line)}
+.rmtools{grid-area:tools;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;overflow-y:auto}
+.rmtb{width:40px;height:38px;border:0;background:none;border-radius:6px;display:grid;place-items:center;cursor:pointer;flex:none}.rmtb svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.rmtb:hover{background:var(--hov)}.rmtb.on{background:var(--accs);color:var(--acc)}.rmtsep{width:28px;height:1px;background:var(--line);margin:4px 0;flex:none}
+.rmstatus{grid-area:stat;display:flex;align-items:center;gap:10px;padding:0 10px;background:var(--panel);border-top:1px solid var(--line);font-size:13px}
+#rmstat{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--mut)}#rmvcbl{color:var(--ink);font-weight:500;white-space:nowrap}
+#rmvcb{width:170px;padding:4px 8px;border:1px solid var(--line);border-radius:5px;background:var(--chrome);font:500 14px "IBM Plex Mono",monospace;text-align:right}#rmvcb:focus{border-color:var(--acc);outline:none}
+.rmsw{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}.rmsw button{aspect-ratio:1;border:1px solid #0003;border-radius:5px;cursor:pointer}.rmsw button.on{outline:2px solid var(--acc);outline-offset:1px}
+.rmtray .kpsec{margin-bottom:6px}
 .rmmain{position:relative;min-height:0;background:#16191d;overflow:hidden}.rmmain canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}#rm3d{cursor:grab}#rmov{pointer-events:none}
 .rmsep{height:1px;background:var(--line);margin:12px 0}.rmlist{display:grid;gap:4px}
 .rmit{display:flex;flex-direction:column;gap:1px;text-align:left;border:1px solid var(--line);background:var(--chrome);border-radius:6px;padding:6px 10px;cursor:pointer}.rmit:hover{background:var(--hov)}.rmit.on{border-color:var(--acc);background:var(--accs)}
@@ -145,7 +154,7 @@ button,input,select{font:inherit;color:inherit}
 .rm3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 6px}.rm3 label{grid-column:1/-1;color:var(--mut);font-size:13px}.rm3 input{width:100%;padding:5px 8px;border:1px solid var(--line);border-radius:5px;background:var(--chrome);text-align:right}.rm3 span{font-size:11.5px;color:var(--mut);text-align:center}
 .rmrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.rmrow span{color:var(--mut);font-size:13px;margin-right:2px}.rmrow .btn{padding:5px 9px;font-size:13px}
 #rmlBody table{border-collapse:collapse;width:100%;font-size:13.5px}#rmlBody h4{font-size:14px}
-@media(max-width:860px){.rm{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 260px minmax(0,1fr)}.rm .kpside{border-right:0;border-bottom:1px solid var(--line)}}
+@media(max-width:860px){.rm{grid-template-columns:46px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) 220px 34px;grid-template-areas:"bar bar" "tools main" "tray tray" "stat stat"}.rm .rmtray{border-left:0;border-top:1px solid var(--line)}#rmvcb{width:120px}}
 /* Korpusplaner */
 .kpnset{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0;font-size:13px;color:var(--mut)}.kpnset input{width:72px;margin-left:6px;padding:4px 7px;border:1px solid var(--line);border-radius:5px;background:var(--chrome);text-align:right}
 #kpnBody h4{margin:16px 0 6px;font-size:14px}.kpsheet{margin-bottom:12px}
@@ -278,7 +287,8 @@ button,input,select{font:inherit;color:inherit}
   <tr><td>Winkelfang</td><td>Beim Zeichnen rastet die Richtung auf 0°, 45°, 90° … ein, sobald du nah dran bist (grüne Hilfslinie). Schrittweite unten neben „WINKEL“ wählbar. Dann einfach die Länge tippen, z. B. <code>250</code>. ORTHO erzwingt immer waagrecht/senkrecht.</td></tr>
   <tr><td>Fräsen</td><td>Objekt wählen, rechts unter „Fräsen“ Frästyp, Tiefe und Fräser-Ø eintragen. Leer = Fräser-Standard. „Automatisch“: geschlossene Kontur = Außen, liegt sie in einer anderen = Innen, offene Linie = Auf Linie, Ebene „Hilfslinien“ = Hilfslinie.</td></tr>
   <tr><td>Fräsvorschau</td><td>gestrichelt = Weg der Fräsermitte · rot = hier kommt der Fräser nicht hin, Material bleibt stehen</td></tr>
-  <tr><td>3D-Modus</td><td>Oben „3D-Modus“: Quader über Maße anlegen oder eine gezeichnete Kontur hochziehen, dann im Raum verschieben, drehen und stapeln. Schränke aus dem Korpusplaner lassen sich holen und ergänzen. Mit Stückliste, Zuschnittplan, Maßen im Bild und Bild zum Speichern.</td></tr>
+  <tr><td>3D-Modus</td><td>Bedienung wie SketchUp: links Werkzeuge (Leertaste Auswählen · R Rechteck · C Kreis · P Drücken/Ziehen · M Verschieben · Q Drehen · T Maßband · E Radiergummi · B Farbeimer · O/H Ansicht drehen/schieben · Shift+Z alles zeigen). Maße einfach lostippen, sie landen unten rechts im Feld „Maße“, Enter übernimmt. Mittlere Maustaste dreht die Ansicht, Mausrad zoomt. </td></tr>
+  <tr><td>3D-Modus (Inhalt)</td><td>Oben „3D-Modus“: Quader über Maße anlegen oder eine gezeichnete Kontur hochziehen, dann im Raum verschieben, drehen und stapeln. Schränke aus dem Korpusplaner lassen sich holen und ergänzen. Mit Stückliste, Zuschnittplan, Maßen im Bild und Bild zum Speichern.</td></tr>
   <tr><td>Korpusplaner</td><td>Oben „Korpusplaner“: Schrank über Maße anlegen, Böden und Mittelwände mit der Maus setzen, mehrere Korpusse nebeneinander. Rechts läuft die 3D-Ansicht mit. „Stückliste“ liefert Zuschnittliste und je Teil eine SVG mit allen Bohrungen.</td></tr>
   <tr><td>3D-Ansicht</td><td><code>F4</code> oder Knopf „3D“ unten: zeigt die Platte räumlich mit allen Ausschnitten, Bohrungen, Taschen und Gravuren in der eingetragenen Tiefe. Plattenstärke oben im 3D-Fenster eintragen.</td></tr>
   <tr><td>Bemaßen</td><td><code>BM</code> waagrecht/senkrecht · <code>BA</code> schräg · <code>BK</code> Kettenmaß (nach dem ersten Maß einfach die nächsten Punkte anklicken) · <code>BR</code> Radius oder Durchmesser (Kreis anklicken). Maße wandern beim Verschieben (<code>V</code>) mit.</td></tr>
@@ -353,13 +363,13 @@ button,input,select{font:inherit;color:inherit}
  <div class="kpbar"><h3><i></i>3D-Modus</h3><span class="muted" id="rminfo"></span><span class="muted" id="rmmsg" style="color:var(--acc)"></span><span class="sp"></span>
   <button class="ub" data-rm="undo" title="Rückgängig (Strg+Z)"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span>Rückgängig</span></button>
   <button class="btn" data-rm="list">Stückliste und Zuschnitt</button><button class="btn" data-rm="pic">Bild speichern</button><button class="btn" data-rm="print">Drucken</button><button class="btn pri" data-rm="close">Zurück zum Zeichnen</button></div>
- <div class="kpside" id="rmside"></div>
+ <div class="rmtools" id="rmtools" role="toolbar" aria-label="Werkzeuge"></div>
  <div class="rmmain"><canvas id="rm3d"></canvas><canvas id="rmov"></canvas>
-  <div class="kpview"><button class="btn" data-rm="iso">Schräg</button><button class="btn" data-rm="front">Vorn</button><button class="btn" data-rm="top">Oben</button><button class="btn" data-rm="fit" title="Alles ins Bild holen">Alles zeigen</button><label><input type="checkbox" id="rmdims" checked> Maße zeigen</label></div>
-  <div class="rmfloat" id="rmfloat" hidden><label for="rmfv" id="rmflab">Maß</label><input id="rmfv" type="text" inputmode="decimal" title="Neues Maß eintippen, oder +50 / −20 für um so viel weiter"><span>mm</span><button id="rmfok" title="Übernehmen (Enter)">OK</button></div>
-  <div class="rmctx" id="rmctx" hidden><b id="rmctxn"></b><button data-ctx="rot2" title="um die senkrechte Achse drehen">↻ Drehen</button><button data-ctx="rot0" title="nach hinten kippen">Kippen</button><button data-ctx="rot1" title="zur Seite kippen">Seitlich</button><button data-ctx="floor" title="auf den Boden stellen">Auf den Boden</button><button data-ctx="copy" title="Kopie daneben (Strg+D)">Kopieren</button><button data-ctx="del" class="del" title="Löschen (Entf)">Löschen</button></div>
-  <div class="rmempty" id="rmempty"><b>Leerer Raum</b><span>Wähle einen Körper zum Anfangen:</span><div><button data-prim="box">Quader</button><button data-prim="cyl">Zylinder</button><button data-prim="plane">Ebene</button></div><span class="muted">Mehr Körper und „Kontur hochziehen“ findest du links.</span></div>
-  <div class="kphint"><span id="rmhint"></span></div></div>
+  <div class="kpview"><button class="btn" data-rm="iso" title="Schräg von vorn">Iso</button><button class="btn" data-rm="front">Vorn</button><button class="btn" data-rm="top">Oben</button><button class="btn" data-rm="fit" title="Alles zeigen (Shift+Z)">Alles zeigen</button><label><input type="checkbox" id="rmdims" checked> Maße zeigen</label></div>
+  <div class="rmempty" id="rmempty"><b>Leerer Raum</b><span>Zeichne mit dem <button data-tool="rect">Rechteck (R)</button> eine Fläche auf den Boden<br>und zieh sie mit <button data-tool="push">Drücken/Ziehen (P)</button> hoch.</span><span class="muted">Oder rechts unter „Einfügen“ einen fertigen Körper wählen: <button data-prim="box">Quader</button></span></div>
+ </div>
+ <div class="kpside rmtray" id="rmside"></div>
+ <div class="rmstatus"><span id="rmstat"></span><label for="rmvcb" id="rmvcbl">Maße</label><input id="rmvcb" type="text" inputmode="decimal" autocomplete="off" title="Einfach lostippen – die Zahl landet hier. Enter übernimmt. Zwei Maße mit Strichpunkt trennen: 600;400"></div>
 </div>
 <div class="dlg" id="dRml" style="z-index:45"><div class="box" style="max-width:980px">
  <h3>Stückliste und Zuschnitt</h3><div id="rmlBody"></div>
@@ -371,13 +381,13 @@ button,input,select{font:inherit;color:inherit}
  <div class="row"><button class="btn" data-close>Abbrechen</button><button class="btn pri" id="newB">Leeren</button></div>
 </div></div>
 
-<script src="vendor/clipper.js?v=23"></script>
-<script src="font.js?v=23"></script>
-<script src="vendor/earcut.min.js?v=23"></script>
-<script src="view3d.js?v=23"></script>
-<script src="cad.js?v=23"></script>
-<script src="korpus.js?v=23"></script>
-<script src="raum.js?v=23"></script>
+<script src="vendor/clipper.js?v=24"></script>
+<script src="font.js?v=24"></script>
+<script src="vendor/earcut.min.js?v=24"></script>
+<script src="view3d.js?v=24"></script>
+<script src="cad.js?v=24"></script>
+<script src="korpus.js?v=24"></script>
+<script src="raum.js?v=24"></script>
 <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>

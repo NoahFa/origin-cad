@@ -306,57 +306,70 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
 
  console.log('3D-Modus');
  await fresh();await C('R','0,0','400,300','K','200,150','50');await p.keyboard.press('Escape');await p.click('.mbtn[data-a="raum"]');await p.waitForTimeout(300);
- ok(await p.evaluate(()=>RAUM.isOpen()&&RAUM.state.bodies.length===0&&!document.getElementById('rmempty').hidden),'3D-Modus öffnet leer, mit Hinweis zum Anfangen');
- await p.click('#rmempty [data-prim="box"]');ok(await p.evaluate(()=>document.getElementById('rmempty').hidden&&!document.getElementById('rmctx').hidden),'Nach dem ersten Körper: Hinweis weg, Aktionsleiste am gewählten Körper');await p.fill('#rs_L','800');await p.keyboard.press('Enter');await p.fill('#rs_B','300');await p.keyboard.press('Enter');
- r=await p.evaluate(()=>{const b=RAUM.state.bodies[0];return{n:RAUM.state.bodies.length,d:[b.L,b.B,b.H],box:RAUM.box(b),sel:RAUM.sel===b.id,tris:RAUM.viewer.stats.tris}});
- ok(r.n===1&&r.d.join()==='800,300,19'&&r.box.join()==='0,0,0,800,300,19'&&r.sel&&r.tris===12,'Quader 800 × 300 × 19 angelegt und gewählt',JSON.stringify(r));
- await p.click('[data-ctx="rot0"]');r=await p.evaluate(()=>RAUM.box(RAUM.state.bodies[0]));ok(r.join()==='0,0,0,800,19,300','Kippen: Platte steht jetzt hochkant (800 × 19 × 300), Ecke bleibt',r.join());
- await p.fill('#rs_z','100');await p.keyboard.press('Enter');r=await p.evaluate(()=>RAUM.box(RAUM.state.bodies[0]));ok(r[2]===100&&r[5]===400,'Lage Z = 100 eingetippt');
- await p.click('[data-ctx="floor"]');await p.click('#rmsrc summary');await p.fill('#rn_X','25');await p.click('#rn_ext');
- r=await p.evaluate(()=>{const b=RAUM.state.bodies[1];return{n:RAUM.state.bodies.length,k:b.kind,d:[b.L,b.B,b.H],holes:b.poly.holes.length,x:RAUM.box(b)[0],tris:RAUM.viewer.stats.tris}});
- ok(r.n===2&&r.k==='ext'&&r.d.join()==='400,300,25'&&r.holes===1&&r.x===850&&r.tris>200,'Kontur aus der Zeichnung hochgezogen: Rechteck mit Loch, 25 hoch, steht neben dem Quader',JSON.stringify(r));
- // mit der Maus ziehen: rastet an den Quader
- r=await p.evaluate(()=>{const b=RAUM.state.bodies[1],m=RAUM.box(b),V=RAUM.viewer;return{a:V.project([(m[0]+m[3])/2,(m[1]+m[4])/2,m[5]]),b:V.project([(m[0]+m[3])/2-45,(m[1]+m[4])/2,m[5]])}});
- const rb=await p.locator('#rm3d').boundingBox();await p.mouse.move(rb.x+r.a[0],rb.y+r.a[1]);await p.mouse.down();await p.mouse.move(rb.x+(r.a[0]+r.b[0])/2,rb.y+(r.a[1]+r.b[1])/2,{steps:3});await p.mouse.move(rb.x+r.b[0],rb.y+r.b[1],{steps:3});await p.mouse.up();
- r=await p.evaluate(()=>RAUM.box(RAUM.state.bodies[1]));ok(r[0]===800,'Körper 45 mm nach links gezogen: rastet bündig an den Quader (X = 800)',r.join());
- await p.keyboard.press('Control+z');ok((await p.evaluate(()=>RAUM.box(RAUM.state.bodies[1])[0]))===850,'Strg+Z nimmt das Ziehen zurück');
- await p.selectOption('#rs_mat','H3303');await p.keyboard.press('Control+d');r=await p.evaluate(()=>({n:RAUM.state.bodies.length,l:RAUM.list().map(x=>x.n+'x'+x.d.join('/')+(x.b.mat||'')).join(' '),nest:RAUM.nest().groups.map(g=>g.T+':'+g.sheets[0].parts.length).join(' ')}));
- ok(r.n===3&&r.l==='1x800/300/19 2x400/300/25H3303'&&r.nest==='19:1 25:2','Material, Kopieren (Strg+D), Stückliste (2 gleiche Formteile) und Zuschnitt',JSON.stringify(r));
- await p.keyboard.press('Delete');ok((await p.evaluate(()=>RAUM.state.bodies.length))===2,'Entf löscht den gewählten Körper');
- await p.click('#rn_kp');r=await p.evaluate(()=>({n:RAUM.state.bodies.length,names:RAUM.state.bodies.slice(2,4).map(b=>b.name).join()}));ok(r.n===2+8&&r.names==='Seite links,Seite rechts','Schrank aus dem Korpusplaner geholt (8 Körper)',JSON.stringify(r));
- await p.click('[data-rm="list"]');ok((await p.evaluate(()=>document.querySelectorAll('#rmlBody tr').length))>8&&(await p.evaluate(()=>document.querySelectorAll('#rmlBody svg').length))>=2,'Fenster Stückliste und Zuschnitt');await p.keyboard.press('Escape');
+ ok(await p.evaluate(()=>RAUM.isOpen()&&RAUM.state.bodies.length===0&&!document.getElementById('rmempty').hidden&&RAUM.tool==='sel'),'3D-Modus öffnet leer, Werkzeug „Auswählen“, Hinweis zum Anfangen');
+ const rb=await p.locator('#rm3d').boundingBox(),P=w=>p.evaluate(w=>RAUM.viewer.project(w),w),clickW=async w=>{const s=await P(w);await p.mouse.move(rb.x+s[0],rb.y+s[1]);await p.mouse.click(rb.x+s[0],rb.y+s[1])};
+ // Werkzeugleiste und Tasten wie SketchUp
+ r=await p.evaluate(()=>[...document.querySelectorAll('#rmtools [data-tool]')].map(b=>b.dataset.tool).join());ok(r==='sel,erase,paint,rect,circ,push,move,rot,tape,orbit,pan,zall','Werkzeugleiste: Auswählen, Radiergummi, Farbeimer, Rechteck, Kreis, Drücken/Ziehen, Verschieben, Drehen, Maßband, Ansicht',r);
+ for(const[k,t]of[['r','rect'],['c','circ'],['p','push'],['m','move'],['q','rot'],['t','tape'],['e','erase'],['b','paint'],[' ','sel']]){await p.keyboard.press(k===' '?'Space':k);if((await p.evaluate(()=>RAUM.tool))!==t){ok(false,'Taste '+k+' → '+t);break}}
+ ok(await p.evaluate(()=>document.querySelector('#rmtools [data-tool="sel"]').classList.contains('on')),'Tasten R C P M Q T E B Leertaste wechseln das Werkzeug');
+ // Rechteck auf den Boden, Maße eintippen
+ await p.keyboard.press('r');await clickW([0,0,0]);ok(await p.evaluate(()=>RAUM.op&&RAUM.op.t==='rect'&&/Gegenüberliegende/.test(document.getElementById('rmstat').textContent)),'Rechteck: erste Ecke gesetzt, unten steht der nächste Schritt');
+ const s0=await P([0,0,0]);await p.mouse.move(rb.x+s0[0]+60,rb.y+s0[1]-30,{steps:3});r=await p.evaluate(()=>document.getElementById('rmvcb').value);ok(/^\d+;\d+$/.test(r),'Beim Aufziehen zeigt das Feld „Maße“ Länge;Breite',r);
+ await p.keyboard.type('800;300');ok((await p.evaluate(()=>[document.activeElement.id,document.getElementById('rmvcb').value].join()))==='rmvcb,800;300','Lostippen landet im Feld „Maße“ (überschreibt den angezeigten Wert)');
+ await p.keyboard.press('Enter');r=await p.evaluate(()=>{const b=RAUM.state.bodies[0];return{n:RAUM.state.bodies.length,k:b.kind,d:[b.L,b.B,b.H],o:b.o,foc:document.activeElement.id}});
+ ok(r.n===1&&r.k==='plane'&&r.d.join()==='800,300,0'&&r.o.join()==='0,0,0'&&r.foc!=='rmvcb','Rechteck 800 × 300 auf dem Boden gezeichnet',JSON.stringify(r));
+ await p.evaluate(()=>RAUM.viewer.fit());
+ // Drücken/Ziehen mit Maß
+ await p.keyboard.press('p');await clickW([400,150,0]);await p.keyboard.type('19');await p.keyboard.press('Enter');
+ r=await p.evaluate(()=>{const b=RAUM.state.bodies[0];return{k:b.kind,H:b.H,box:RAUM.box(b)}});ok(r.k==='box'&&r.H===19&&r.box.join()==='0,0,0,800,300,19','Drücken/Ziehen: Fläche angeklickt, 19 eingetippt → Platte 800 × 300 × 19',JSON.stringify(r));
+ await p.keyboard.type('25');await p.keyboard.press('Enter');ok((await p.evaluate(()=>RAUM.state.bodies[0].H))===25,'Gleich danach 25 eintippen ändert den letzten Zug (wie SketchUp)');
+ await p.keyboard.press('Control+z');ok((await p.evaluate(()=>RAUM.state.bodies[0].H))===19,'Strg+Z nimmt das zurück');
+ // Ziehen mit der Maus: Seitenfläche
+ await p.evaluate(()=>RAUM.viewer.view('iso'));await p.evaluate(()=>RAUM.viewer.fit());
+ r=await p.evaluate(()=>{const V=RAUM.viewer,c=[0,150,10],a=V.project(c),b=V.project([-120,150,10]);return{a,b}});
+ await p.mouse.move(rb.x+r.a[0],rb.y+r.a[1]);await p.mouse.down();await p.mouse.move(rb.x+(r.a[0]+r.b[0])/2,rb.y+(r.a[1]+r.b[1])/2,{steps:3});await p.mouse.move(rb.x+r.b[0],rb.y+r.b[1],{steps:3});await p.mouse.up();
+ r=await p.evaluate(()=>RAUM.box(RAUM.state.bodies[0]));ok(Math.abs(r[0]+120)<=8&&r[3]===800,'Linke Fläche mit gedrückter Maus 120 nach außen gezogen, rechte Seite bleibt',r.join());await p.keyboard.press('Control+z');
+ // Kreis auf die Platte und hochziehen
+ await p.keyboard.press('c');await clickW([400,150,19]);await p.keyboard.type('40');await p.keyboard.press('Enter');
+ r=await p.evaluate(()=>{const b=RAUM.state.bodies[1];return b&&{k:b.kind,L:b.L,H:b.H,o:b.o}});ok(r&&r.k==='cyl'&&r.L===80&&r.H===0&&r.o.join()==='360,110,19','Kreis Radius 40 auf die Platte gezeichnet (liegt auf der Oberseite)',JSON.stringify(r));
+ await p.keyboard.press('p');await clickW([400,150,19]);await p.keyboard.type('100');await p.keyboard.press('Enter');
+ r=await p.evaluate(()=>{const b=RAUM.state.bodies[1];return{n:b.name,H:b.H,box:RAUM.box(b)}});ok(r.n==='Zylinder'&&r.H===100&&r.box[2]===19&&r.box[5]===119,'Kreisfläche 100 hochgezogen → Zylinder steht auf der Platte',JSON.stringify(r));
+ // Verschieben mit Pfeiltaste (Richtung sperren) und Abstand
+ await p.keyboard.press('m');await clickW([400,150,119]);await p.keyboard.press('ArrowRight');const sm=await P([400,150,119]);await p.mouse.move(rb.x+sm[0]+60,rb.y+sm[1]+5,{steps:4});
+ await p.keyboard.type('150');await p.keyboard.press('Enter');r=await p.evaluate(()=>RAUM.box(RAUM.state.bodies[1]));ok(r[0]===510&&r[1]===110&&r[2]===19,'Verschieben: Pfeil → sperrt auf die rote Achse, 150 eingetippt → genau 150 nach rechts',r.join());
+ // Drehen
+ await p.keyboard.press('q');await p.keyboard.press('ArrowRight');await clickW([400,150,10]);r=await p.evaluate(()=>RAUM.box(RAUM.state.bodies[0]));ok(r.join()==='0,0,0,800,19,300','Drehen 90° um die rote Achse: Platte steht hochkant, Ecke bleibt',r.join());
+ await p.keyboard.press('Control+z');
+ // Maßband
+ await p.keyboard.press('t');await clickW([0,0,0]);await clickW([800,0,0]);r=await p.evaluate(()=>({v:document.getElementById('rmvcb').value,t:RAUM.tapeRes}));ok(r.v==='800'&&r.t,'Maßband: von Ecke zu Ecke gemessen = 800',JSON.stringify(r));
+ // Farbeimer und Radiergummi
+ await p.keyboard.press('Escape');await p.click('#rmside details[data-sec="mat"] summary');await p.click('[data-mat="H3303"]');await p.keyboard.press('b');await clickW([400,150,10]);
+ ok((await p.evaluate(()=>RAUM.state.bodies[0].mat))==='H3303','Farbeimer: Material rechts gewählt, Körper angeklickt → H3303');
+ await p.keyboard.press('e');await clickW([550,150,60]);ok((await p.evaluate(()=>RAUM.state.bodies.length))===1,'Radiergummi löscht den angeklickten Körper');await p.keyboard.press('Control+z');
+ await p.keyboard.press('Escape');ok((await p.evaluate(()=>RAUM.tool))==='sel','Esc zurück zum Auswählen');
+ // Auswählen + ziehen, Objektinfo
+ await p.click('#rmside [data-prim="box"]');await p.fill('#rs_L','400');await p.keyboard.press('Enter');await p.fill('#rs_H','25');await p.keyboard.press('Enter');
+ r=await p.evaluate(()=>{const b=RAUM.state.bodies[2];return{d:[b.L,b.B,b.H],x:RAUM.box(b)[0]}});ok(r.d.join()==='400,400,25'&&r.x===850,'Einfügen › Quader, Maße in der Objektinfo geändert, steht neben dem Vorhandenen',JSON.stringify(r));
+ r=await p.evaluate(()=>{const b=RAUM.state.bodies[2],m=RAUM.box(b),V=RAUM.viewer;return{a:V.project([(m[0]+m[3])/2,(m[1]+m[4])/2,m[5]]),b:V.project([(m[0]+m[3])/2-45,(m[1]+m[4])/2,m[5]])}});
+ await p.mouse.move(rb.x+r.a[0],rb.y+r.a[1]);await p.mouse.down();await p.mouse.move(rb.x+(r.a[0]+r.b[0])/2,rb.y+(r.a[1]+r.b[1])/2,{steps:3});await p.mouse.move(rb.x+r.b[0],rb.y+r.b[1],{steps:3});await p.mouse.up();
+ r=await p.evaluate(()=>RAUM.box(RAUM.state.bodies[2]));ok(r[0]===800,'Auswählen: Körper 45 nach links gezogen, rastet bündig an der Platte ein (X = 800)',r.join());
+ await p.keyboard.press('Control+d');r=await p.evaluate(()=>({n:RAUM.state.bodies.length,l:RAUM.list().map(x=>x.n+'x'+x.d.join('/')).join(' ')}));ok(r.n===4&&/2x400\/400\/25/.test(r.l),'Strg+D kopiert, Stückliste fasst gleiche Körper zusammen',JSON.stringify(r));
+ await p.keyboard.press('Delete');ok((await p.evaluate(()=>RAUM.state.bodies.length))===3,'Entf löscht den gewählten Körper');
+ // Kontur hochziehen und Schrank holen
+ await p.fill('#rn_X','25');await p.click('#rn_ext');r=await p.evaluate(()=>{const b=RAUM.state.bodies[3];return{k:b.kind,d:[b.L,b.B,b.H],holes:b.poly.holes.length}});ok(r.k==='ext'&&r.d.join()==='400,300,25'&&r.holes===1,'Kontur aus der Zeichnung hochgezogen (Rechteck mit Loch)',JSON.stringify(r));
+ await p.click('#rn_kp');ok((await p.evaluate(()=>RAUM.state.bodies.length))===4+8,'Schrank aus dem Korpusplaner geholt (8 Körper)');
+ await p.click('[data-rm="list"]');ok((await p.evaluate(()=>document.querySelectorAll('#rmlBody tr').length))>8,'Fenster Stückliste und Zuschnitt');await p.keyboard.press('Escape');
  const dl3=p.waitForEvent('download');await p.click('[data-rm="pic"]');const D3=await dl3;ok(/-3D\.png$/.test(D3.suggestedFilename())&&fs.statSync(await D3.path()).size>5000,'Bild speichern: '+D3.suggestedFilename());
  if(SHOTS)await p.screenshot({path:path.join(SHOTS,'09-3d-modus.png')});
  // Grundkörper
- const n0=await p.evaluate(()=>RAUM.state.bodies.length);for(const k of['sph','cyl','cone','tor','plane'])await p.click(`[data-prim="${k}"]`);
- r=await p.evaluate(n0=>{const bs=RAUM.state.bodies.slice(n0);return{k:bs.map(b=>b.kind+':'+RAUM.box(b).slice(3).map((v,i)=>v-RAUM.box(b)[i]).join('/')).join(' '),tris:RAUM.viewer.stats.tris}},n0);
- ok(r.k==='sph:200/200/200 cyl:200/200/300 cone:200/200/300 tor:300/300/60 plane:1000/1000/0'&&r.tris>3000,'Grundkörper: Kugel, Zylinder, Kegel, Torus, Ebene angelegt ('+r.tris+' Dreiecke)',JSON.stringify(r));
- await p.fill('#rs_L','500');await p.keyboard.press('Enter');
- // Größe ändern über die Pfeile am Körper
- const pid=await p.evaluate(()=>RAUM.state.bodies[RAUM.state.bodies.length-1].id);await p.evaluate(()=>RAUM.viewer.view('iso'));
- r=await p.evaluate(()=>RAUM.handles.map(h=>h.i+'/'+h.sign));ok(r.length>=2&&r.includes('2/1')&&!r.includes('2/-1'),'Gewählte Ebene zeigt Ziehpfeile (oben und zur Kamera gewandte Seiten, nicht nach unten)',r.join());
- r=await p.evaluate(()=>RAUM.handles.find(h=>h.i===2&&h.sign===1).tip);await p.mouse.click(rb.x+r[0],rb.y+r[1]);
- r=await p.evaluate(()=>({p:RAUM.pull,vis:!document.getElementById('rmfloat').hidden,v:document.getElementById('rmfv').value,lab:document.getElementById('rmflab').textContent,foc:document.activeElement.id}));
- ok(r.p&&r.p.id===pid&&r.p.i===2&&r.p.sign===1&&r.vis&&r.v==='0'&&r.lab==='Höhe'&&r.foc==='rmfv','Pfeil oben angeklickt: Maßfeld „Höhe“ erscheint an der Fläche und ist bereit zum Tippen',JSON.stringify(r));
- await p.keyboard.type('40');await p.keyboard.press('Enter');r=await p.evaluate(id=>{const b=RAUM.state.bodies.find(x=>x.id===id);return{k:b.kind,H:b.H,z:RAUM.box(b)[2]}},pid);
- ok(r.k==='box'&&r.H===40&&r.z===0,'Maß 40 eingetippt: aus der Ebene wird ein 40 mm hoher Quader',JSON.stringify(r));
- await p.keyboard.type('+10');await p.keyboard.press('Enter');ok((await p.evaluate(id=>RAUM.state.bodies.find(x=>x.id===id).H,pid))===50,'„+10“ zieht die Fläche um 10 weiter (Höhe 50)');
- // Pfeil mit der Maus ziehen (Körper vorher frei stellen, damit nichts einrastet)
- await p.fill('#rs_y','3000');await p.keyboard.press('Enter');await p.evaluate(()=>RAUM.viewer.fit());
- r=await p.evaluate(()=>{const h=RAUM.handles.find(q=>q.i===0),b=RAUM.state.bodies[RAUM.state.bodies.length-1],m=RAUM.box(b),V=RAUM.viewer,a=V.project(h.c),c=V.project([h.c[0]+120*h.sign,h.c[1],h.c[2]]);return{t:h.tip,dx:c[0]-a[0],dy:c[1]-a[1],L:b.L}});
- await p.mouse.move(rb.x+r.t[0],rb.y+r.t[1]);await p.mouse.down();await p.mouse.move(rb.x+r.t[0]+r.dx/2,rb.y+r.t[1]+r.dy/2,{steps:3});await p.mouse.move(rb.x+r.t[0]+r.dx,rb.y+r.t[1]+r.dy,{steps:3});await p.mouse.up();
- const L1=await p.evaluate(id=>RAUM.state.bodies.find(x=>x.id===id).L,pid);ok(Math.abs(L1-(r.L+120))<=8&&(await p.evaluate(()=>document.getElementById('rmfv').value))===String(L1),'Seitlichen Pfeil 120 mm nach außen gezogen: Breite wächst mit, Maßfeld zeigt den Wert',r.L+' → '+L1);
- // linke Fläche mit der Maus ziehen: Körper wächst nach links, rechte Seite bleibt
- r=await p.evaluate(id=>{const b=RAUM.state.bodies.find(x=>x.id===id),m=RAUM.box(b),V=RAUM.viewer;return{m,a:V.project([m[0],m[1]+30,m[5]-1]),b:V.project([m[0]-80,m[1]+30,m[5]-1]),f:V.project([m[0],m[1],m[2]+25])}},pid);
- const m0=r.m;
- r=await p.evaluate(id=>{const b=RAUM.state.bodies.find(x=>x.id===id);const e=RAUM.resize(JSON.parse(JSON.stringify(b)),{i:0,sign:-1},80);const c=JSON.parse(JSON.stringify(b));RAUM.resize(c,{i:0,sign:-1},80);return{L:c.L,x0:RAUM.box(c)[0],x1:RAUM.box(c)[3],e}},pid);
- ok(r.L===L1+80&&r.x0===m0[0]-80&&r.x1===m0[3],'Linke Fläche 80 nach außen: Länge 580, rechte Seite bleibt stehen',JSON.stringify(r));
- r=await p.evaluate(()=>{const s={kind:'sph',L:200,B:200,H:200,o:[0,0,0],u:[1,0,0],v:[0,1,0]};RAUM.resize(s,{i:0,sign:1},50);const c={kind:'cyl',L:200,B:200,H:300,o:[0,0,0],u:[1,0,0],v:[0,1,0]};RAUM.resize(c,{i:2,sign:1},100);const e={kind:'ext',L:100,B:100,H:19,o:[0,0,0],u:[1,0,0],v:[0,1,0]};return{s:[s.L,s.H,RAUM.box(s)[0]],c:[c.L,c.H],e:RAUM.resize(e,{i:0,sign:1},10)}});
- ok(r.s.join()==='300,300,-50'&&r.c.join()==='200,400'&&/Formteil/.test(r.e),'Kugel: Ziehen ändert den Durchmesser um die Mitte · Zylinder: Höhe · Formteil: nur Höhe (Hinweis)',JSON.stringify(r));
- await p.keyboard.press('Escape');await p.keyboard.press('Escape');ok(await p.evaluate(()=>RAUM.pull===null&&RAUM.sel===null&&RAUM.isOpen()),'Esc schließt das Maßfeld, nochmal Esc wählt ab');
- if(SHOTS)await p.screenshot({path:path.join(SHOTS,'10-3d-grundkoerper.png')});
- const jsR=await p.evaluate(()=>JSON.stringify({app:'OriginCAD',v:3,...__cad.S}));await p.click('[data-rm="close"]');await fresh();await p.setInputFiles('#file',{name:'Raum.json',mimeType:'application/json',buffer:Buffer.from(jsR)});await p.waitForFunction(()=>document.getElementById('fname').textContent.startsWith('Raum.json'));
- ok((await p.evaluate(()=>__cad.S.raum&&__cad.S.raum.bodies.length))===15,'3D-Modell wird mit der Zeichnung gespeichert und geladen');
+ const n0=await p.evaluate(()=>RAUM.state.bodies.length);for(const k of['sph','cyl','cone','tor','plane'])await p.click(`#rmside [data-prim="${k}"]`);
+ r=await p.evaluate(n0=>RAUM.state.bodies.slice(n0).map(b=>b.kind+':'+RAUM.box(b).slice(3).map((v,i)=>v-RAUM.box(b)[i]).join('/')).join(' '),n0);
+ ok(r==='sph:200/200/200 cyl:200/200/300 cone:200/200/300 tor:300/300/60 plane:1000/1000/0','Grundkörper: Kugel, Zylinder, Kegel, Torus, Ebene',r);
+ r=await p.evaluate(()=>{const s={kind:'sph',L:200,B:200,H:200,o:[0,0,0],u:[1,0,0],v:[0,1,0]};RAUM.resize(s,{i:0,sign:1},50);const c={kind:'cyl',L:200,B:200,H:300,o:[0,0,0],u:[1,0,0],v:[0,1,0]};RAUM.resize(c,{i:2,sign:1},100);const e={kind:'ext',L:100,B:100,H:19,o:[0,0,0],u:[1,0,0],v:[0,1,0]};
+  const f={kind:'plane',name:'Fläche',L:100,B:100,H:0,o:[0,0,0],u:[1,0,0],v:[0,1,0]};RAUM.resize(f,{i:2,sign:1},-30);return{s:[s.L,s.H,RAUM.box(s)[0]],c:[c.L,c.H],e:RAUM.resize(e,{i:0,sign:1},10),f:[f.kind,f.H,f.o[2]]}});
+ ok(r.s.join()==='300,300,-50'&&r.c.join()==='200,400'&&/Formteil/.test(r.e)&&r.f.join()==='box,30,-30','Ziehen: Kugel um die Mitte · Zylinder Höhe · Formteil nur Höhe · flache Fläche auch nach unten',JSON.stringify(r));
+ const jsR=await p.evaluate(()=>JSON.stringify({app:'OriginCAD',v:3,...__cad.S}));const nR=await p.evaluate(()=>RAUM.state.bodies.length);await p.click('[data-rm="close"]');await fresh();await p.setInputFiles('#file',{name:'Raum.json',mimeType:'application/json',buffer:Buffer.from(jsR)});await p.waitForFunction(()=>document.getElementById('fname').textContent.startsWith('Raum.json'));
+ ok((await p.evaluate(()=>__cad.S.raum&&__cad.S.raum.bodies.length))===nR,'3D-Modell wird mit der Zeichnung gespeichert und geladen');
 
  console.log('Darstellung');
  for(const[n,vp]of[['tablet',{width:1024,height:768}],['handy',{width:390,height:844}]]){const q=await open(vp);await q.evaluate(()=>__cad.act('cam'));

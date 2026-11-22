@@ -58,12 +58,12 @@ function create(cv,hooks={}){let gl=null,prog,loc,bufs=null,model=null,raf=0,M=n
  function setModel(m,keep){if(!gl&&!init())return false;const first=!model,old=model&&model.size;model=m;upload(mesh(m));if(first||!keep)view('iso');else{if(old&&Math.abs(m.size-old)>old*0.08)fit();redraw()}return true}
  const pts=new Map();let pd=0;
  cv.addEventListener('contextmenu',e=>e.preventDefault());
- cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);if(hooks.down&&e.button===0&&!pts.size&&hooks.down(e)){held=true;return}pts.set(e.pointerId,[e.clientX,e.clientY,e.button,e.shiftKey]);pd=0});
+ cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);const hr=hooks.down&&e.button===0&&!pts.size?hooks.down(e):false;if(hr===true){held=true;return}pts.set(e.pointerId,[e.clientX,e.clientY,e.button,e.shiftKey||hr==='pan']);pd=0});
  const end=e=>{if(held){held=false;if(hooks.up)hooks.up(e);return}pts.delete(e.pointerId);pd=0};cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
  const pan=(dx,dy)=>{const k=cam.dist*0.0011,sa=Math.sin(cam.az),ca=Math.cos(cam.az),se=Math.sin(cam.el),ce=Math.cos(cam.el);cam.tx+=(-dx*ca+dy*(-sa*se))*k;cam.ty+=(-dx*sa+dy*(ca*se))*k;cam.tz+=dy*ce*k};
  cv.addEventListener('pointermove',e=>{if(held){if(hooks.move)hooks.move(e);return}if(!pts.has(e.pointerId)||!model)return;const o=pts.get(e.pointerId),dx=e.clientX-o[0],dy=e.clientY-o[1];o[0]=e.clientX;o[1]=e.clientY;
   if(pts.size>=2){const[a,b]=[...pts.values()],d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(pd)cam.dist=Math.max(model.size*0.05,cam.dist*pd/Math.max(d,1));pd=d;pan(dx/2,dy/2);redraw();return}
-  if(o[2]===2||o[2]===1||o[3])pan(dx,dy);else{cam.az-=dx*0.008;cam.el=Math.max(-Math.PI/2+1e-4,Math.min(Math.PI/2-1e-4,cam.el+dy*0.008))}redraw()});
+  if(o[2]===2||(o[2]===1&&o[3])||(o[2]===0&&o[3]))pan(dx,dy);/* mittlere Taste = drehen (wie SketchUp), mit Shift = schieben */else{cam.az-=dx*0.008;cam.el=Math.max(-Math.PI/2+1e-4,Math.min(Math.PI/2-1e-4,cam.el+dy*0.008))}redraw()});
  cv.addEventListener('wheel',e=>{if(!model)return;e.preventDefault();cam.dist=Math.max(model.size*0.05,cam.dist*Math.exp(e.deltaY*(e.deltaMode?0.05:0.0015)));redraw()},{passive:false});
  new ResizeObserver(redraw).observe(cv);
  return{setModel,view,redraw,cam,project,ray,shot,fit:()=>{if(model){fit();redraw()}},get ok(){return!!gl},get stats(){return bufs?{tris:bufs.nt/3,lines:bufs.nl/2}:null}}}
