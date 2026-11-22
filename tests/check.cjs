@@ -167,6 +167,10 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  await p.evaluate(s=>__cad.setMouse(s),await sp([200,-5]));await C('250','');E=await ents();ok(E.length===1&&near(E[0].b[0],250,1e-6)&&near(E[0].b[1],0,1e-6),'Länge 250 tippen: Linie genau waagrecht');
  await p.evaluate(()=>__cad.act('polar'));await C('L','0,0');await p.evaluate(s=>__cad.setMouse(s),await sp([200,4]));r=await p.evaluate(()=>__cad.curP);ok(near(r[1],4,0.01),'Winkelfang aus: nichts rastet');await p.keyboard.press('Escape');await p.evaluate(()=>__cad.act('polar'));
 
+ console.log('Rückgängig-Knopf');
+ await fresh();await C('R','0,0','100,50','K','50,25','10');await p.click('#bUndo');E=await ents();ok(E.length===1,'Knopf „Rückgängig“ nimmt den Kreis zurück');
+ await p.click('#bRedo');E=await ents();ok(E.length===2&&(await p.evaluate(()=>document.getElementById('bRedo').disabled)),'Knopf „Wiederholen“ holt ihn wieder, danach grau');
+
  console.log('Darstellung');
  for(const[n,vp]of[['tablet',{width:1024,height:768}],['handy',{width:390,height:844}]]){const q=await open(vp);await q.evaluate(()=>__cad.act('cam'));
   const o=await q.evaluate(()=>({sw:document.documentElement.scrollWidth,w:innerWidth,cv:document.getElementById('cv').clientHeight}));ok(o.sw<=o.w&&o.cv>150,`${n}: nichts läuft seitlich über, Zeichenfläche sichtbar`,JSON.stringify(o));

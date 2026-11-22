@@ -205,8 +205,9 @@ function offsetEnt(e,d,p){const n=clone(e);delete n.id;
 
 /* ---------- Undo ---------- */
 const snapS=()=>JSON.stringify(S);
-function pushUndo(){undoS.push(snapS());if(undoS.length>200)undoS.shift();redoS=[]}
-function dropUndo(){S=JSON.parse(undoS.pop())}
+function updUndo(){const u=document.getElementById('bUndo'),r=document.getElementById('bRedo');if(u)u.disabled=!undoS.length;if(r)r.disabled=!redoS.length}
+function pushUndo(){undoS.push(snapS());if(undoS.length>200)undoS.shift();redoS=[];updUndo()}
+function dropUndo(){S=JSON.parse(undoS.pop());updUndo()}
 function doCommit(fn){pushUndo();fn();afterChange()}
 function undo(){if(G)cancel(true);if(!undoS.length){log('Nichts rückgängig zu machen.');return}redoS.push(snapS());S=JSON.parse(undoS.pop());sel.clear();log('Rückgängig.');afterChange()}
 function redo(){if(!redoS.length){log('Nichts zu wiederholen.');return}undoS.push(snapS());S=JSON.parse(redoS.pop());sel.clear();afterChange()}
@@ -608,7 +609,7 @@ $('gstep').addEventListener('change',e=>{const v=ev(e.target.value.replace(',','
 let fileName='Zeichnung.json';
 function save(){try{localStorage.setItem('origincad.v1',snapS())}catch(e){}}
 function saveUI(){try{localStorage.setItem('origincad.ui',JSON.stringify({tg,gstep,pstep}))}catch(e){}}
-function afterChange(){geoVer++;save();updDefs();updProps();updLayers();computeSnap();render()}
+function afterChange(){updUndo();geoVer++;save();updDefs();updProps();updLayers();computeSnap();render()}
 $('copyB').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('saveT').value);$('copyB').textContent='Kopiert ✓'}catch(e){$('saveT').select();$('copyB').textContent='Mit Strg+C kopieren'}setTimeout(()=>$('copyB').textContent='Kopieren',2000)});
 $('newB').addEventListener('click',()=>{pushUndo();S={ents:[],layers:DEF_LAYERS(),cur:'Kontur',nid:1,def:{...S.def}};fileName='Zeichnung.json';sel.clear();$('dNew').classList.remove('open');afterChange();zoomAll();log('Neue Zeichnung.','ok')});
 
@@ -894,7 +895,7 @@ let restored=false;try{const o=JSON.parse(localStorage.getItem('origincad.v1')||
 if(!restored){sample0();log('Beispiel: Front 400 × 600 mit zwei Topfbändern Ø35 und Griffloch. Datei › Neu leert die Zeichnung.')}
 else log('Letzte Zeichnung wiederhergestellt.');
 log('Tipp: L + Enter für Linie, R für Rechteck, K für Kreis. F1 zeigt alle Befehle.');
-buildTools();updTools();updDefs();updProps();updLayers();updPrompt();
+buildTools();updTools();updUndo();updDefs();updProps();updLayers();updPrompt();
 new ResizeObserver(()=>{const first=!W;resize();if(first)zoomAll()}).observe($('cvw'));
 if(matchMedia('(pointer:fine)').matches)inp.focus();
 window.__cad={get curP(){return curP},setMouse:sp=>{mouse.sp=sp;mouse.in=true;computeSnap();render()},buildSVG,buildDXF,importSVG,importDXF,loadFile,exportList,fitArcs,userTpls,w2s,get S(){return S},run,onEnter,inp,adv,get REQ(){return REQ},sel,zoomAll,cutOf,camOf,act,tg,updProps,bbox,
