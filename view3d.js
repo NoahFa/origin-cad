@@ -7,8 +7,8 @@ const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+
 const BASE={top:[0.86,0.72,0.52],floor:[0.72,0.58,0.40],wall:[0.63,0.49,0.32],bottom:[0.78,0.65,0.47]},EDGE=[0.16,0.11,0.06];
 function mesh(m){const P=[],Nn=[],C=[],L=[];
  const parts=m.parts||[{T:m.T,sections:m.sections,o:[0,0,0],u:[1,0,0],v:[0,1,0]}];
- for(const pt of parts){if(pt.hide)continue;const o=pt.o,u=pt.u,v=pt.v,w=cross(u,v),tint=pt.tint||[1,1,1];
-  const X=(x,y,z)=>[o[0]+u[0]*x+v[0]*y+w[0]*z,o[1]+u[1]*x+v[1]*y+w[1]*z,o[2]+u[2]*x+v[2]*y+w[2]*z],col=k=>[BASE[k][0]*tint[0],BASE[k][1]*tint[1],BASE[k][2]*tint[2]];
+ for(const pt of parts){if(pt.hide)continue;const o=pt.o,u=pt.u,v=pt.v,w=cross(u,v),tint=pt.tint||[1,1,1],pc=pt.color,F={top:1,floor:0.84,wall:0.73,bottom:0.9};
+  const X=(x,y,z)=>[o[0]+u[0]*x+v[0]*y+w[0]*z,o[1]+u[1]*x+v[1]*y+w[1]*z,o[2]+u[2]*x+v[2]*y+w[2]*z],col=k=>pc?[Math.min(1,pc[0]*F[k]*tint[0]),Math.min(1,pc[1]*F[k]*tint[1]),Math.min(1,pc[2]*F[k]*tint[2])]:[BASE[k][0]*tint[0],BASE[k][1]*tint[1],BASE[k][2]*tint[2]];
   const tri=(a,b,c,n,cl)=>{P.push(...a,...b,...c);for(let i=0;i<3;i++){Nn.push(...n);C.push(...cl)}};
   const nUp=w,nDn=[-w[0],-w[1],-w[2]],cT=col('top'),cF=col('floor'),cW=col('wall'),cB=col('bottom');let prev=new Set();
   for(const s of pt.sections){const za=pt.T-s.z0,zb=pt.T-s.z1,last=s===pt.sections[pt.sections.length-1],cur=new Set();
@@ -44,7 +44,7 @@ function create(cv){let gl=null,prog,loc,bufs=null,model=null,raf=0;const cam={a
   const ld=norm(sub(e,t));gl.uniform3fv(loc.l,norm([ld[0]*0.5+0.3,ld[1]*0.5-0.35,ld[2]*0.5+0.75]));gl.uniform3fv(loc.l2,norm([-0.5,0.6,-0.6]));
   const at=(l,b,n)=>{if(l<0)return;gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.enableVertexAttribArray(l);gl.vertexAttribPointer(l,n,gl.FLOAT,false,0,0)};
   gl.uniform1f(loc.uf,0);at(loc.p,bufs.P,3);at(loc.n,bufs.N,3);at(loc.c,bufs.C,3);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);gl.drawArrays(gl.TRIANGLES,0,bufs.nt);gl.disable(gl.POLYGON_OFFSET_FILL);
-  if(loc.n>=0)gl.disableVertexAttribArray(loc.n);if(loc.c>=0)gl.disableVertexAttribArray(loc.c);gl.uniform1f(loc.uf,1);gl.uniform3fv(loc.fc,EDGE);at(loc.p,bufs.L,3);gl.drawArrays(gl.LINES,0,bufs.nl)}
+  if(loc.n>=0)gl.disableVertexAttribArray(loc.n);if(loc.c>=0)gl.disableVertexAttribArray(loc.c);gl.uniform1f(loc.uf,1);gl.uniform3fv(loc.fc,model.edge||EDGE);at(loc.p,bufs.L,3);gl.drawArrays(gl.LINES,0,bufs.nl)}
  const redraw=()=>{if(gl&&!raf)raf=requestAnimationFrame(draw)};
  function fit(){const b=model.box||[model.bbox[0],model.bbox[1],0,model.bbox[2],model.bbox[3],model.T];cam.tx=(b[0]+b[3])/2;cam.ty=(b[1]+b[4])/2;cam.tz=(b[2]+b[5])/2;
   const r=Math.hypot(b[3]-b[0],b[4]-b[1],b[5]-b[2])/2,asp=cv.clientWidth&&cv.clientHeight?cv.clientWidth/cv.clientHeight:1.5;cam.dist=r/Math.sin(0.3)*(asp<1?1/asp:1)*1.08}
