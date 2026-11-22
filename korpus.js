@@ -5,10 +5,12 @@
 window.KORPUS=(()=>{
 const A=window.__cad.kp,$=id=>document.getElementById(id),S=()=>window.__cad.S;
 const newCab=(o={})=>Object.assign({b:600,h:720,d:560,mw:[],fb:[],eb:[{x:300,y:350}],front:'2',sn:3,nm:0,nf:0,ne:1},o);
-const DEF=()=>({t:19,rw:8,nt:10,na:20,fuge:3,sockel:false,sh:100,sr:50,lr:'boden',dub:true,topf:true,nut:true,cabs:[newCab()]});
+const DEF=()=>({btD:4,btT:10,btA:2,t:19,rw:8,nt:10,na:20,fuge:3,sockel:false,sh:100,sr:50,lr:'boden',dub:true,topf:true,nut:true,cabs:[newCab()]});
 const DUB_D=8,DUB_T=12,LR_D=5,LR_T=13,TOPF_D=35,TOPF_T=13,SK=16,TANDEM_NL=[250,270,300,350,400,450,500,550,600];
 let cur=0,pick=null,mode='sel',showFront=true,V3=null,drag=null,view={s:1,ox:0,oy:0},cache3=new Map(),timer=0;
-const K=()=>{const s=S();if(!s.korpus)s.korpus=DEF();return s.korpus};
+/* Bodenträger: Häfele „Jimmy“ (282.25.716) zum Einstecken, Bohr-Ø 4 mm – btD Bohr-Ø, btT Bohrtiefe, btA Lochmitte unter der Boden-Unterkante */
+const BT={btD:4,btT:10,btA:2};
+const K=()=>{const s=S();if(!s.korpus)s.korpus=DEF();for(const f in BT)if(s.korpus[f]==null)s.korpus[f]=BT[f];return s.korpus};
 const num=v=>Math.round(v*100)/100,de=v=>String(num(v)).replace('.',',');
 const clampN=(v,a,b)=>Math.max(a,Math.min(b,v));
 
@@ -54,9 +56,9 @@ function parts(k){k=k||K();const out=[],t=k.t;let x0=0;const z0=k.sockel?k.sh:0;
   /* Einlegeböden + Lochreihen */
   const cols=[37,dE-37];
   for(const s of c.eb){const f=compAt(c,k,s.x);mk(ci,'Einlegeboden',f.x1-f.x0-2,dE-10,t,[x0+f.x0+1,10,z0+s.y],[1,0,0],[0,1,0],{front:'y0',tint:[1.04,1.04,1.04]});
-   if(k.lr==='boden'){const L=faceL(f.x0),R=faceR(f.x1);for(const dz of[-32,0,32]){const z=s.y-2.5+dz;if(z<t+15||z>c.h-t-15)continue;for(const dp of cols){L(dp,z,LR_D,LR_T);R(dp,z,LR_D,LR_T)}}}}
+   if(k.lr==='boden'){const L=faceL(f.x0),R=faceR(f.x1);for(const dz of[-32,0,32]){const z=s.y-k.btA+dz;if(z<t+15||z>c.h-t-15)continue;for(const dp of cols){L(dp,z,k.btD,k.btT);R(dp,z,k.btD,k.btT)}}}}
   if(k.lr==='voll')for(const f of comps(c,k)){const L=faceL(f.x0),R=faceR(f.x1),fix=c.fb.filter(s=>Math.abs(compAt(c,k,s.x).x0-f.x0)<1e-6);
-   for(let z=t+64;z<=c.h-t-64+1e-6;z+=32){if(fix.some(s=>z>s.y-12&&z<s.y+t+12))continue;for(const dp of cols){L(dp,z,LR_D,LR_T);R(dp,z,LR_D,LR_T)}}}
+   for(let z=t+64;z<=c.h-t-64+1e-6;z+=32){if(fix.some(s=>z>s.y-12&&z<s.y+t+12))continue;for(const dp of cols){L(dp,z,k.btD,k.btT);R(dp,z,k.btD,k.btT)}}}
   /* Fronten */
   const fg=k.fuge,door=(xRight,Wd,side)=>{const Hd=c.h-2*fg,p=mk(ci,'Tür '+(side==='l'?'links':'rechts'),Wd,Hd,t,[x0+xRight,-t-2,z0+fg],[-1,0,0],[0,0,1],{front:1,isFront:true,tint:[1.1,1.07,1.02]});
    if(!k.topf)return;const hx=side==='l'?Wd-21.5:21.5,sg=side==='l'?-1:1;
@@ -166,7 +168,8 @@ function form(){const k=K(),c=k.cabs[cur],inp=(id,lab,val,x='')=>`<div class="pr
  <h2 style="margin-top:20px">Für die ganze Zeile</h2>
  ${F_ROW.map(([f,l])=>inp('kr_'+f,l+' mm',k[f])).join('')}
  ${chk('kr_nut','Rückwand in Nut (10 tief, 20 von hinten)',k.nut)}${chk('kr_dub','Dübel Ø8 an allen Stößen',k.dub)}${chk('kr_topf','Topfbänder Ø35 (Blum) mit Montageplatten',k.topf)}
- <div class="pr" style="margin-top:6px"><label for="kr_lr">Lochreihe 32</label><select id="kr_lr">${[['boden','um die Einlegeböden'],['voll','durchgehend'],['aus','keine']].map(([v,l])=>`<option value="${v}" ${k.lr===v?'selected':''}>${l}</option>`).join('')}</select></div>
+ <div class="pr" style="margin-top:6px"><label for="kr_lr">Bodenträger</label><select id="kr_lr">${[['boden','3 Löcher je Einlegeboden'],['voll','Lochreihe durchgehend'],['aus','keine Löcher']].map(([v,l])=>`<option value="${v}" ${k.lr===v?'selected':''}>${l}</option>`).join('')}</select></div>
+ ${k.lr!=='aus'?inp('kr_btD','Bohr-Ø mm',k.btD)+inp('kr_btT','Bohrtiefe mm',k.btT)+inp('kr_btA','Lochmitte unter Boden mm',k.btA)+'<p class="muted" style="margin:2px 0 8px">Voreingestellt für Häfele „Jimmy“ (Bohr-Ø 4). Löcher 37 mm von vorn und hinten, im 32er-Abstand.</p>':''}
  ${chk('kr_sockel','Sockel',k.sockel)}${k.sockel?inp('kr_sh','Sockelhöhe mm',k.sh)+inp('kr_sr','Rücksprung mm',k.sr):''}`;
  const val=el=>{const v=parseFloat(el.value.replace(',','.'));return isFinite(v)?v:null},on=(id,fn)=>{const el=$(id);if(!el)return;el.addEventListener('change',()=>{fn(el);refresh()});if(el.tagName==='INPUT'&&el.type==='text')el.addEventListener('keydown',e=>{if(e.key==='Enter')el.blur()})};
  const set=(obj,f,min,max,after)=>el=>{const v=val(el);if(v==null)return;A.commit(()=>{obj[f]=clampN(v,min,max);after&&after();tidy(k)})};
@@ -177,7 +180,7 @@ function form(){const k=K(),c=k.cabs[cur],inp=(id,lab,val,x='')=>`<div class="pr
  $('kc_add').onclick=()=>{A.commit(()=>{k.cabs.splice(cur+1,0,JSON.parse(JSON.stringify(c)))});cur++;pick=null;refresh()};
  $('kc_del').onclick=()=>{if(k.cabs.length<2)return;A.commit(()=>{k.cabs.splice(cur,1)});cur=Math.max(0,cur-1);pick=null;refresh()};
  for(const[f,,min,max]of F_ROW)on('kr_'+f,set(k,f,min,max));for(const f of['nut','dub','topf','sockel'])on('kr_'+f,el=>A.commit(()=>{k[f]=el.checked}));
- on('kr_lr',el=>A.commit(()=>{k.lr=el.value}));on('kr_sh',set(k,'sh',30,300));on('kr_sr',set(k,'sr',0,200));fillPick()}
+ on('kr_lr',el=>A.commit(()=>{k.lr=el.value}));on('kr_btD',set(k,'btD',2,12));on('kr_btT',set(k,'btT',3,16));on('kr_btA',set(k,'btA',0,20));on('kr_sh',set(k,'sh',30,300));on('kr_sr',set(k,'sr',0,200));fillPick()}
 function scaleX(c,k){/* bei neuer Breite: Mittelwände neu verteilen, Böden bleiben in ihrem Fach */spreadWalls(c,k)}
 function spreadWalls(c,k){const n=c.mw.length,iw=c.b-2*k.t;c.mw=c.mw.map(x=>Math.min(x,c.b-2*k.t-1));const fx=[c.fb,c.eb].map(l=>l.map(s=>{const cs=comps(c,k);return Math.max(0,cs.findIndex(f=>s.x>=f.x0&&s.x<=f.x1))}));
  c.mw=[];for(let i=0;i<n;i++)c.mw.push(num(k.t+(iw-n*k.t)/(n+1)*(i+1)+i*k.t));const cs=comps(c,k);[c.fb,c.eb].forEach((l,li)=>l.forEach((s,i)=>{const f=cs[Math.min(fx[li][i],cs.length-1)];s.x=num((f.x0+f.x1)/2)}))}
