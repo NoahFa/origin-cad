@@ -81,11 +81,14 @@ Eigener Bereich (Knopf „Korpusplaner“ in der Menüleiste), Datei `korpus.js`
 - **Kleiderstange** (`cabs[].ks:[{x,y}]`, y = Stangenmitte; Ø `ksD` = 25): je Fach, Länge = Fachbreite − 4, sitzt in der Mitte der Tiefe. Lagermitte an Seite/Mittelwand nur als Hilfskreuz angezeichnet (Lager-Typ unbekannt). In der Stückliste als „Stange“, ohne SVG.
 - **Material:** je Zeile wählbar für Korpus (`matK`), Fronten (`matF`), Rückwand (`matR`) aus der Liste `MATS` in korpus.js (beispielhafte EGGER-Dekore mit ungefähren Bildschirmfarben, '' = neutral). Wirkt auf 3D, Vorderansicht und Stückliste/CSV.
 - **Maßketten in der Vorderansicht** (`dims()`), immer sichtbar: Korpusbreiten + Gesamtbreite, Sockel/Korpus/Gesamthöhe, je Fach lichte Breite und lichte Höhen, Stangenhöhe, Frontmaße der Schubkästen, Tiefe im Korpus-Titel.
+- **Zuschnittplan** (`nest()`): je Material/Stärke Teile in Streifen auf Rohplatten (`plL` 2800 × `plB` 2070, `kerf` 4, `rand` 10); Länge der Teile läuft in Plattenlänge, gedreht wird nur bei Uni-Dekoren und nur wenn es sonst nicht passt. Kein optimierender Algorithmus (First-Fit nach Höhe sortiert). Fenster mit Platten als Bild, druckbar.
 - **Schubkästen = Holzschubkasten auf Blum TANDEM 560H** (Noah, 22.11.2026; Maße aus Blum-Unterlagen): Innenbreite = lichte Weite − 42 (Seiten 16 mm → außen LW − 10), Länge = Nennlänge − 10, Einbautiefe ≥ Nennlänge + 3, Boden eingenutet und 13 zurückgesetzt, unten 14 / oben 7 Luft. Claudes Annahmen dabei: Nut 6 tief, Hinterstück steht auf dem Boden (keine Ausklinkung nötig), 9 mm zusätzliche Luft in der Höhe, Hakenbohrung Ø6×10 nur angezeichnet (Lage 7/7 nicht bestätigt), Bohrungen für die Korpusschienen fehlen.
 - **Daten:** `{t,rw,nt,na,fuge,sockel,sh,sr,lr,dub,topf,nut,cabs:[{b,h,d,mw:[x],fb:[{x,y}],eb:[{x,y}],front:'n|l|r|2|s',sn,nm,nf,ne}]}` – x/y ab linker unterer Außenecke des Korpus, y = Unterkante des Bodens.
 - **Teile:** `parts()` liefert je Platte Maße, Lage im Raum (o,u,v) und Bohrungen/Nuten in Zeichnungs-Koordinaten der Bohrseite (Innenseite). Bohrungen von der anderen Seite (Mittelwand) haben `back:true` und landen auf der Ebene „Rückseite“ (wird nicht gefräst). Stirnkanten-Dübel sind nur als Hilfsstriche angezeichnet.
 - **Ausgabe:** Stückliste (Drucken, CSV, CSV für CutList Optimizer – Spalten noch nicht am echten Programm geprüft), SVG je Teil, alle Teile ins Zeichenprogramm.
 - **Offen:** Fronten mischen (Tür + Schubkasten in einem Korpus), Griffe, Schubkasten-Bohrbilder für Auszüge, Kantenband-Zugabe, 3D in eigenem Browserfenster (zweiter Bildschirm).
+
+- **Bemaßung erweitert:** `BK` Kettenmaß, `BR` Radius/Durchmesser (`dim {c,r,p,m:'rad'|'dia'}`), **Drucken/PDF** (`PR`, Datei-Menü): `buildPrintSVG()` schwarz auf weiß, A4 eingepasst.
 
 ## Ideen / offen
 - An der echten Origin prüfen: Wird die SVG mit Frästyp, Tiefe und Fräser-Ø richtig erkannt? (Format nach Shaper-Vorgabe gebaut, aber noch nicht an der Maschine getestet.)

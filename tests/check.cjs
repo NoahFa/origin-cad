@@ -256,6 +256,13 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  ok(r.k==='0.95,0.95,0.94'&&r.f==='0.71,0.55,0.37'&&r.rw===null&&/EGGER W1000 Premiumweiß/.test(r.csv)&&/,W1000 19mm,Seite links,/.test(r.cut),'Material: Korpus EGGER W1000, Fronten H1180 – in 3D und in der Stückliste',JSON.stringify(r));
  await p.waitForTimeout(400);r=await p.evaluate(()=>{const m=KORPUS.model3();return{parts:m.parts.length,size:m.size,sec:m.parts[0].sections.length}});ok(r.parts>30&&r.sec>=2,'3D-Modell: '+r.parts+' Platten, Seite mit Bohrungen in Schichten');
  if(SHOTS)await p.screenshot({path:path.join(SHOTS,'08-korpusplaner.png')});
+ r=await p.evaluate(()=>{const n=KORPUS.nest(),g=n.groups.find(x=>x.kind==='Platte'),all=n.groups.flatMap(x=>x.sheets.flatMap(s=>s.parts)),tot=KORPUS.list().filter(x=>!x.p.rod).reduce((s,x)=>s+x.n,0);
+  let overlap=0,outside=0;for(const x of n.groups)for(const s of x.sheets){for(const a of s.parts){if(a.x+a.w>n.plL-2*n.rand+1e-6||a.y+a.h>n.plB-2*n.rand+1e-6)outside++;for(const b of s.parts)if(a!==b&&a.x<b.x+b.w-1e-6&&b.x<a.x+a.w-1e-6&&a.y<b.y+b.h-1e-6&&b.y<a.y+a.h-1e-6)overlap++}}
+  return{groups:n.groups.map(x=>x.kind+' '+x.T+':'+x.sheets.length).join(' | '),placed:all.length,tot,overlap,outside,mis:n.misfit.length,waste:g.waste}});
+ ok(r.placed===r.tot&&r.overlap===0&&r.outside===0&&r.mis===0&&r.waste>0&&r.waste<1,'Zuschnittplan: alle '+r.tot+' Teile auf Platten, nichts überlappt ('+r.groups+')',JSON.stringify(r));
+ await p.click('[data-kp="nest"]');ok((await p.evaluate(()=>document.querySelectorAll('#kpnBody svg').length))>=3&&(await p.evaluate(()=>document.getElementById('kn_plL').value))==='2800','Fenster Zuschnittplan zeigt die Platten');
+ await p.fill('#kn_plB','1000');await p.keyboard.press('Enter');await p.fill('#kn_plL','1000');await p.keyboard.press('Enter');r=await p.evaluate(()=>({pl:KORPUS.state.plL,w:document.querySelector('#kpnBody .warn')?document.querySelector('#kpnBody .warn').textContent:''}));ok(r.pl===1000&&/Sockelblende/.test(r.w),'Platte nur 1000 × 1000: Sockelblende passt nicht – wird gemeldet',JSON.stringify(r));
+ await p.fill('#kn_plL','2800');await p.keyboard.press('Enter');await p.fill('#kn_plB','2070');await p.keyboard.press('Enter');await p.keyboard.press('Escape');
  await p.click('[data-kp="list"]');r=await p.evaluate(()=>({rows:document.querySelectorAll('#kplT tr').length,sum:document.getElementById('kplsum').textContent}));ok(r.rows>10&&/m²/.test(r.sum),'Stückliste mit '+(r.rows-1)+' Zeilen und Flächen');
  const dl2=p.waitForEvent('download');await p.click('[data-kpsvg="0"]');const D2=await dl2,svgK=fs.readFileSync(await D2.path(),'utf8');
  ok(/Seite-links-560x720\.svg/.test(D2.suggestedFilename())&&/shaper:cutType="outside" shaper:cutDepth="19mm"/.test(svgK)&&(svgK.match(/cutType="pocket"/g)||[]).length>10&&/shaper:cutDepth="12mm"/.test(svgK)&&/shaper:cutDepth="10mm"/.test(svgK),'SVG je Teil: Seite mit Außenkontur 19, Dübeln 12 tief, Nut 10 tief',D2.suggestedFilename());
@@ -264,6 +271,19 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  ok(!r.open&&r.n>80&&r.sel===r.n&&/Rückseite/.test(r.ly),'„Alle Teile ins Zeichenprogramm“: '+r.n+' Objekte gezeichnet und gewählt',JSON.stringify(r));
  const jsK=await p.evaluate(()=>JSON.stringify({app:'OriginCAD',v:3,...__cad.S}));await fresh();await p.setInputFiles('#file',{name:'Schrank.json',mimeType:'application/json',buffer:Buffer.from(jsK)});await p.waitForFunction(()=>document.getElementById('fname').textContent.startsWith('Schrank.json'));
  ok((await p.evaluate(()=>__cad.S.korpus&&__cad.S.korpus.cabs.length))===2,'Planung wird mit der Zeichnung gespeichert und wieder geladen');
+
+ console.log('Bemaßung und Drucken');
+ await fresh();await C('R','0,0','300,200','K','150,100','40','BK','0,0','100,0','50,-40','200,0','300,0','');await p.keyboard.press('Escape');E=await ents();
+ let Dm=E.filter(e=>e.t==='dim');ok(Dm.length===3&&Dm.every(d=>d.m==='h'&&d.p[1]===-40)&&Dm[1].a[0]===100&&Dm[1].b[0]===200&&Dm[2].b[0]===300,'Kettenmaß: drei Maße auf einer Linie (100 · 100 · 100)',JSON.stringify(Dm).slice(0,200));
+ await C('BR');await p.evaluate(()=>{const e=__cad.S.ents[1];__cad.adv({e,p:[190,100]});__cad.adv({p:[230,140]})});await p.keyboard.press('Escape');E=await ents();Dm=E[E.length-1];
+ ok(Dm.t==='dim'&&Dm.m==='dia'&&Dm.r===40&&Dm.c.join()==='150,100','Durchmessermaß am Kreis');
+ await C('BR');await p.evaluate(()=>{const e=__cad.S.ents[1];__cad.adv({e,p:[190,100]})});await C('R');await p.evaluate(()=>__cad.adv({p:[150,170]}));await p.keyboard.press('Escape');E=await ents();ok(E[E.length-1].m==='rad','Mit R wird daraus ein Radiusmaß');
+ await p.evaluate(()=>{__cad.act('alle')});await C('V','0,0','1000,0');E=await ents();ok(E[E.length-2].c.join()==='1150,100'&&E[2].a[0]===1000,'Maße wandern beim Verschieben mit');await p.evaluate(()=>__cad.sel.clear());
+ r=await p.evaluate(()=>{const x=__cad.buildPrintSVG();return{t:(x.svg.match(/<text/g)||[]).length,o:(x.svg.match(/class="ob"/g)||[]).length,dia:/>Ø80</.test(x.svg),rad:/>R40</.test(x.svg),m:/>100</.test(x.svg),w:x.w0}});
+ ok(r.t===5&&r.o===2&&r.dia&&r.rad&&r.m,'Druckansicht: 2 Konturen, 5 Maßzahlen (100, Ø80, R40)',JSON.stringify(r));
+ r=await p.evaluate(()=>__cad.importDXF(__cad.buildDXF(__cad.S.ents)).ents.filter(e=>e.t==='text').map(e=>e.s).join());ok(/Ø80/.test(r)&&/R40/.test(r),'DXF enthält Ø80 und R40',r);
+ const jsD=await p.evaluate(()=>JSON.stringify({app:'OriginCAD',v:3,...__cad.S}));await p.setInputFiles('#file',{name:'Masse.json',mimeType:'application/json',buffer:Buffer.from(jsD)});await p.waitForFunction(()=>document.getElementById('fname').textContent.startsWith('Masse.json'));
+ ok((await ents()).filter(e=>e.t==='dim'&&e.c).length===2,'Radius-/Durchmessermaße werden gespeichert und geladen');
 
  console.log('Darstellung');
  for(const[n,vp]of[['tablet',{width:1024,height:768}],['handy',{width:390,height:844}]]){const q=await open(vp);await q.evaluate(()=>__cad.act('cam'));

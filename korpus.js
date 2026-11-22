@@ -13,7 +13,7 @@ let cur=0,pick=null,mode='sel',showFront=true,V3=null,drag=null,view={s:1,ox:0,o
 const MATS=[['','Holz neutral (ohne Dekor)',[0.86,0.72,0.52]],['W1000','Premiumweiß',[0.95,0.95,0.94]],['W980','Platinweiß',[0.92,0.92,0.89]],['U708','Hellgrau',[0.79,0.80,0.79]],['U702','Kaschmirgrau',[0.77,0.73,0.67]],['U732','Staubgrau',[0.55,0.55,0.53]],['U961','Graphitgrau',[0.27,0.28,0.29]],['U999','Schwarz',[0.11,0.11,0.12]],
  ['H1145','Bardolino Eiche natur',[0.80,0.68,0.52]],['H3303','Hamilton Eiche natur',[0.76,0.60,0.42]],['H1180','Halifax Eiche natur',[0.71,0.55,0.37]],['H3331','Nebraska Eiche natur',[0.69,0.51,0.33]],['H1344','Sherman Eiche cognacbraun',[0.55,0.36,0.22]],['H3700','Nussbaum Pacific natur',[0.45,0.30,0.20]]];
 const mat=id=>MATS.find(m=>m[0]===id)||MATS[0],matName=id=>id?`EGGER ${id} ${mat(id)[1]}`:'–',css=(c,f=1)=>`rgb(${c.map(v=>Math.round(Math.min(1,v*f)*255)).join(',')})`;
-const BT={matK:'',matF:'',matR:'',ksD:25,btD:4,btT:10,btA:2,sv:true,svT:14,svX:9.5,svO:0,svB:13};
+const BT={plL:2800,plB:2070,kerf:4,rand:10,matK:'',matF:'',matR:'',ksD:25,btD:4,btT:10,btA:2,sv:true,svT:14,svX:9.5,svO:0,svB:13};
 /* Würth Systemverbinder SV 20 E: Gehäuse Ø20 in der Fläche des waagrechten Teils (svT tief, Mitte svX von der Stirnkante),
    Systembolzen in Ø5-Bohrung der Seite (svB tief), 37 mm von vorn und hinten; svO = Bolzen über (+) / unter (−) der Plattenmitte */
 const SV_D=20,SV_BD=5;
@@ -256,20 +256,48 @@ function toDrawing(){const rows=list(K()).filter(r=>!r.p.rod),all=[];let x=0,y=0
    if(n.pts)n.pts=n.pts.map(mv);if(n.c)n.c=mv(n.c);if(n.a&&n.b){n.a=mv(n.a);n.b=mv(n.b)}if(n.p)n.p=mv(n.p);all.push(n)}x+=r.p.W+80;rowH=Math.max(rowH,r.p.H)}
  let made;A.commit(()=>{made=A.addEnts(all)});close();A.after();A.select(made);A.log(`Korpusplaner: ${rows.length} verschiedene Teile in die Zeichnung gelegt (sind gewählt). Jedes Teil einzeln wählen und mit EX als SVG ausgeben – oder im Planer in der Stückliste „SVG“ je Teil.`,'ok')}
 
+/* ----- Zuschnittplan: Teile in Streifen auf Platten verteilen (einfache, sägegerechte Aufteilung) ----- */
+function nest(k){k=k||K();const rows=list(k).filter(r=>!r.p.rod),groups=new Map(),uw=k.plL-2*k.rand,uh=k.plB-2*k.rand,misfit=[];
+ rows.forEach((r,i)=>{const p=r.p,key=(p.matId||'')+'|'+p.T+'|'+(p.mat||(p.box?'Schubkasten':'Platte'));if(!groups.has(key))groups.set(key,{matId:p.matId,T:p.T,kind:p.mat||(p.box?'Schubkasten':'Platte'),pcs:[]});
+  /* Länge (größeres Maß) läuft in Plattenlänge = Maserung längs */
+  for(let n=0;n<r.n;n++)groups.get(key).pcs.push({nr:i+1,name:p.name,w:Math.max(p.W,p.H),h:Math.min(p.W,p.H)})});
+ const out=[];
+ for(const g of groups.values()){const sheets=[],grain=/^H/.test(g.matId||'');
+  const pcs=g.pcs.filter(q=>{let ok=q.w<=uw+1e-6&&q.h<=uh+1e-6;if(!ok&&!grain&&q.h<=uw&&q.w<=uh){[q.w,q.h]=[q.h,q.w];ok=true}if(!ok)misfit.push(q);return ok}).sort((a,b)=>b.h-a.h||b.w-a.w);
+  for(const q of pcs){let done=false;
+   for(const sh of sheets){for(const st of sh.strips){if(q.h<=st.h+1e-6&&st.x+q.w<=uw+1e-6){q.x=st.x;q.y=st.y;st.x+=q.w+k.kerf;sh.parts.push(q);done=true;break}}
+    if(done)break;if(sh.y+q.h<=uh+1e-6){const st={y:sh.y,h:q.h,x:q.w+k.kerf};sh.strips.push(st);q.x=0;q.y=sh.y;sh.y+=q.h+k.kerf;sh.parts.push(q);done=true;break}}
+   if(!done){const sh={strips:[{y:0,h:q.h,x:q.w+k.kerf}],y:q.h+k.kerf,parts:[q]};q.x=0;q.y=0;sheets.push(sh)}}
+  const used=pcs.reduce((s,q)=>s+q.w*q.h,0);if(sheets.length)out.push({matId:g.matId,T:g.T,kind:g.kind,sheets,used,waste:1-used/(sheets.length*k.plL*k.plB)})}
+ return{groups:out,misfit,plL:k.plL,plB:k.plB,rand:k.rand}}
+function nestSVG(n,sh){const s=v=>Math.round(v*100)/100;let b=`<rect x="0" y="0" width="${n.plL}" height="${n.plB}" fill="#f4efe6" stroke="#333" stroke-width="3"/>`;
+ for(const q of sh.parts){const x=n.rand+q.x,y=n.rand+q.y,fs=Math.max(22,Math.min(46,q.h*0.32,q.w*0.11));b+=`<rect x="${s(x)}" y="${s(y)}" width="${s(q.w)}" height="${s(q.h)}" fill="#d9c29a" stroke="#222" stroke-width="2.5"/>`+
+   (q.w>150&&q.h>44?`<text x="${s(x+q.w/2)}" y="${s(y+q.h/2+fs*0.35)}" font-size="${s(fs)}" text-anchor="middle" font-family="Arial,sans-serif" fill="#111">${q.nr} · ${de(q.w)} × ${de(q.h)}</text>`:`<text x="${s(x+q.w/2)}" y="${s(y+q.h/2+8)}" font-size="22" text-anchor="middle" font-family="Arial,sans-serif" fill="#111">${q.nr}</text>`)}
+ return`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 ${n.plL+8} ${n.plB+8}" style="width:100%;height:auto;display:block">${b}</svg>`}
+function nestHTML(){const k=K(),n=nest(k);let h='';
+ for(const g of n.groups){h+=`<h4>${g.kind} ${de(g.T)} mm${g.matId?' · '+A.esc(matName(g.matId)):''} – ${g.sheets.length} Platte${g.sheets.length>1?'n':''}, Verschnitt ${Math.round(g.waste*100)} %</h4>`;g.sheets.forEach((sh,i)=>{h+=`<div class="kpsheet"><div class="muted">Platte ${i+1} von ${g.sheets.length} · ${sh.parts.length} Teile</div>${nestSVG(n,sh)}</div>`})}
+ if(n.misfit.length)h+=`<div class="warn">Passt auf keine Platte: ${[...new Set(n.misfit.map(q=>`${A.esc(q.name)} ${de(q.w)} × ${de(q.h)}`))].join(', ')}</div>`;
+ return h||'<p class="muted">Keine Teile.</p>'}
+function openNest(){const k=K();for(const f of['plL','plB','kerf','rand'])$('kn_'+f).value=de(k[f]);$('kpnBody').innerHTML=nestHTML();$('dKpn').classList.add('open')}
+function printNest(){const w=window.open('','_blank');if(!w){msg('Das Druckfenster wurde vom Browser blockiert.');return}const k=K();
+ w.document.write(`<!doctype html><meta charset="utf-8"><title>Zuschnittplan</title><style>@page{size:A4 landscape;margin:10mm}body{font:11pt Arial,sans-serif;margin:0}h4{margin:14px 0 4px}.kpsheet{page-break-inside:avoid;margin-bottom:10px}.muted{color:#555;font-size:9.5pt}svg{max-height:150mm}.warn{border:1px solid #c00;padding:6px}</style><h2 style="margin:0">Zuschnittplan ${A.esc(A.baseName())}</h2><p class="muted">Rohplatte ${de(k.plL)} × ${de(k.plB)} mm · Sägeblatt ${de(k.kerf)} mm · Besäumrand ${de(k.rand)} mm · Nummern = Nr. in der Stückliste · Länge der Teile läuft in Plattenlänge</p>${nestHTML()}`);w.document.close();w.focus();setTimeout(()=>w.print(),350)}
+
 /* ----- Fenster ----- */
 const isOpen=()=>$('kp').classList.contains('open');
 let bound=false;
 function open(){A.cancel();K();$('kp').classList.add('open');if(!bound){bound=true;bindCanvas();
-  $('kp').addEventListener('click',e=>{const b=e.target.closest('[data-kp]');if(b){const a=b.dataset.kp;if(a==='close')close();else if(a==='list')openList();else if(a==='draw')toDrawing();else if(a==='undo'){A.undo();refresh()}else if(a==='redo'){A.redo();refresh()}else if(V3)V3.view(a);return}
+  $('kp').addEventListener('click',e=>{const b=e.target.closest('[data-kp]');if(b){const a=b.dataset.kp;if(a==='close')close();else if(a==='list')openList();else if(a==='nest')openNest();else if(a==='draw')toDrawing();else if(a==='undo'){A.undo();refresh()}else if(a==='redo'){A.redo();refresh()}else if(V3)V3.view(a);return}
    const m=e.target.closest('[data-kpm]');if(m)setMode(m.dataset.kpm)});
+  $('dKpn').addEventListener('click',e=>{const b=e.target.closest('[data-kpn]');if(b&&b.dataset.kpn==='print')printNest()});
+  for(const[f,min,max]of[['plL',500,6000],['plB',300,3000],['kerf',0,10],['rand',0,50]]){const el=$('kn_'+f);el.addEventListener('keydown',e=>{if(e.key==='Enter')el.blur()});el.addEventListener('change',()=>{const v=parseFloat(el.value.replace(',','.'));if(isFinite(v))A.commit(()=>{K()[f]=clampN(v,min,max)});openNest()})}
   $('kpfront').addEventListener('change',e=>{showFront=e.target.checked;refresh(true)});
   $('dKpl').addEventListener('click',async e=>{const b=e.target.closest('[data-kpsvg],[data-kpl]');if(!b)return;
    if(b.dataset.kpsvg!=null){const r=list(K())[+b.dataset.kpsvg],svg=window.__cad.buildSVG(partEnts(r.p,r.n));const n=await A.saveBlob(`${r.p.name.replace(/[^A-Za-z0-9äöüÄÖÜß]+/g,'-')}-${de(r.p.W)}x${de(r.p.H)}.svg`,svg,'image/svg+xml','SVG für Shaper Origin');if(n)msg('Gespeichert: '+n);return}
    const a=b.dataset.kpl;if(a==='print')printList();else if(a==='csv')await A.saveBlob(A.baseName()+'-Stueckliste.csv',csv(';'),'text/csv','Stückliste');else if(a==='cut')await A.saveBlob(A.baseName()+'-CutList.csv',csv(',',true),'text/csv','CutList Optimizer');else if(a==='draw'){$('dKpl').classList.remove('open');toDrawing()}})}
  pick=null;setMode('sel');refresh()}
-function close(){$('kp').classList.remove('open');$('dKpl').classList.remove('open')}
+function close(){$('kp').classList.remove('open');$('dKpl').classList.remove('open');$('dKpn').classList.remove('open')}
 function key(e){const t=e.target,inField=t&&(t.tagName==='INPUT'||t.tagName==='SELECT'||t.tagName==='TEXTAREA');
- if(e.key==='Escape'){e.preventDefault();if($('dKpl').classList.contains('open'))$('dKpl').classList.remove('open');else if(mode!=='sel')setMode('sel');else if(pick){pick=null;refresh(true)}else close();return}
+ if(e.key==='Escape'){e.preventDefault();if($('dKpn').classList.contains('open'))$('dKpn').classList.remove('open');else if($('dKpl').classList.contains('open'))$('dKpl').classList.remove('open');else if(mode!=='sel')setMode('sel');else if(pick){pick=null;refresh(true)}else close();return}
  if((e.ctrlKey||e.metaKey)&&!inField){const k=e.key.toLowerCase();if(k==='z'){e.preventDefault();e.shiftKey?A.redo():A.undo();refresh()}else if(k==='y'){e.preventDefault();A.redo();refresh()}return}
  if((e.key==='Delete'||e.key==='Backspace')&&!inField&&pick){e.preventDefault();removePick()}}
-return{MATS,open,close,isOpen,key,parts,list,partEnts,model3,get state(){return K()},refresh,get view(){return view},hitAt,csv,DEF}})();
+return{nest,MATS,open,close,isOpen,key,parts,list,partEnts,model3,get state(){return K()},refresh,get view(){return view},hitAt,csv,DEF}})();

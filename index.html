@@ -10,9 +10,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Origin CAD">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.webmanifest?v=15">
-<link rel="icon" href="icon.svg?v=15" type="image/svg+xml">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=15">
+<link rel="manifest" href="manifest.webmanifest?v=16">
+<link rel="icon" href="icon.svg?v=16" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=16">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -125,6 +125,8 @@ button,input,select{font:inherit;color:inherit}
 .v3hint{position:absolute;left:10px;bottom:8px;color:#9aa3ad;font-size:12.5px;pointer-events:none;background:#16191dcc;padding:4px 8px;border-radius:5px}
 .dlg .box.v3 .warn{margin:0}
 /* Korpusplaner */
+.kpnset{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0;font-size:13px;color:var(--mut)}.kpnset input{width:72px;margin-left:6px;padding:4px 7px;border:1px solid var(--line);border-radius:5px;background:var(--chrome);text-align:right}
+#kpnBody h4{margin:16px 0 6px;font-size:14px}.kpsheet{margin-bottom:12px}
 .kp{position:fixed;inset:0;z-index:35;background:var(--chrome);display:none;grid-template-rows:auto minmax(0,1fr);grid-template-columns:300px minmax(0,1fr) minmax(0,1fr)}
 .kp.open{display:grid}
 .kpbar{grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
@@ -157,7 +159,8 @@ button,input,select{font:inherit;color:inherit}
    <li><button data-a="neu">Neu</button></li>
    <li><button data-a="oeffnen">Öffnen … <kbd>Strg+O</kbd></button></li>
    <li><button data-a="importieren">Dazuladen …</button></li>
-   <li><button data-a="speichern">Speichern<kbd>Strg+S</kbd></button></li><hr>
+   <li><button data-a="speichern">Speichern<kbd>Strg+S</kbd></button></li>
+   <li><button data-a="drucken">Drucken / PDF …<kbd>PR</kbd></button></li><hr>
    <li><button data-a="exportSvg">SVG für Shaper Origin …<kbd>Strg+E</kbd></button></li>
    <li><button data-a="exportDxf">Als DXF speichern</button></li><hr>
    <li><button data-a="tpl">Vorlage einfügen …<kbd>VO</kbd></button></li>
@@ -250,6 +253,8 @@ button,input,select{font:inherit;color:inherit}
   <tr><td>Fräsvorschau</td><td>gestrichelt = Weg der Fräsermitte · rot = hier kommt der Fräser nicht hin, Material bleibt stehen</td></tr>
   <tr><td>Korpusplaner</td><td>Oben „Korpusplaner“: Schrank über Maße anlegen, Böden und Mittelwände mit der Maus setzen, mehrere Korpusse nebeneinander. Rechts läuft die 3D-Ansicht mit. „Stückliste“ liefert Zuschnittliste und je Teil eine SVG mit allen Bohrungen.</td></tr>
   <tr><td>3D-Ansicht</td><td><code>F4</code> oder Knopf „3D“ unten: zeigt die Platte räumlich mit allen Ausschnitten, Bohrungen, Taschen und Gravuren in der eingetragenen Tiefe. Plattenstärke oben im 3D-Fenster eintragen.</td></tr>
+  <tr><td>Bemaßen</td><td><code>BM</code> waagrecht/senkrecht · <code>BA</code> schräg · <code>BK</code> Kettenmaß (nach dem ersten Maß einfach die nächsten Punkte anklicken) · <code>BR</code> Radius oder Durchmesser (Kreis anklicken). Maße wandern beim Verschieben (<code>V</code>) mit.</td></tr>
+  <tr><td>Drucken</td><td>Datei › „Drucken / PDF“: Zeichnung mit Bemaßung schwarz auf weiß, auf eine A4-Seite eingepasst. Im Druckfenster „Als PDF speichern“ wählen.</td></tr>
   <tr><td>Zur Origin</td><td>Datei › „SVG für Shaper Origin“ (oder <code>EX</code>). Die Datei auf einen USB-Stick kopieren oder bei hub.shapertools.com hochladen. Frästyp, Tiefe und Fräser-Ø stehen in der Datei; Bemaßung wird nicht ausgegeben.</td></tr>
   <tr><td>Fremde Dateien</td><td>Datei › Öffnen liest auch SVG und DXF. „Dazuladen“ fügt eine Datei in die aktuelle Zeichnung ein. Datei aufs Fenster ziehen geht auch.</td></tr>
   <tr><td>Vorlagen</td><td><code>VO</code> fügt eine Vorlage ein (z. B. Topfband mit Dübellöchern). Eigene: Objekte wählen, Datei › „Als Vorlage speichern“. Eigene Vorlagen liegen nur auf diesem Gerät.</td></tr>
@@ -294,7 +299,7 @@ button,input,select{font:inherit;color:inherit}
 <div class="kp" id="kp">
  <div class="kpbar"><h3><i></i>Korpusplaner</h3><span class="muted" id="kpinfo"></span><span class="muted" id="kpmsg" style="color:var(--acc)"></span><span class="sp"></span>
   <button class="ub" data-kp="undo" title="Rückgängig (Strg+Z)"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span>Rückgängig</span></button>
-  <button class="btn" data-kp="list">Stückliste</button><button class="btn" data-kp="draw">Teile ins Zeichenprogramm</button><button class="btn pri" data-kp="close">Zurück zum Zeichnen</button></div>
+  <button class="btn" data-kp="list">Stückliste</button><button class="btn" data-kp="nest">Zuschnittplan</button><button class="btn" data-kp="draw">Teile ins Zeichenprogramm</button><button class="btn pri" data-kp="close">Zurück zum Zeichnen</button></div>
  <div class="kpside" id="kpform"></div>
  <div class="kpmid"><canvas id="kpcv"></canvas>
   <div class="kptools"><button class="btn on" data-kpm="sel">Auswählen</button><button class="btn" data-kpm="fb">+ Fester Boden</button><button class="btn" data-kpm="eb">+ Einlegeboden</button><button class="btn" data-kpm="mw">+ Mittelwand</button><button class="btn" data-kpm="ks">+ Kleiderstange</button></div>
@@ -309,18 +314,25 @@ button,input,select{font:inherit;color:inherit}
  <table id="kplT"></table><p class="muted" id="kplsum"></p>
  <div class="row"><button class="btn" data-kpl="print">Drucken</button><button class="btn" data-kpl="csv">Als Tabelle (CSV)</button><button class="btn" data-kpl="cut">Für CutList Optimizer</button><button class="btn" data-kpl="draw">Alle Teile ins Zeichenprogramm</button><button class="btn pri" data-close>Schließen</button></div>
 </div></div>
+<div class="dlg" id="dKpn" style="z-index:45"><div class="box" style="max-width:980px">
+ <h3>Zuschnittplan</h3>
+ <p class="muted">Einfache Aufteilung in Streifen, die sich an der Säge gut schneiden lässt – kein ausgetüftelter Sparplan. Die Länge der Teile läuft in Plattenlänge (Maserung). Nummern = Nr. in der Stückliste.</p>
+ <div class="kpnset"><label>Plattenlänge <input id="kn_plL" type="text" inputmode="decimal"></label><label>Plattenbreite <input id="kn_plB" type="text" inputmode="decimal"></label><label>Sägeblatt <input id="kn_kerf" type="text" inputmode="decimal"></label><label>Besäumrand <input id="kn_rand" type="text" inputmode="decimal"></label></div>
+ <div id="kpnBody"></div>
+ <div class="row"><button class="btn" data-kpn="print">Drucken</button><button class="btn pri" data-close>Schließen</button></div>
+</div></div>
 <div class="dlg" id="dNew"><div class="box" style="max-width:420px">
  <h3>Neue Zeichnung?</h3>
  <p class="muted">Die aktuelle Zeichnung wird geleert. Rückgängig (Strg+Z) holt sie zurück.</p>
  <div class="row"><button class="btn" data-close>Abbrechen</button><button class="btn pri" id="newB">Leeren</button></div>
 </div></div>
 
-<script src="vendor/clipper.js?v=15"></script>
-<script src="font.js?v=15"></script>
-<script src="vendor/earcut.min.js?v=15"></script>
-<script src="view3d.js?v=15"></script>
-<script src="cad.js?v=15"></script>
-<script src="korpus.js?v=15"></script>
+<script src="vendor/clipper.js?v=16"></script>
+<script src="font.js?v=16"></script>
+<script src="vendor/earcut.min.js?v=16"></script>
+<script src="view3d.js?v=16"></script>
+<script src="cad.js?v=16"></script>
+<script src="korpus.js?v=16"></script>
 <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>
