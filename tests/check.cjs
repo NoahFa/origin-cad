@@ -425,6 +425,78 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
   await q.setViewportSize({width:844,height:390});await q.waitForTimeout(200);const t1=Date.now();await q.evaluate(()=>{__cad.zoomAll();return 1});ok(Date.now()-t1<2000,'Handy quer (844 × 390): kein Einfrieren');await q.close()}
  await fresh();
 
+ console.log('Nachprüfung (v28)');
+ // Korpus: mehrere Mittelwände, Bodenträger gegen Bolzen, Schubkasten-Front mit Mittelwand
+ await fresh();await p.click('.mbtn[data-a="korpus"]');await p.fill('#kc_b','1500');await p.keyboard.press('Enter');await p.fill('#kc_nm','2');await p.keyboard.press('Enter');await p.fill('#kc_nf','1');await p.keyboard.press('Enter');
+ ok((await clashes())===0,'2 Mittelwände mit je einem festen Boden: keine durchgehenden Bohrungen');
+ await p.fill('#kc_nm','3');await p.keyboard.press('Enter');await p.fill('#kc_nf','1');await p.keyboard.press('Enter');ok((await clashes())===0,'3 Mittelwände: keine durchgehenden Bohrungen');
+ await p.selectOption('#kr_lr','voll');ok((await clashes())===0,'3 Mittelwände + Lochreihe durchgehend: nichts trifft sich');
+ await p.evaluate(()=>{const c=KORPUS.state.cabs[0];c.b=1000;c.nm=1;c.mw=[490];c.fb=[{x:200,y:330}];c.eb=[];KORPUS.refresh()});ok((await clashes())===0,'Fester Boden nur links der Mittelwand, Lochreihe durchgehend: Bodenträger weichen den Bolzen aus');
+ await p.fill('#kr_btD','5');await p.keyboard.press('Enter');await p.fill('#kr_btT','13');await p.keyboard.press('Enter');ok((await clashes())===0,'Bodenträger Ø5/13 (wie Montageplatten): keine Überschneidung');
+ await p.fill('#kr_btD','4');await p.keyboard.press('Enter');await p.fill('#kr_btT','10');await p.keyboard.press('Enter');await p.selectOption('#kr_lr','boden');
+ await p.fill('#kc_nm','1');await p.keyboard.press('Enter');await p.fill('#kc_nf','1');await p.keyboard.press('Enter');await p.fill('#kc_ne','2');await p.keyboard.press('Enter');await p.selectOption('#kc_front','m2');
+ r=await p.evaluate(()=>{const c=KORPUS.state.cabs[0];return{fb:c.fb.length,eb:c.eb.length,nm:c.nm,f:document.getElementById('kc_nm').value}});ok(r.fb===1&&r.eb===2&&r.nm===0&&r.f==='0','Schubkasten oben + Türen bei Mittelwand: Böden nicht doppelt, Mittelwände auf 0',JSON.stringify(r));
+ await p.selectOption('#kc_typ','1');r=await p.evaluate(()=>document.getElementById('kc_typ').value);ok(r==='1','Schranktyp bleibt nach der Wahl sichtbar',r);
+ r=await p.evaluate(()=>KORPUS.clean({t:-100000,fuge:1e5,plL:5,cabs:[{b:600,h:720,d:560,nm:99}]}));ok(r.t===5&&r.fuge===20&&r.plL===500&&r.cabs[0].nm===6,'Geladene Korpuswerte werden auf die Formularbereiche begrenzt',JSON.stringify({t:r.t,f:r.fuge,p:r.plL,nm:r.cabs[0].nm}));
+ await p.click('[data-kp="close"]');await fresh();
+ // Zeichnen: Stutzen, Kommas, Rücktaste, Hilfe
+ await C('L','0;0','100;0','');await p.keyboard.press('Escape');await p.evaluate(()=>{const e=__cad.S.ents[0];e.ct='inside';e.cd=7});await C('L','50;-20','50;20','');await p.keyboard.press('Escape');
+ await C('ST');await p.evaluate(()=>{__cad.adv({e:__cad.S.ents[0],p:[80,0]})});await p.keyboard.press('Escape');r=await p.evaluate(()=>__cad.S.ents.filter(e=>e.t==='line'&&e.a[1]===0&&e.b[1]===0).map(e=>e.ct+'/'+e.cd).join());ok(r==='inside/7','Stutzen behält Frästyp und Tiefe',r);
+ await fresh();await C('K','0;0','50');await C('L','-80;0','80;0','');await p.keyboard.press('Escape');await C('ST');await p.evaluate(()=>{__cad.adv({e:__cad.S.ents[0],p:[0,50]})});await p.keyboard.press('Escape');r=await p.evaluate(()=>__cad.S.ents.map(e=>e.t).join());ok(r==='arc,line'||r==='line,arc','Kreis stutzen mit Schnittpunkt genau auf „3 Uhr“',r);
+ await fresh();await C('L','0;0','@12,5<0','');await p.keyboard.press('Escape');r=await p.evaluate(()=>{const e=__cad.S.ents[0];return e?Math.hypot(e.b[0]-e.a[0],e.b[1]-e.a[1]):0});ok(Math.abs(r-12.5)<1e-9,'„@12,5<0“ wird verstanden (Länge 12,5)',String(r));
+ await C('L','0;0','12,5');r=await p.evaluate(()=>document.getElementById('hist').textContent);ok(/Meintest du 12,5 mm Länge/.test(r),'„12,5“ als nächster Punkt: sichtbarer Hinweis');await p.keyboard.press('Escape');
+ await C('L','0;0','abc');r=await p.evaluate(()=>document.getElementById('hist').lastChild.textContent);ok(/Möglich: .*Länge/.test(r),'Unverständliche Eingabe sagt, was erwartet wird',r);await p.keyboard.press('Escape');
+ await fresh();await C('R','0;0','@100;50');await p.keyboard.press('Escape');await p.evaluate(()=>__cad.act('alle'));await p.focus('#inp');await p.keyboard.type('L');await p.keyboard.press('Backspace');await p.keyboard.press('Backspace');ok((await p.evaluate(()=>__cad.S.ents.length))===1,'Rücktaste nach dem Korrigieren in der Befehlszeile löscht nichts');
+ await p.evaluate(()=>{__cad.kp.help('k');document.getElementById('dHelp').classList.remove('open')});await p.keyboard.press('F1');r=await p.evaluate(()=>{const b=document.querySelector('.htabs button.on');return b&&b.dataset.htab});await p.keyboard.press('Escape');ok(r==='z','F1 im Zeichenprogramm zeigt den Reiter „Zeichnen“',String(r));
+ // Bemaßung Radius: beide Knöpfe; Spiegeln: Vorgabe markiert
+ await fresh();await C('K','0;0','20');await C('BR');await p.evaluate(()=>__cad.adv({e:__cad.S.ents[0],p:[20,0]}));r=await p.evaluate(()=>[...document.querySelectorAll('#optbar [data-opt]')].map(b=>b.textContent).join());ok(r==='Radius,Durchmesser','Radius-/Durchmesser-Bemaßung: zwei verständliche Knöpfe',r);await p.keyboard.press('Escape');
+ await p.evaluate(()=>{__cad.sel.clear();__cad.sel.add(__cad.S.ents[0].id)});await C('SP','0;-50','0;50');r=await p.evaluate(()=>{const d=document.querySelector('#optbar .def');return d&&d.dataset.opt});ok(r==='N','Vorgabe bei den Optionsknöpfen ist markiert',String(r));await p.keyboard.press('Escape');
+ // Anlegen bei 90°: bleibt auf seiner Seite, „Andere Seite“
+ await fresh();await C('R','0;0','300;200','R','320;50','360;150');await p.keyboard.press('Escape');
+ await C('AN');await p.evaluate(()=>{const S=__cad.S;__cad.adv({e:S.ents[1],p:[340,50]});__cad.adv({e:S.ents[0],p:[300,100]})});await C('0');
+ const bx=()=>p.evaluate(()=>{const e=__cad.S.ents[1],xs=e.pts.map(q=>q[0]);return[Math.min(...xs),Math.max(...xs)]});r=await bx();ok(Math.abs(r[0]-300)<1e-6&&r[1]>r[0],'Anlegen bei 90°: Teil bleibt rechts neben der Platte',r.join());
+ await C('A');r=await bx();ok(Math.abs(r[1]-300)<1e-6&&r[0]<r[1],'„Andere Seite“ legt es auf die andere Seite der Kante',r.join());
+ // SVG-Fenster: Plattenstärke und Außenkonturen durchfräsen
+ await fresh();await C('R','0;0','300;200','R','500;0','600;100');await p.keyboard.press('Escape');await p.evaluate(()=>__cad.act('exportSvg'));await p.fill('#expThick','19');await p.keyboard.press('Enter');
+ r=await p.evaluate(()=>({fix:getComputedStyle(document.getElementById('expFix')).display,t:document.getElementById('expThick').value}));ok(r.fix!=='none'&&r.t==='19','SVG-Fenster: Plattenstärke und Knopf zum Durchfräsen',JSON.stringify(r));
+ await p.click('#expFix');r=await p.evaluate(()=>({cd:__cad.S.ents.map(e=>__cad.cutOf(e).d).join(),w:document.getElementById('expW').textContent}));ok(r.cd==='19.5,19.5'&&!/nur 6 mm tief/.test(r.w),'Außenkonturen auf 19,5 mm gesetzt, Warnung weg',JSON.stringify(r));
+ await p.fill('#expThick','25');await p.keyboard.press('Enter');r=await p.evaluate(()=>__cad.S.def.thick);ok(r===25,'Plattenstärke im SVG-Fenster geändert',String(r));await p.keyboard.press('Escape');
+ await p.evaluate(()=>__cad.act('neu'));r=await p.evaluate(()=>document.getElementById('newInfo').textContent);ok(/^Gelöscht wird/.test(r),'„Neu“ sagt „Gelöscht wird“',r);await p.keyboard.press('Escape');
+ // Öffnen: nichts Lesbares ersetzt die Zeichnung nicht; Ziehen auf das Fenster lädt dazu, wenn der Planer etwas enthält
+ const n28=await p.evaluate(()=>__cad.S.ents.length);
+ await p.setInputFiles('#file',{name:'Lageplan.dxf',mimeType:'application/dxf',buffer:Buffer.from('0\nSECTION\n2\nHEADER\n9\n$INSUNITS\n70\n6\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n0\nLINE\n8\n0\n10\n1500\n20\n0\n11\n1600\n21\n0\n0\nENDSEC\n0\nEOF\n')});await p.waitForTimeout(300);
+ r=await p.evaluate(()=>({n:__cad.S.ents.length,m:document.getElementById('hist').lastChild.textContent}));ok(r.n===n28&&/bleibt unverändert/.test(r.m),'DXF weit außerhalb: Zeichnung bleibt, verständliche Meldung',JSON.stringify(r));
+ await fresh();await p.evaluate(()=>{__cad.kp.commit(()=>{KORPUS.state.cabs[0].b=1234})});
+ await p.evaluate(()=>{const dt=new DataTransfer();dt.items.add(new File([JSON.stringify({ents:[{id:1,t:'line',ly:'0',a:[0,0],b:[10,0]}]})],'x.json',{type:'application/json'}));window.dispatchEvent(new DragEvent('drop',{dataTransfer:dt,bubbles:true,cancelable:true}))});await p.waitForTimeout(300);
+ r=await p.evaluate(()=>({b:__cad.S.korpus&&__cad.S.korpus.cabs[0].b,n:__cad.S.ents.length}));ok(r.b===1234&&r.n===1,'Datei aufs Fenster gezogen: Korpusplaner bleibt, Datei wird dazugeladen',JSON.stringify(r));
+ // Sicherheit: große/präparierte Dateien
+ await fresh();let t1=Date.now();r=await p.evaluate(async()=>{const ents=[];for(let i=0;i<130000;i++)ents.push({id:i+1,t:'line',ly:'0',a:[i%500,i/500|0],b:[i%500+0.5,i/500|0]});const L=[];for(let i=0;i<3000;i++)L.push({n:'E'+i,c:'#ffffff',v:true});
+  await __cad.loadFile(new File([JSON.stringify({ents,layers:L})],'gross.json'),'open');return{n:__cad.S.ents.length,ly:__cad.S.layers.length,nid:__cad.S.nid}});
+ ok(r.n===130000&&r.ly<=1000&&r.nid===130001,'130 000 Objekte und 3000 Ebenen: lässt sich öffnen, Ebenen begrenzt ('+(Date.now()-t1)+' ms)',JSON.stringify(r));await fresh();
+ {let d='0\nSECTION\n2\nBLOCKS\n0\nBLOCK\n2\nB0\n10\n0\n20\n0\n0\nENDBLK\n';for(let k=1;k<=5;k++){d+=`0\nBLOCK\n2\nB${k}\n10\n0\n20\n0\n`;for(let j=0;j<100;j++)d+=`0\nINSERT\n8\n0\n2\nB${k-1}\n10\n0\n20\n0\n`;d+='0\nENDBLK\n'}
+  d+='0\nENDSEC\n0\nSECTION\n2\nENTITIES\n0\nINSERT\n8\n0\n2\nB5\n10\n0\n20\n0\n0\nLINE\n8\n0\n10\n0\n20\n0\n11\n10\n21\n0\n0\nSPLINE\n8\n0\n71\n1500\n10\n0\n20\n0\n10\n1\n20\n1\n0\nENDSEC\n0\nEOF\n';
+  t1=Date.now();await p.setInputFiles('#file',{name:'Bombe.dxf',mimeType:'application/dxf',buffer:Buffer.from(d)});await p.waitForFunction(()=>document.getElementById('fname').textContent.startsWith('Bombe.dxf'),null,{timeout:20000});
+  ok(Date.now()-t1<4000&&(await p.evaluate(()=>__cad.S.ents.length))===1,'DXF mit leeren Block-Schachteln und riesiger Kurve: kein Hängen ('+(Date.now()-t1)+' ms)')}
+ await p.evaluate(()=>{localStorage.setItem('origincad.tpl','[{"n":"x","ents":null},{"n":"<b>ok</b>","ents":[{"t":"circle","ly":"0","c":[0,0],"r":5}]}]')});await p.evaluate(()=>__cad.act('tpl'));r=await p.evaluate(()=>({open:document.getElementById('dTpl').classList.contains('open'),own:document.querySelectorAll('[data-tpldel]').length}));ok(r.open&&r.own===1,'Kaputter Vorlagen-Eintrag sperrt den Vorlagen-Dialog nicht',JSON.stringify(r));
+ await p.evaluate(()=>{document.getElementById('dTpl').classList.remove('open');localStorage.removeItem('origincad.tpl')});
+ r=await p.evaluate(async()=>{await __cad.loadFile(new File([JSON.stringify({ents:[{id:1,t:'pline',ly:'0',pts:[[0,0],[100,0],[120,80],[20,80]],closed:true,rect:true},{id:2,t:'pline',ly:'0',pts:[[0,0],[100,0]],bl:[1,1],closed:true}]})],'alt.json'),'open');return __cad.S.ents.map(e=>(e.rect?'R':'-')+e.pts.length).join()});ok(r==='-4,-4','Alte Dateien: schiefes „Rechteck“ und 2-Punkt-Kontur werden beim Laden repariert',r);
+ {const ctx=await b.newContext({viewport:{width:1440,height:900},serviceWorkers:'block'});const q=await ctx.newPage();const qe=[];q.on('pageerror',e=>qe.push(String(e)));
+  await q.addInitScript(()=>{try{if(!sessionStorage.getItem('x')){sessionStorage.setItem('x',1);localStorage.setItem('origincad.ui','{"tg":{"foo":true,"grid":"ja","__proto__":{"x":1}},"gstep":-1,"pstep":7}')}}catch(e){}});await q.goto(url);await q.waitForFunction(()=>window.__cad,null,{timeout:10000});
+  r=await q.evaluate(()=>({g:document.getElementById('gstep').value,grid:__cad.tg.grid,foo:'foo' in __cad.tg}));ok(qe.length===0&&r.g==='10'&&r.grid===true&&!r.foo,'Präparierte Einstellungen im Browserspeicher: App startet trotzdem',JSON.stringify(r)+qe.join());
+  await q.fill('#gstep','1e-9');await q.keyboard.press('Enter');await q.waitForTimeout(200);r=await q.evaluate(()=>document.getElementById('gstep').value);ok(r==='10','Rasterweite 1e-9 wird abgelehnt',r);await ctx.close()}
+ // 3D: Maßfeld, Rechteck 600,40, letzter Zug nur direkt danach
+ await fresh();await p.click('.mbtn[data-a="raum"]');{const rb=await p.locator('#rm3d').boundingBox(),P3=w=>p.evaluate(w=>RAUM.viewer.project(w),w),clk=async w=>{const s=await P3(w);await p.mouse.move(rb.x+s[0],rb.y+s[1]);await p.mouse.click(rb.x+s[0],rb.y+s[1])};
+  await p.keyboard.press('r');await clk([0,0,0]);await p.keyboard.type('600,40');await p.keyboard.press('Enter');r=await p.evaluate(()=>{const b=RAUM.state.bodies[0];return[b.L,b.B]});ok(r.join()==='600,40','3D-Rechteck „600,40“ wird 600 × 40',r.join());
+  await p.evaluate(()=>RAUM.viewer.fit());await p.keyboard.press('p');await clk([300,20,0]);await p.keyboard.type('19');await p.keyboard.press('Enter');await p.keyboard.type('25');await p.keyboard.press('Enter');await p.keyboard.type('30');await p.keyboard.press('Enter');
+  r=await p.evaluate(()=>RAUM.state.bodies[0].H);ok(r===30,'Letzten Zug zweimal hintereinander korrigiert (19 → 25 → 30)',String(r));
+  await p.keyboard.press('t');await p.keyboard.press('p');await p.keyboard.type('55');await p.keyboard.press('Enter');r=await p.evaluate(()=>RAUM.state.bodies[0].H);ok(r===30,'Nach Werkzeugwechsel ändert eine Zahl den alten Zug nicht mehr',String(r));
+  await p.evaluate(()=>{document.getElementById('rmvcb').value='720'});await p.click('#rmvcb');r=await p.evaluate(()=>{const e=document.getElementById('rmvcb');return[e.selectionStart,e.selectionEnd]});ok(r[0]===0&&r[1]===3,'Antippen des Maßfelds markiert die Zahl (Tippen ersetzt sie)',r.join());
+  await p.keyboard.press('Escape');await p.click('[data-rm="close"]')}
+ // Darstellung: SVG-Knopf am iPad Pro quer, Menüs am iPad hochkant
+ for(const[w,h,sel,txt]of[[1194,834,'.acts [data-a="exportSvg"]','SVG-Knopf ganz sichtbar'],[1280,800,'.acts [data-a="exportSvg"]','SVG-Knopf ganz sichtbar'],[768,1024,'.dd.wide','Menüs „Zeichnen“ und „Ändern“ sichtbar']]){const q=await b.newPage({viewport:{width:w,height:h}});await q.goto(url);await q.waitForFunction(()=>window.__cad);
+  r=await q.evaluate(s=>[...document.querySelectorAll(s)].map(e=>{const r=e.getBoundingClientRect();return e.offsetParent!==null&&r.width>0&&r.right<=innerWidth+0.5}),sel);ok(r.length>0&&r.every(Boolean),`${w} × ${h}: ${txt}`,JSON.stringify(r));await q.close()}
+ await fresh();
+
  console.log('Sicherheit');
  r=await p.evaluate(async()=>{await document.fonts.ready;return{sans:document.fonts.check('500 14px "IBM Plex Sans"'),mono:document.fonts.check('14px "IBM Plex Mono"'),csp:!!document.querySelector('meta[http-equiv="Content-Security-Policy"]'),ext:[...document.querySelectorAll('link[href^="http"],script[src^="http"]')].length}});
  ok(r.sans&&r.mono&&r.csp&&r.ext===0,'Schrift aus dem Projekt geladen, nichts von fremden Servern, Sicherheitsregel gesetzt',JSON.stringify(r));

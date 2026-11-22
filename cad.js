@@ -28,6 +28,8 @@ function ev(s){s=s.replace(/\s+/g,'');let i=0;
 /* ---------- Geladene Daten prüfen (Dateien und Browserspeicher sind nicht vertrauenswürdig) ---------- */
 const LIM=1e6,okN=(v,lo=-LIM,hi=LIM)=>typeof v==='number'&&Number.isFinite(v)&&v>=lo&&v<=hi,okP=p=>Array.isArray(p)&&p.length===2&&okN(p[0])&&okN(p[1]);
 const okStr=(v,n=120)=>typeof v==='string'?v.slice(0,n):'';
+/* echtes achsparalleles Rechteck (nur dann darf es als Rechteck bearbeitet werden) */
+const isAxRect=o=>{const p=o.pts;if(!o.closed||p.length!==4||(o.bl&&o.bl.some(v=>Math.abs(v)>1e-9)))return false;for(let i=0;i<4;i++){const a=p[i],b=p[(i+1)%4];if(Math.abs(a[0]-b[0])>1e-6&&Math.abs(a[1]-b[1])>1e-6)return false}return new Set(p.map(q=>q[0].toFixed(6))).size===2&&new Set(p.map(q=>q[1].toFixed(6))).size===2};
 function cleanEnt(e){if(!e||typeof e!=='object')return null;const o={t:e.t,ly:okStr(e.ly,60)||'0'};
  switch(e.t){
  case'line':if(!okP(e.a)||!okP(e.b))return null;o.a=[...e.a];o.b=[...e.b];break;
@@ -35,18 +37,20 @@ function cleanEnt(e){if(!e||typeof e!=='object')return null;const o={t:e.t,ly:ok
  case'arc':if(!okP(e.c)||!okN(e.r,1e-6,LIM)||!okN(e.a0,-1e3,1e3)||!okN(e.a1,-1e3,1e3))return null;Object.assign(o,{c:[...e.c],r:e.r,a0:e.a0,a1:e.a1});break;
  case'slot':if(!okP(e.a)||!okP(e.b)||!okN(e.r,1e-6,LIM))return null;Object.assign(o,{a:[...e.a],b:[...e.b],r:e.r});break;
  case'pline':{if(!Array.isArray(e.pts)||e.pts.length<2||e.pts.length>200000||!e.pts.every(okP))return null;o.pts=e.pts.map(p=>[...p]);o.closed=!!e.closed;if(e.rect)o.rect=true;
-  if(Array.isArray(e.bl)){if(!e.bl.every(v=>okN(v,-1e3,1e3)))return null;o.bl=e.bl.slice(0,o.pts.length)}break}
+  if(Array.isArray(e.bl)){if(!e.bl.every(v=>okN(v,-1e3,1e3)))return null;o.bl=e.bl.slice(0,o.pts.length)}
+  if(o.rect&&!isAxRect(o))delete o.rect;fix2(o);break}
  case'text':if(!okP(e.p)||!okN(e.h,0.01,1e4))return null;Object.assign(o,{p:[...e.p],s:okStr(e.s,500)||' ',h:e.h,a:okN(e.a,-1e3,1e3)?e.a:0});break;
  case'xline':if(!okP(e.p)||!okP(e.d)||Math.hypot(...e.d)<1e-9)return null;o.p=[...e.p];o.d=nrm(e.d);break;
  case'dim':if(!okP(e.p))return null;if(e.m==='rad'||e.m==='dia'){if(!okP(e.c)||!okN(e.r,1e-6,LIM))return null;Object.assign(o,{c:[...e.c],r:e.r,p:[...e.p],m:e.m});break}
   if(!okP(e.a)||!okP(e.b))return null;Object.assign(o,{a:[...e.a],b:[...e.b],p:[...e.p],m:['h','v','al'].includes(e.m)?e.m:'al'});break;
  default:return null}
  if(typeof e.ct==='string'&&Object.prototype.hasOwnProperty.call(CUTS,e.ct))o.ct=e.ct;if(okN(e.cd,0.01,1000))o.cd=e.cd;if(okN(e.tool,0.01,200))o.tool=e.tool;return o}
-function cleanLayers(ls){const out=[];for(const l of Array.isArray(ls)?ls:[]){const n=okStr(l&&l.n,60);if(!n||out.some(q=>q.n===n))continue;out.push({n,c:/^#[0-9a-f]{6}$/i.test(l.c)?l.c:'#c9ced6',v:l.v!==false})}return out.length?out:DEF_LAYERS()}
+const MAXLY=1000;
+function cleanLayers(ls){const out=[],seen=new Set();for(const l of Array.isArray(ls)?ls:[]){if(out.length>=MAXLY)break;const n=okStr(l&&l.n,60);if(!n||seen.has(n))continue;seen.add(n);out.push({n,c:/^#[0-9a-f]{6}$/i.test(l.c)?l.c:'#c9ced6',v:l.v!==false})}return out.length?out:DEF_LAYERS()}
 /* ganze Zeichnung prüfen; Korpusplaner und 3D-Modus prüfen ihre Teile selbst (cleanDoc.korpus / cleanDoc.raum) */
 function cleanDoc(o){const ents=[],seen=new Set();let id=1;for(const e of(Array.isArray(o.ents)?o.ents:[]).slice(0,500000)){const c=cleanEnt(e);if(!c)continue;const k=Number.isInteger(e.id)&&e.id>0&&e.id<1e9&&!seen.has(e.id)?e.id:0;ents.push({id:k,...c});if(k)seen.add(k)}
- for(const e of ents){if(!e.id){while(seen.has(id))id++;e.id=id;seen.add(id)}}id=Math.max(1,...ents.map(e=>e.id+1));
- const layers=cleanLayers(o.layers);for(const e of ents)if(!layers.some(l=>l.n===e.ly))layers.push({n:e.ly,c:'#c9ced6',v:true});
+ for(const e of ents){if(!e.id){while(seen.has(id))id++;e.id=id;seen.add(id)}}id=1;for(const e of ents)if(e.id+1>id)id=e.id+1;
+ const layers=cleanLayers(o.layers),lyN=new Set(layers.map(l=>l.n));for(const e of ents){if(lyN.has(e.ly))continue;if(layers.length<MAXLY){layers.push({n:e.ly,c:'#c9ced6',v:true});lyN.add(e.ly)}else e.ly=layers[0].n}
  const d=o.def||{},def=DEF_CUT();for(const k of Object.keys(def))if(okN(d[k],0.01,1000))def[k]=d[k];
  const r={ents,layers,cur:layers.some(l=>l.n===o.cur)?o.cur:(layers.some(l=>l.n==='Kontur')?'Kontur':layers[0].n),nid:id,def};
  if(o.korpus)r.korpus=window.KORPUS?window.KORPUS.clean(o.korpus):o.korpus;if(o.raum)r.raum=window.RAUM?window.RAUM.clean(o.raum):o.raum;return r}
@@ -207,7 +211,7 @@ function trimEnt(e,p){const pts=[];for(const f of geomEnts())if(f!==e&&f.t!=='te
  const pieces=(ts,span)=>{ts=[...new Set(ts.map(t=>+t.toFixed(9)))].filter(t=>t>1e-6&&t<span-1e-6).sort((a,b)=>a-b);if(!ts.length)return null;return ts};
  if(e.t==='line'){const d=sub(e.b,e.a),L2=dot(d,d),ts=pieces(pts.map(q=>dot(sub(q,e.a),d)/L2),1);if(!ts)return null;const tp=dot(sub(p,e.a),d)/L2;let lo=0,hi=1;for(const t of ts){if(t<tp)lo=t;else{hi=t;break}}
   const o=[];if(lo>1e-6)o.push(mk('line',{a:e.a,b:add(e.a,mul(d,lo))},e.ly));if(hi<1-1e-6)o.push(mk('line',{a:add(e.a,mul(d,hi)),b:e.b},e.ly));return o}
- if(e.t==='circle'){const as=pieces(pts.map(q=>na(ang(sub(q,e.c)))),TAU+1);if(!as||as.length<2)return null;const ap=na(ang(sub(p,e.c)));let lo=as[as.length-1],hi=as[0];for(const a of as){if(a<ap)lo=a;else{hi=a;break}}
+ if(e.t==='circle'){const as=[...new Set(pts.map(q=>{const a=na(ang(sub(q,e.c)));return+(a>TAU-1e-7?0:a).toFixed(9)}))].sort((a,b)=>a-b);if(as.length<2)return null;const ap=na(ang(sub(p,e.c)));let lo=as[as.length-1],hi=as[0];for(const a of as){if(a<ap)lo=a;else{hi=a;break}}
   return[mk('arc',{c:e.c,r:e.r,a0:hi,a1:lo},e.ly)]}
  if(e.t==='arc'){const sp=na(e.a1-e.a0),ts=pieces(pts.map(q=>na(ang(sub(q,e.c))-e.a0)),sp);if(!ts)return null;const tp=na(ang(sub(p,e.c))-e.a0);let lo=0,hi=sp;for(const t of ts){if(t<tp)lo=t;else{hi=t;break}}
   const o=[];if(lo>1e-6)o.push(mk('arc',{c:e.c,r:e.r,a0:e.a0,a1:e.a0+lo},e.ly));if(hi<sp-1e-6)o.push(mk('arc',{c:e.c,r:e.r,a0:e.a0+hi,a1:e.a1},e.ly));return o}
@@ -245,14 +249,15 @@ function offsetEnt(e,d,p){const n=clone(e);delete n.id;
 /* ---------- Undo ---------- */
 const snapS=()=>JSON.stringify(S);
 function updUndo(){const u=document.getElementById('bUndo'),r=document.getElementById('bRedo');if(u)u.disabled=!undoS.length;if(r)r.disabled=!redoS.length}
-function pushUndo(){undoS.push(snapS());if(undoS.length>200)undoS.shift();redoS=[];updUndo()}
-function dropUndo(){S=JSON.parse(undoS.pop());updUndo()}
+let chg=0;
+function pushUndo(){chg++;undoS.push(snapS());if(undoS.length>200)undoS.shift();redoS=[];updUndo()}
+function dropUndo(){chg++;S=JSON.parse(undoS.pop());updUndo()}
 function doCommit(fn){pushUndo();fn();afterChange()}
-function undo(){if(G)cancel(true);if(!undoS.length){log('Nichts rückgängig zu machen.');return}redoS.push(snapS());S=JSON.parse(undoS.pop());sel.clear();log('Rückgängig.');afterChange()}
-function redo(){if(G)cancel(true);if(!redoS.length){log('Nichts zu wiederholen.');return}undoS.push(snapS());S=JSON.parse(redoS.pop());sel.clear();afterChange()}
+function undo(){if(G)cancel(true);if(!undoS.length){log('Nichts rückgängig zu machen.');return}chg++;redoS.push(snapS());S=JSON.parse(undoS.pop());sel.clear();log('Rückgängig.');afterChange()}
+function redo(){if(G)cancel(true);if(!redoS.length){log('Nichts zu wiederholen.');return}chg++;undoS.push(snapS());S=JSON.parse(redoS.pop());sel.clear();afterChange()}
 
 /* ---------- Befehle ---------- */
-const STR=prompt=>({k:'str',prompt}),P=(prompt,o={})=>({k:'pt',prompt,...o}),N=(prompt,def)=>({k:'num',prompt:prompt+(def!=null?` <${fmt(def)}>`:''),def}),PK=prompt=>({k:'pick',prompt}),OP=(prompt,opts,def)=>({k:'opt',prompt,opts,def});
+const STR=prompt=>({k:'str',prompt}),P=(prompt,o={})=>({k:'pt',prompt,...o}),N=(prompt,def)=>({k:'num',prompt:prompt+(def!=null?` <${fmt(def)}>`:''),def}),PK=(prompt,o={})=>({k:'pick',prompt,...o}),OP=(prompt,opts,def)=>({k:'opt',prompt,opts,def});
 function* needSel(){let es=[...sel].map(byId).filter(Boolean);if(!es.length)es=yield{k:'sel',prompt:'Objekte wählen (Klick oder Rahmen), dann Enter'};sel.clear();return es||[]}
 const CMDS={
  L:{n:'Linie',g:'Z',i:'M4 20L20 4',*run(){const r0=yield P('Startpunkt');if(!r0.p)return;let p0=r0.p;const first=p0;let c=0;
@@ -289,7 +294,7 @@ const CMDS={
    const set=p=>{const o=[{c:p,r:d/2}];if(PAT){const n=[-dir[1],dir[0]];for(const s of[1,-1])o.push({c:add(add(p,mul(dir,PAT[1])),mul(n,s*PAT[0]/2)),r:4,dw:true})}return o};
    const ref=(yield P('Bezugspunkt anklicken (z. B. Ecke der Tür) · Enter = ohne')).p;
    if(ref)log('Tipp: Topfmitte relativ eingeben, z. B. @21.5,100 (21,5 mm von der Kante, 100 mm hoch).');
-   for(;;){const r=yield P('Topfmitte · Enter = fertig',{base:ref||undefined,prev:p=>set(p).map(h=>tmp('circle',h))});if(!r.p)return;const q=r.p;doCommit(()=>set(q).forEach(h=>S.ents.push(h.dw?hole(h.c,8,Math.min(t,11)):hole(h.c,d,t))))}}
+   for(;;){const r=yield P(ref?'Topfmitte (@ = ab Bezugspunkt, z. B. @22.5;100) · Enter = fertig':'Topfmitte · Enter = fertig',{base:ref||undefined,prev:p=>set(p).map(h=>tmp('circle',h))});if(!r.p)return;const q=r.p;doCommit(()=>set(q).forEach(h=>S.ents.push(h.dw?hole(h.c,8,Math.min(t,11)):hole(h.c,d,t))))}}
   const D=k==='L'?{d:'rowD',n:'rowN',s:'rowS',t:'rowT',name:'Lochreihe'}:{d:'dwD',n:'dwN',s:'dwS',t:'dwT',name:'Dübelbild'};
   const d=yield N('Loch-Ø',mem[D.d]);if(!d||d<=0)return;mem[D.d]=d;const n=yield N('Anzahl Löcher',mem[D.n]);if(!n||n<1)return;mem[D.n]=Math.round(n);
   let sp=0;if(mem[D.n]>1){sp=yield N('Lochabstand',mem[D.s]);if(!sp||sp<=0)return;mem[D.s]=sp}const t=yield N('Tiefe',mem[D.t]);if(t==null||t<=0)return;mem[D.t]=t;
@@ -318,11 +323,13 @@ const CMDS={
  SK:{n:'Skalieren',g:'A',i:'M4 20h7v-7H4zM4 20L20 4M13 4h7v7',*run(){const es=yield* needSel();if(!es.length)return;const b=(yield P('Basispunkt (bleibt stehen)')).p;if(!b)return;
   const k=yield N('Faktor (2 = doppelt, 0.5 = halb, 25.4 = Zoll → mm)',mem.sk);if(!k||k<=0)return;mem.sk=k;doCommit(()=>es.forEach(e=>{Object.assign(e,scaleEnt(e,b,k))}));es.forEach(e=>sel.add(e.id));updProps();render()}},
  AN:{n:'Anlegen an Kante',g:'A',i:'M3 21L21 3M6 12l6-6 4 4-6 6zM14 14l2 2',*run(){
-  let r1,e,s;for(;;){r1=yield PK('Gerade Kante des Teils anklicken, das bewegt werden soll');if(!r1.e)return;e=r1.e;s=edgeAt(e,r1.p);if(s)break;log('Das war ein Bogen – bitte eine gerade Kante anklicken.','e')}hlE=e;
-  let t;for(;;){const r2=yield PK('Zielkante anklicken, an die es angelegt werden soll');if(!r2.e){hlE=null;return}if(r2.e===e){log('Bitte eine Kante eines anderen Objekts anklicken.','e');continue}t=edgeAt(r2.e,r2.p);if(t)break;log('Die Zielkante muss gerade sein – bitte nochmal.','e')}hlE=null;
+  let r1,e,s;for(;;){r1=yield PK('Gerade Kante des Teils anklicken, das bewegt werden soll',{edge:true});if(!r1.e)return;e=r1.e;s=edgeAt(e,r1.p);if(s)break;log('Das war ein Bogen – bitte eine gerade Kante anklicken.','e')}hlSeg=s;
+  let t;for(;;){const r2=yield PK('Zielkante anklicken, an die es angelegt werden soll',{edge:true});if(!r2.e){hlSeg=null;return}if(r2.e===e){log('Bitte eine Kante eines anderen Objekts anklicken.','e');continue}t=edgeAt(r2.e,r2.p);if(t)break;log('Die Zielkante muss gerade sein – bitte nochmal.','e')}hlSeg=null;
   const gap=yield N('Abstand zur Zielkante (0 = bündig)',mem.gap||0);if(gap==null)return;mem.gap=gap;
   const es=sel.has(e.id)?[...sel].map(byId).filter(x=>x&&x.t!=='dim'||x===e):[e];
-  const res=alignTo(es,s,t,gap);doCommit(()=>es.forEach((x,i)=>setAll(x,res[i])));log(`Angelegt: um ${fmtDE(deg(res.rot))}° gedreht${gap?`, ${fmtDE(gap)} mm Abstand`:', bündig'}.`,'ok')}},
+  const orig=es.map(clone),res=alignTo(es,s,t,gap);doCommit(()=>es.forEach((x,i)=>setAll(x,res[i])));log(`Angelegt: um ${fmtDE(deg(res.rot))}° gedreht${gap?`, ${fmtDE(gap)} mm Abstand`:', bündig'}.`,'ok');
+  const r3=yield P('Angelegt.  [A]ndere Seite der Zielkante · Enter = fertig',{opts:['A'],free:true});if(r3.opt!=='A')return;
+  const res2=alignTo(orig,s,t,gap,true);doCommit(()=>es.forEach((x,i)=>setAll(x,res2[i])));log(`Auf die andere Seite gelegt (um ${fmtDE(deg(res2.rot))}° gedreht).`,'ok')}},
  SP:{n:'Spiegeln',g:'A',i:'M12 3v18M9 7L4 17h5zM15 7l5 10h-5z',*run(){const es=yield* needSel();if(!es.length)return;const a=(yield P('Erster Punkt der Spiegelachse')).p;if(!a)return;
   const r=yield P('Zweiter Punkt der Spiegelachse',{base:a,prev:p=>dist(p,a)<1e-9?[]:[tmp('line',{a,b:p}),...es.map(e=>xf(e,mirF(a,p),'mir'))]});if(!r.p||dist(r.p,a)<1e-9)return;const b=r.p;
   const o=yield OP('Original löschen?  [J]a / [N]ein <N>',['J','N'],'N');if(!o)return;
@@ -333,7 +340,7 @@ const CMDS={
  AR:{n:'Abrunden',g:'A',i:'M4 20v-8a8 8 0 0 1 8-8h8',*run(){const r=yield N('Radius',mem.rad);if(r==null||r<0)return;mem.rad=r;const a=yield PK('Erste Linie');if(!a.e)return;hlE=a.e;const b=yield PK('Zweite Linie');hlE=null;if(!b.e)return;doFillet(a,b,r,false)}},
  FA:{less:1,n:'Fasen',g:'A',i:'M4 20v-9l7-7h9',*run(){const r=yield N('Fasenlänge',mem.cha);if(r==null||r<0)return;mem.cha=r;const a=yield PK('Erste Linie');if(!a.e)return;hlE=a.e;const b=yield PK('Zweite Linie');hlE=null;if(!b.e)return;doFillet(a,b,r,true)}},
  ST:{n:'Stutzen',g:'A',i:'M3 12h7M14 12h7M12 3v4M12 17v4M8 8l8 8',*run(){for(;;){const r=yield PK('Teilstück zum Wegschneiden anklicken · Enter = fertig');if(!r.e)return;const e=r.e;if(e.t==='dim')continue;
-  pushUndo();let t=e;const ex=explode(e);if(ex){replace(e,ex);t=nearest(ex,r.p)}const res=trimEnt(t,r.p);if(!res){dropUndo();log('Keine Schnittkante gefunden.','e');render();continue}replace(t,res);afterChange()}}},
+  pushUndo();let t=e;const ex=explode(e);if(ex){replace(e,ex);t=nearest(ex,r.p)}const res=trimEnt(t,r.p);if(!res){dropUndo();log('Keine Schnittkante gefunden.','e');render();continue}for(const n of res)for(const k of['ct','cd','tool'])if(t[k]!=null)n[k]=t[k];replace(t,res);afterChange()}}},
  RK:{less:1,n:'Reihe kopieren',g:'A',i:'M3 9h5v6H3zM10 9h5v6h-5zM17 9h4v6h-4z',*run(){const es=yield* needSel();if(!es.length)return;const c=yield N('Anzahl Spalten (X)',mem.cols);if(!c||c<1)return;const rw=yield N('Anzahl Zeilen (Y)',mem.rows);if(!rw||rw<1)return;
   mem.cols=Math.round(c);mem.rows=Math.round(rw);let dx=0,dy=0;if(mem.cols>1){dx=yield N('Abstand Spalten (X)',mem.dx);if(dx==null)return;mem.dx=dx}if(mem.rows>1){dy=yield N('Abstand Zeilen (Y)',mem.dy);if(dy==null)return;mem.dy=dy}
   doCommit(()=>{for(let i=0;i<mem.cols;i++)for(let j=0;j<mem.rows;j++){if(!i&&!j)continue;es.forEach(e=>S.ents.push(realize(xf(e,mvF([i*dx,j*dy])),e.ly)))}})}},
@@ -348,7 +355,7 @@ const CMDS={
   for(;;){const q=yield P('Nächster Punkt der Kette · Enter = fertig',{base:last,prev:p=>[tmp('dim',{a:last,b:p,p:pl,m,ly:dimLayer()})]});if(!q.p)return;const l0=last,n=q.p;doCommit(()=>S.ents.push(mk('dim',{a:l0,b:n,p:pl,m},dimLayer())));last=n}}},
  BR:{n:'Radius / Durchmesser bemaßen',g:'M',i:'M20 12a8 8 0 1 1-16 0a8 8 0 1 1 16 0M12 12l6-5M15 6l3 1-1 3',*run(){const r=yield PK('Kreis oder Bogen anklicken');if(!r.e)return;
   const q=prims(r.e).filter(x=>x.c).reduce((b,x)=>(!b||dPrim(r.p,x)<dPrim(r.p,b))?x:b,null);if(!q){log('Das ist kein Kreis oder Bogen.','e');return}
-  let m=isFull(q)?'dia':'rad';for(;;){const s=yield P(`Lage des Maßes  ${m==='dia'?'[R]adius statt Durchmesser':'[D]urchmesser statt Radius'}`,{opts:['R','D'],prev:p=>[tmp('dim',{c:q.c,r:q.r,p,m,ly:dimLayer()})]});
+  let m=isFull(q)?'dia':'rad';for(;;){const s=yield P(`Lage des Maßes (${m==='dia'?'Durchmesser':'Radius'})  [R]adius · [D]urchmesser`,{opts:['R','D'],prev:p=>[tmp('dim',{c:q.c,r:q.r,p,m,ly:dimLayer()})]});
    if(s.opt){m=s.opt==='D'?'dia':'rad';continue}if(!s.p)return;const p=s.p;doCommit(()=>S.ents.push(mk('dim',{c:[...q.c],r:q.r,p,m},dimLayer())));return}}},
  MS:{less:1,n:'Abstand messen',g:'M',i:'M3 8h18v8H3zM7 8v3M11 8v4M15 8v3',*run(){const a=(yield P('Erster Punkt')).p;if(!a)return;const r=yield P('Zweiter Punkt',{base:a,prev:p=>[tmp('line',{a,b:p})]});if(!r.p)return;const d=sub(r.p,a);
   log(`Abstand ${fmtDE(len(d))} mm · ΔX ${fmtDE(d[0])} · ΔY ${fmtDE(d[1])} · Winkel ${fmtDE(deg(ang(d)))}°`,'ok')}},
@@ -360,8 +367,8 @@ const CMDS={
  AB:{n:'Abziehen',g:'F',i:'M4 4h16v8h-8v8H4zM15 15h5v5h-5z',*run(){yield* boolRun('ctDifference')}},
  SM:{less:1,n:'Schnittmenge',g:'F',i:'M9 5a7 7 0 1 0 0 14a7 7 0 1 0 0-14M15 5a7 7 0 1 0 0 14a7 7 0 1 0 0-14',*run(){yield* boolRun('ctIntersection')}},
  VO:{n:'Vorlage einfügen',g:'F',i:'M5 4h10l4 4v12H5zM15 4v4h4M9 13h6M12 10v6',now:()=>openTpls()},
- EX:{less:1,n:'SVG für Origin ausgeben',g:'F',i:'M12 4v11M8 11l4 4 4-4M5 19h14',now:()=>openExport()},
- DD:{less:1,n:'3D-Ansicht',g:'F',i:'M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12L4 7.5M12 12v9',now:()=>open3D()},
+ EX:{less:1,n:'SVG für Origin',g:'F',i:'M12 4v11M8 11l4 4 4-4M5 19h14',now:()=>openExport()},
+ DD:{less:1,n:'3D-Vorschau',g:'F',i:'M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12L4 7.5M12 12v9',now:()=>open3D()},
  PR:{n:'Drucken / PDF',now:()=>printDrawing()},
  ZA:{n:'Zoom alles',now:()=>zoomAll()},
 };
@@ -373,15 +380,18 @@ const CTRL={L:'L',P:'PL',R:'R',K:'K',B:'B',G:'TX',H:'BB',V:'V',C:'KO',D:'D',I:'S
 const CTRL_OF=Object.fromEntries(Object.entries(CTRL).map(([k,v])=>[v,k]));
 const keyLabel=k=>CTRL_OF[k]?'Strg+'+CTRL_OF[k]:k;
 const alias=t=>{const u=t.toUpperCase();return CMDS[u]?u:ALIAS[u]||null};
-let hlE=null;
+let hlE=null,hlSeg=null;
 /* gerade Kante eines Objekts an der Klickstelle (Linie, Polylinien-Segment, Rechteck-, Langloch-Seite, Hilfslinie) */
 function edgeAt(e,p){const ls=prims(e).filter(q=>q.a&&dist(q.a,q.b)>1e-6);if(!ls.length)return null;let b=null,bd=Infinity;for(const q of ls){const d=dSeg(p,q.a,q.b);if(d<bd){bd=d;b=q}}
  /* liegt ein Bogen näher, war keine gerade Kante gemeint */for(const q of prims(e))if(!q.a&&dPrim(p,q)<bd-1e-6)return null;return b}
 /* Objekte so drehen und schieben, dass Kante s auf der Geraden durch Kante t liegt (mit Abstand gap, zur Seite des Objekts hin) */
-function alignTo(es,s,t,gap){const ts=ang(sub(s.b,s.a)),tt=ang(sub(t.b,t.a));let r=tt-ts;while(r>Math.PI/2)r-=Math.PI;while(r<=-Math.PI/2)r+=Math.PI;
- const m=mid(s.a,s.b),rot=es.map(x=>xf(x,rotF(m,r),'rot')),u=nrm(sub(t.b,t.a)),n=[-u[1],u[0]],dd=dot(sub(m,t.a),n);
- const bb=bbox(rot.filter(x=>x.t!=='dim'))||[m[0],m[1],m[0],m[1]],c=[(bb[0]+bb[2])/2,(bb[1]+bb[3])/2],side=Math.sign(dot(sub(c,t.a),n)-dd)||Math.sign(dd)||1;
- const mv=mul(n,-dd+side*gap),out=rot.map(x=>xf(x,mvF(mv)));out.rot=r;return out}
+function alignTo(es,s,t,gap,flip){const ts=ang(sub(s.b,s.a)),tt=ang(sub(t.b,t.a));let r=tt-ts;while(r>Math.PI/2)r-=Math.PI;while(r<=-Math.PI/2)r+=Math.PI;
+ const m=mid(s.a,s.b),u=nrm(sub(t.b,t.a)),n=[-u[1],u[0]],dd=dot(sub(m,t.a),n),cen=l=>{const bb=bbox(l.filter(x=>x.t!=='dim'))||[m[0],m[1],m[0],m[1]];return[(bb[0]+bb[2])/2,(bb[1]+bb[3])/2]};
+ const side0=Math.sign(dot(sub(cen(es),t.a),n)),make=r=>{const rot=es.map(x=>xf(x,rotF(m,r),'rot'));return{r,rot,side:Math.sign(dot(sub(cen(rot),t.a),n)-dd)||Math.sign(dd)||1}};
+ /* genau quer (90°): Drehrichtung so wählen, dass das Teil auf seiner bisherigen Seite der Zielkante bleibt */
+ let R=make(r);if(Math.abs(Math.abs(r)-Math.PI/2)<0.01&&side0&&R.side!==side0){const R2=make(r>0?r-Math.PI:r+Math.PI);if(R2.side===side0)R=R2}
+ /* „Andere Seite“: um 180° weiterdrehen, die Kante bleibt auf der Zielgeraden */if(flip)R=make(R.r>0?R.r-Math.PI:R.r+Math.PI);
+ const mv=mul(n,-dd+R.side*gap),out=R.rot.map(x=>xf(x,mvF(mv)));out.rot=R.r;return out}
 const holeTool=d=>S.def.tool<d-1e-9?{}:{tool:Math.min(3,+(d*0.6).toFixed(1))};
 /* lose Linien/Bögen/offene Polylinien zu Polylinien verketten */
 function joinEnts(es,tol=0.05){const pc=[];
@@ -435,8 +445,8 @@ const REPEAT=new Set(['L','PL','R','K','B','PG','LL','BM','BA','BR','MS']);let g
 let steps=0;
 function run(key,rep){const c=CMDS[key];if(!c)return;if(c.now){c.now();return}if(!rep)cancel(true);lastCmd=curCmd=key;again=!!rep;gotPt=false;steps=0;if(!rep)log('» '+c.n,'ok');G=c.run();adv(undefined)}
 function adv(v){if(!G)return;if(v!==undefined)steps++;if(v&&(v.p||v.e))gotPt=true;let r;try{r=G.next(v)}catch(err){console.error(err);log('Fehler: '+err.message,'e');r={done:true}}
- if(r.done){const k=curCmd;G=null;REQ=null;curCmd=null;hlE=null;hlSet.clear();if(k&&REPEAT.has(k)&&gotPt){run(k,true);return}}else{REQ=r.value;if(['num','opt','str'].includes(REQ.k))inp.focus()}updPrompt();updTools();computeSnap();render()}
-function cancel(silent){hlSet.clear();if(G){try{G.return()}catch(e){}G=null;REQ=null;curCmd=null;hlE=null;if(!silent)log('*Abbruch*')}else if(!silent){sel.clear();updProps()}updPrompt();updTools();render()}
+ if(r.done){const k=curCmd;G=null;REQ=null;curCmd=null;hlE=null;hlSeg=null;hlSet.clear();if(k&&REPEAT.has(k)&&gotPt){run(k,true);return}}else{REQ=r.value;if(['num','opt','str'].includes(REQ.k))inp.focus()}updPrompt();updTools();computeSnap();render()}
+function cancel(silent){hlSet.clear();if(G){try{G.return()}catch(e){}G=null;REQ=null;curCmd=null;hlE=null;hlSeg=null;if(!silent)log('*Abbruch*')}else if(!silent){sel.clear();updProps()}updPrompt();updTools();render()}
 
 /* ---------- UI-Elemente ---------- */
 const $=id=>document.getElementById(id);
@@ -445,7 +455,8 @@ function log(t,c=''){const d=document.createElement('div');d.textContent=t;if(c)
 function updPrompt(){$('prompt').textContent=REQ?REQ.prompt+(again&&!gotPt?' · Esc = Befehl beenden':'')+':':'Befehl:';
  /* Wahlmöglichkeiten wie [L]ochreihe als Knöpfe (für das iPad ohne Tastatur) */
  const ob=$('optbar'),opts=REQ&&REQ.opts||[];if(!opts.length){ob.innerHTML='';return}const lab={};for(const m of REQ.prompt.matchAll(/\[([A-ZÄÖÜ0-9])\]([A-Za-zÄÖÜäöüß0-9\-]*)(?:\s+([A-Za-zÄÖÜäöüß\-]+))?/g))lab[m[1]]=m[2]?m[1]+m[2]:(m[3]||m[1]);
- ob.innerHTML=opts.map(o=>`<button type="button" data-opt="${esc(o)}">${esc(lab[o]||o)}</button>`).join('')}
+ const dm=REQ.prompt.match(/<([A-ZÄÖÜ0-9])>/),df=REQ.k==='opt'&&REQ.def?REQ.def:dm&&dm[1];
+ ob.innerHTML=opts.map(o=>{const l=lab[o]||o,h=l[0]===o&&l.length>1?`<u>${esc(o)}</u>${esc(l.slice(1))}`:esc(l);return`<button type="button" data-opt="${esc(o)}"${o===df?' class="def" title="Vorgabe – Enter wählt sie"':''}>${h}</button>`}).join('')}
 const ICON=d=>`<svg viewBox="0 0 24 24"><path d="${d}"/></svg>`;
 function buildTools(){const grp={Z:'Zeichnen',A:'Ändern',M:'Maße',F:'Fräsen'};let h='',last='';const mZ=[],mA=[],mF=[];
  for(const[k,c]of Object.entries(CMDS)){if(!c.g)continue;if(c.g!==last){h+=`<div class="grp">${grp[c.g]}</div>`;last=c.g}
@@ -510,7 +521,7 @@ for(const[id,k]of[['d_tool','tool'],['d_depth','depth']]){const el=$(id);el.addE
 /* Ebenen */
 const EYE='<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',EYEX='<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM4 4l16 16"/></svg>';
 const DEL='<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
-function updLayers(){$('layers').innerHTML=S.layers.map((l,i)=>{const c=S.ents.filter(e=>e.ly===l.n).length;return`<div class="ly ${l.n===S.cur?'cur':''}"><input type="radio" name="curly" data-i="${i}" data-a="cur" ${l.n===S.cur?'checked':''} aria-label="Aktuelle Ebene ${esc(l.n)}">
+function updLayers(){const cn=new Map();for(const e of S.ents)cn.set(e.ly,(cn.get(e.ly)||0)+1);$('layers').innerHTML=S.layers.map((l,i)=>{const c=cn.get(l.n)||0;return`<div class="ly ${l.n===S.cur?'cur':''}"><input type="radio" name="curly" data-i="${i}" data-a="cur" ${l.n===S.cur?'checked':''} aria-label="Aktuelle Ebene ${esc(l.n)}">
  <input type="color" value="${esc(l.c)}" data-i="${i}" data-a="col" aria-label="Farbe"><span class="lyn" title="${esc(l.n)}">${esc(l.n)} <span class="cnt">${c}</span></span>
  <button data-i="${i}" data-a="vis" aria-label="Sichtbar">${l.v?EYE:EYEX}</button><button data-i="${i}" data-a="del" aria-label="Ebene löschen" ${c||l.n==='0'?'disabled style="opacity:.25"':''}>${DEL}</button></div>`}).join('');
  $('cnt').textContent=S.ents.length+' Objekte';const g=$('t_guide');if(g)g.classList.toggle('on',S.cur==='Hilfslinien')}
@@ -525,7 +536,7 @@ $('addly').addEventListener('submit',e=>{e.preventDefault();const n=$('lyname').
 const w2s=p=>[p[0]*view.s+view.ox,-p[1]*view.s+view.oy],s2w=s=>[(s[0]-view.ox)/view.s,(view.oy-s[1])/view.s];
 function zoomAll(){const W=cv.clientWidth,H=cv.clientHeight,b=bbox(S.ents.filter(vis));if(W<2||H<2)return;if(!b){view.s=1.2;view.ox=W*.2;view.oy=H*.8;render();return}
  const w=Math.max(b[2]-b[0],10),h=Math.max(b[3]-b[1],10);view.s=Math.min(W/(w*1.25),H/(h*1.25));view.ox=W/2-(b[0]+w/2)*view.s;view.oy=H/2+(b[1]+h/2)*view.s;render()}
-function hit(p){const tol=7/view.s;let best=null,bd=tol;for(const e of S.ents){if(!vis(e))continue;const d=dEnt(p,e);if(d<bd){bd=d;best=e}}return best}
+function hit(p){const tol=(lastPT==='touch'?20:7)/view.s;let best=null,bd=tol;for(const e of S.ents){if(!vis(e))continue;const d=dEnt(p,e);if(d<bd){bd=d;best=e}}return best}
 function orthoP(p){const b=REQ&&REQ.base;if(!tg.ortho||!b)return p;const d=sub(p,b);return Math.abs(d[0])>=Math.abs(d[1])?[p[0],b[1]]:[b[0],p[1]]}
 /* Winkelfang: zieht die Richtung auf 0°, 45°, 90° … sobald man nah dran ist */
 function polarP(p){const b=REQ&&REQ.base;if(!tg.polar||tg.ortho||!b)return null;const d=sub(p,b),L=len(d);if(L*view.s<6)return null;
@@ -560,6 +571,7 @@ function drawDimText(e,col){const g=dimGeom(e);let th=-g.th;if(th>Math.PI/2+1e-6
 function drawGrid(){if(!tg.grid||!(view.s>1e-6)||!Number.isFinite(view.s))return;let g=gstep;let k=0;while(g*view.s<9&&k++<12)g*=(String(g/gstep).startsWith('1')||String(g/gstep).startsWith('5'))?2:2.5;const maj=g*5;
  const [x0,y1]=s2w([0,0]),[x1,y0]=s2w([W,H]);
  for(const[step,a]of[[g,.05],[maj,.11]]){ctx.strokeStyle=`rgba(200,215,230,${a})`;ctx.lineWidth=1;ctx.beginPath();
+  if(!((x1-x0)/step<3000&&(y1-y0)/step<3000)){ctx.stroke();continue}
   for(let x=Math.ceil(x0/step)*step;x<=x1;x+=step){const s=Math.round(w2s([x,0])[0])+.5;ctx.moveTo(s,0);ctx.lineTo(s,H)}
   for(let y=Math.ceil(y0/step)*step;y<=y1;y+=step){const s=Math.round(w2s([0,y])[1])+.5;ctx.moveTo(0,s);ctx.lineTo(W,s)}ctx.stroke()}}
 function drawSnap(h){const s=w2s(h.p),r=6;ctx.strokeStyle='#ffb020';ctx.lineWidth=2;ctx.setLineDash([]);ctx.beginPath();
@@ -581,7 +593,9 @@ function render(){if(!W)return;dimTexts=[];ctx.setTransform(dpr,0,0,dpr,0,0);ctx
  ctx.setTransform(dpr*view.s,0,0,-dpr*view.s,dpr*view.ox,dpr*view.oy);ctx.lineCap='round';ctx.lineJoin='round';
  if(tg.cam)drawCam();
  for(const e of S.ents){if(!vis(e))continue;const l=lyr(e.ly);drawEnt(e,tg.cam&&e.t!=='dim'?CUTCOL[cutOf(e).eff]:l?l.c:'#ddd',sel.has(e.id)?1.6:1.3,sel.has(e.id)?[7,5]:null);if(sel.has(e.id))drawEnt(e,'rgba(229,72,45,.85)',1.6,[7,5])}
- if(hoverE&&!sel.has(hoverE.id))drawEnt(hoverE,'rgba(255,176,32,.9)',2.6);
+ if(hoverE&&REQ&&REQ.edge){const g=edgeAt(hoverE,cursorW);if(g)drawEnt(tmp('line',g),'rgba(255,176,32,.95)',3.2);else drawEnt(hoverE,'rgba(255,176,32,.35)',1.6,[3,4])}
+ else if(hoverE&&!sel.has(hoverE.id))drawEnt(hoverE,'rgba(255,176,32,.9)',2.6);
+ if(hlSeg)drawEnt(tmp('line',hlSeg),'rgba(255,176,32,.95)',3.2,[6,4]);
  if(hlE)drawEnt(hlE,'rgba(255,176,32,.95)',2.6,[6,4]);
  for(const id of hlSet){const e=byId(id);if(e)drawEnt(e,'rgba(255,176,32,.95)',2.6,[6,4])}
  if(REQ&&REQ.prev&&mouse.in){try{for(const e of REQ.prev(curP))drawEnt(e,'#ffd27a',1.3,[6,4])}catch(err){}}
@@ -646,16 +660,16 @@ cv.addEventListener('wheel',e=>{e.preventDefault();const f=Math.exp(-e.deltaY*(e
 
 /* ---------- Tastatur ---------- */
 function parsePt(t){const base=(REQ&&REQ.base)||lastPt;let rel=false;if(t[0]==='@'){rel=true;t=t.slice(1)}
- if(t.includes('<')){const[a,b]=t.split('<'),d=ev(a),w=ev(b);if(d==null||w==null)return null;const o=base||[0,0];return{p:pol(rel||base?o:[0,0],d,w*D2R)}}
+ if(t.includes('<')){const[a,b]=t.split('<'),d=ev(a.replace(/,/g,'.')),w=ev((b||'').replace(/,/g,'.'));if(d==null||w==null)return null;const o=base||[0,0];return{p:pol(rel||base?o:[0,0],d,w*D2R)}}
  if(t.includes(';')){const[a,b]=t.split(';'),x=ev(a.replace(/,/g,'.')),y=ev((b||'').replace(/,/g,'.'));if(x==null||y==null)return null;if(rel){if(!base)return null;return{p:add(base,[x,y])}}return{p:[x,y]}}
  /* wird eine einzelne Zahl erwartet, ist „12,5“ eine Kommazahl (Punkte dann mit Strichpunkt: 12;5) */
  if(!rel&&REQ&&REQ.num&&/^[+-]?\d+,\d+$/.test(t)){const n=parseFloat(t.replace(',','.'));log(`„${t}“ als ${fmtDE(n)} gelesen – einen Punkt gibst du mit Strichpunkt ein, z. B. 12;5`);return{n}}
- if(/[,;]/.test(t)){const[a,b]=t.split(/[,;]/),x=ev(a),y=ev(b);if(x==null||y==null)return null;if(rel){if(!base)return null;return{p:add(base,[x,y])}}return{p:[x,y]}}
+ if(/[,;]/.test(t)){const[a,b]=t.split(/[,;]/),x=ev(a),y=ev(b);if(x==null||y==null)return null;if(!rel&&base&&/^[+-]?\d+,\d+$/.test(t))log(`„${t}“ als Punkt X ${fmtDE(x)} / Y ${fmtDE(y)} gelesen. Meintest du ${t} mm Länge? Dann ${t.replace(',','.')} eingeben.`);if(rel){if(!base)return null;return{p:add(base,[x,y])}}return{p:[x,y]}}
  const n=ev(t);if(n!=null&&!rel)return{n};return null}
 function onEnter(){inp.dataset.raw=inp.value.trim();const t=inp.value.trim();inp.value='';
  if(!REQ){if(!t){if(lastCmd)run(lastCmd);return}const k=alias(t);if(k)run(k);else log('Unbekannter Befehl: '+t+'  (F1 = Hilfe)','e');return}
  if(REQ.k==='str'){adv(inp.dataset.raw||null);return}
- if(t&&REQ.k!=='num'&&!(REQ.opts||[]).includes(t.toUpperCase())&&alias(t)&&!/^[\d@.\-(]/.test(t)){if(steps===0){run(alias(t));return}log(`„${t}“ passt hier nicht – erst den Befehl mit Esc beenden, dann ${CMDS[alias(t)].n} starten.`,'e');return}
+ if(t&&REQ.k!=='num'&&!(REQ.opts||[]).includes(t.toUpperCase())&&alias(t)&&!/^[\d@.\-(]/.test(t)){if(steps===0||REQ.free){run(alias(t));return}log(`„${t}“ passt hier nicht – erst den Befehl mit Esc beenden, dann ${CMDS[alias(t)].n} starten.`,'e');return}
  if(REQ.k==='sel'){const es=[...sel].map(byId).filter(Boolean);if(!es.length){log('Noch nichts gewählt.','e');return}adv(es);return}
  if(REQ.k==='num'){if(!t){adv(REQ.def!=null?REQ.def:null);return}const n=ev(t.replace(/,/g,'.'));if(n==null){log('Bitte eine Zahl eingeben.','e');return}adv(n);return}
  if(REQ.k==='opt'){const o=t?t.toUpperCase():REQ.def;if(REQ.opts.includes(o))adv(o);else log('Bitte '+REQ.opts.join(' oder ')+'.','e');return}
@@ -665,14 +679,15 @@ function onEnter(){inp.dataset.raw=inp.value.trim();const t=inp.value.trim();inp
  const p=parsePt(t);if(p){if(p.n!=null){if(REQ.num){adv({n:p.n});return}if(!REQ.base){log('Erst einen Punkt setzen – oder X,Y eingeben.','e');return}
    let dir=polarHit?polarHit.u:sub(orthoP(cursorW),REQ.base);if(len(dir)<1e-9)dir=[1,0];const q=add(REQ.base,mul(nrm(dir),p.n));lastPt=q;adv({p:q});return}
   lastPt=p.p;adv({p:p.p});return}
- log('Eingabe nicht verstanden: '+t,'e')}
+ const ex=['Punkt anklicken','X;Y (z. B. 100;50)'];if(REQ.base)ex.push('@dX;dY','Länge (z. B. 250)','Länge<Winkel (z. B. 250<30)');else if(REQ.num)ex.push('eine Zahl');if((REQ.opts||[]).length)ex.push('Buchstabe '+REQ.opts.join(' / '));
+ log(`„${t}“ nicht verstanden. Möglich: ${ex.join(' · ')}`,'e')}
 let prevLy='Kontur';
 function toggleGuide(){if(S.cur==='Hilfslinien'){S.cur=lyr(prevLy)&&prevLy!=='Hilfslinien'?prevLy:lyr('Kontur')?'Kontur':S.layers[0].n}else{prevLy=S.cur;if(!lyr('Hilfslinien'))S.layers.push({n:'Hilfslinien',c:'#6f9cff',v:true});S.cur='Hilfslinien'}
  geoVer++;save();updLayers();log(S.cur==='Hilfslinien'?'Ab jetzt wird auf „Hilfslinien“ gezeichnet (blau, wird nicht gefräst). Shift+H schaltet zurück.':'Ab jetzt wird wieder auf „'+S.cur+'“ gezeichnet.','ok')}
 function selectMode(){inp.value='';const was=!!G;cancel(true);mouse.in&&computeSnap();log(was?'Auswahlmodus: Befehl beendet – jetzt Objekte anklicken oder Rahmen aufziehen.':'Auswahlmodus: Objekte anklicken oder Rahmen aufziehen. Shift+Klick nimmt wieder heraus.');updTools();render()}
 function act(a){const T={osnap:1,polar:1,ortho:1,grid:1,gsnap:1,cam:1};if(T[a]){tg[a]=!tg[a];log(({osnap:'Objektfang',polar:'Winkelfang',ortho:'Nur gerade',grid:'Raster',gsnap:'Rasterfang',cam:'Fräsvorschau'})[a]+(tg[a]?' an':' aus')+(a==='cam'&&tg[a]?' – gestrichelt: Weg der Fräsermitte · rot: hier bleibt Material stehen':''));updTools();computeSnap();render();saveUI();return}
  ({raum:()=>window.RAUM&&window.RAUM.open(),drucken:printDrawing,korpus:()=>window.KORPUS&&window.KORPUS.open(),view3d:open3D,guide:toggleGuide,select:selectMode,enter:onEnter,esc:()=>{inp.value='';cancel(false)},neu:()=>askReplace('neu'),oeffnen:()=>askReplace('open'),importieren:()=>{fileMode='import';$('file').click()},
-  exportSvg:openExport,exportDxf:exportDXF,tpl:openTpls,tplSave:openSaveTpl,speichern:saveFile,undo,redo,zoomAll,help:()=>openHelp(),
+  exportSvg:openExport,exportDxf:exportDXF,tpl:openTpls,tplSave:openSaveTpl,speichern:saveFile,undo,redo,zoomAll,help:()=>openHelp('z'),
   alle:()=>{S.ents.filter(vis).forEach(e=>sel.add(e.id));updProps();render()}})[a]?.()}
 window.addEventListener('keydown',e=>{if(window.RAUM&&window.RAUM.isOpen()){window.RAUM.key(e);return}if(window.KORPUS&&window.KORPUS.isOpen()){window.KORPUS.key(e);return}
  const t=e.target,inProp=t!==inp&&(t.tagName==='INPUT'||t.tagName==='SELECT'||t.tagName==='TEXTAREA');
@@ -690,8 +705,9 @@ window.addEventListener('keydown',e=>{if(window.RAUM&&window.RAUM.isOpen()){wind
  if(e.shiftKey&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&(e.code==='KeyH'||e.key==='H')&&!inp.value&&!(REQ&&REQ.k==='str')){e.preventDefault();toggleGuide();return}
  if(e.key==='Enter'){e.preventDefault();onEnter();return}
  if(e.key===' '&&!inp.value){e.preventDefault();if(!e.repeat){spaceDown=true;spaceUsed=false}return}
- if((e.key==='Delete'||e.key==='Backspace')&&!inp.value&&!REQ&&sel.size){e.preventDefault();run('E');return}
+ if((e.key==='Delete'||e.key==='Backspace')&&!e.repeat&&!inp.value&&Date.now()-typedAt>800&&!REQ&&sel.size){e.preventDefault();run('E');return}
  if(e.key.length===1&&t!==inp)inp.focus()});
+let typedAt=0;inp.addEventListener('input',()=>{typedAt=Date.now()});
 window.addEventListener('keyup',e=>{if(e.key===' '&&spaceDown){spaceDown=false;if(!spaceUsed&&!inp.value)onEnter()}});
 
 /* Menüs & Knöpfe */
@@ -703,7 +719,7 @@ document.addEventListener('click',e=>{const dd=e.target.closest('.dd>button');if
 document.querySelectorAll('.menu .dd').forEach(d=>d.addEventListener('mouseenter',()=>{if(document.querySelector('.dd.open')&&!d.classList.contains('open')){closeMenus();d.classList.add('open')}}));
 const tip=$('tip');document.addEventListener('mouseover',e=>{const b=e.target.closest('[data-tip]');if(!b){tip.style.display='none';return}const r=b.getBoundingClientRect();tip.textContent=b.dataset.tip;tip.style.display='block';tip.style.left=(r.right+8)+'px';tip.style.top=(r.top+r.height/2-13)+'px'});
 $('pstep').addEventListener('change',e=>{pstep=+e.target.value||45;saveUI();computeSnap();render()});
-$('gstep').addEventListener('change',e=>{const v=ev(e.target.value.replace(',','.'));if(v>0){gstep=v;saveUI();render()}else e.target.value=gstep});
+$('gstep').addEventListener('change',e=>{const v=ev(e.target.value.replace(',','.'));if(okN(v,0.01,10000)){gstep=v;saveUI();render()}else e.target.value=gstep});
 
 /* ---------- Dateien ---------- */
 let fileName='Zeichnung.json';
@@ -715,7 +731,7 @@ $('copyB').addEventListener('click',async()=>{try{await navigator.clipboard.writ
 let replaceMode='neu';
 function docSummary(){const o=[];if(S.ents.length)o.push(S.ents.length+' Objekt'+(S.ents.length>1?'e':'')+' in der Zeichnung');if(S.korpus&&S.korpus.cabs&&S.korpus.cabs.length)o.push(S.korpus.cabs.length+(S.korpus.cabs.length>1?' Korpusse':' Korpus')+' im Korpusplaner');if(S.raum&&S.raum.bodies&&S.raum.bodies.length)o.push(S.raum.bodies.length+' Körper im 3D-Modus');return o}
 function askReplace(mode){replaceMode=mode;const o=docSummary();if(!o.length){if(mode==='open'){fileMode='open';$('file').click()}else $('newB').click();return}
- $('newT').textContent=mode==='open'?'Andere Datei öffnen?':'Neue Zeichnung?';$('newInfo').textContent=`Ersetzt wird: ${o.join(', ')}. Rückgängig (Strg+Z) holt es zurück, solange das Fenster offen bleibt – sicherer ist „Vorher speichern“.`;
+ $('newT').textContent=mode==='open'?'Andere Datei öffnen?':'Neue Zeichnung?';$('newInfo').textContent=`${mode==='open'?'Ersetzt':'Gelöscht'} wird: ${o.join(', ')}. Rückgängig (Strg+Z) holt es zurück, solange das Fenster offen bleibt – sicherer ist „Vorher speichern“.`;
  $('newB').textContent=mode==='open'?'Datei wählen':'Leeren';$('dNew').classList.add('open')}
 $('newSave').addEventListener('click',()=>saveFile());
 function openHelp(tab){$('dHelp').classList.add('open');if(tab)showHelpTab(tab)}
@@ -726,7 +742,7 @@ $('newB').addEventListener('click',()=>{if(replaceMode==='open'&&$('dNew').class
 
 /* ---------- Bögen wiedererkennen (nach Formen kombinieren, Versatz, Import) ---------- */
 /* pts: Punktfolge; liefert {circle:{c,r}} oder {pts,bl}. Erkannt wird nur, was wirklich fein angenähert ist (Pfeilhöhe ≤ sag). */
-function fitArcs(pts,closed,o={}){const tol=o.tol||0.004,sag=o.sag||0.011,n=pts.length;
+function fitArcs(pts,closed,o={}){const tol=o.tol||0.004,sag=o.sag||0.011,n=pts.length;if(n>20000)return{pts};
  const onC=(c,r,p)=>Math.abs(dist(p,c)-r)<=Math.max(tol,(o.rel||0)*r);
  if(closed&&n>=8){const c=circ3(pts[0],pts[Math.floor(n/3)],pts[Math.floor(2*n/3)]);if(c){const r=dist(c,pts[0]);let ok=r<1e5;
    for(let i=0;i<n&&ok;i++){const q=pts[(i+1)%n];if(!onC(c,r,pts[i])||r-Math.sqrt(Math.max(0,r*r-dist(pts[i],q)**2/4))>sag)ok=false}
@@ -789,24 +805,29 @@ function exportInfo(es){const cnt={},warn=[];let open=0,fail=0,left=0,deep=0;
  if(fail)warn.push(`Bei ${fail} Kontur(en) passt der Fräser gar nicht hinein.`);
  if(left)warn.push(`Bei ${left} Kontur(en) bleibt in Ecken Material stehen (rot in der Fräsvorschau).`);
  if(deep)warn.push(`${deep} Objekt(e) tiefer als 43 mm – so tief kommt die Origin nicht.`);
- const T=S.def.thick||19,flat=es.filter(e=>cutOf(e).eff==='outside'&&cutOf(e).d<T).length;if(flat)warn.push(`${flat} Außenkontur(en) nur ${[...new Set(es.filter(e=>cutOf(e).eff==='outside'&&cutOf(e).d<T).map(e=>fmtDE(cutOf(e).d)))].join(' / ')} mm tief – die Platte ist ${fmtDE(T)} mm (Plattenstärke in der 3D-Vorschau). Zum Heraustrennen die Tiefe auf ${fmtDE(T)} oder etwas mehr stellen.`);
+ const T=S.def.thick||19,flat=es.filter(e=>cutOf(e).eff==='outside'&&cutOf(e).d<T).length;if(flat)warn.push(`${flat} Außenkontur(en) nur ${[...new Set(es.filter(e=>cutOf(e).eff==='outside'&&cutOf(e).d<T).map(e=>fmtDE(cutOf(e).d)))].join(' / ')} mm tief – die Platte ist ${fmtDE(T)} mm. Zum Heraustrennen die Tiefe auf ${fmtDE(T)} oder etwas mehr stellen (Knopf oben).`);
  const loose=es.filter(e=>(e.t==='line'||e.t==='arc')&&cutOf(e).eff==='online').length;if(loose>=3)warn.push(`${loose} einzelne Linien/Bögen – gehören sie zu einer Kontur, vorher „Verbinden“ (VB).`);
  return{cnt,warn}}
 function openExport(){const hasSel=[...sel].some(id=>{const e=byId(id);return e&&e.t!=='dim'});$('expSelRow').style.display=hasSel?'':'none';$('expSel').checked=false;updExport();$('dExp').classList.add('open')}
 function updExport(){const only=$('expSel').checked&&$('expSelRow').style.display!=='none',es=exportList(only),all=exportList(false),b=bbox(es),{cnt,warn}=exportInfo(es);
  const lst=(t,k)=>[...new Set(es.filter(e=>cutOf(e).eff===t).map(e=>cutOf(e)[k]))].sort((x,y)=>x-y).map(fmtDE).join(' / ');
  $('expT').innerHTML=es.length?'<tr><th>Frästyp</th><th>Anzahl</th><th>Tiefe mm</th><th>Fräser Ø</th></tr>'+Object.keys(CUTS).filter(k=>cnt[k]).map(k=>`<tr><td>${CUTS[k]}</td><td>${cnt[k]}</td><td>${k==='guide'?'–':lst(k,'d')}</td><td>${k==='guide'?'–':lst(k,'tool')}</td></tr>`).join('')+`<tr><td>Größe</td><td colspan="3">${fmtDE(b[2]-b[0])} × ${fmtDE(b[3]-b[1])} mm${only?` · <b>nur ${es.length} von ${all.length} Objekten</b>`:''}</td></tr>`:'<tr><td>Nichts zum Ausgeben – die Zeichnung ist leer.</td></tr>';
- $('expW').innerHTML=warn.map(esc).join('<br>');$('expW').style.display=warn.length?'':'none';$('expB').disabled=!es.length}
+ $('expW').innerHTML=warn.map(esc).join('<br>');$('expW').style.display=warn.length?'':'none';$('expB').disabled=!es.length;
+ const T=S.def.thick||19,flat=es.filter(e=>cutOf(e).eff==='outside'&&cutOf(e).d<T),fx=$('expFix');if(document.activeElement!==$('expThick'))$('expThick').value=fmtDE(T);
+ fx.style.display=flat.length?'':'none';fx.textContent=`${flat.length} Außenkontur${flat.length>1?'en':''} auf ${fmtDE(T+0.5)} mm Tiefe setzen`;fx.onclick=()=>{doCommit(()=>flat.forEach(e=>{e.cd=num2(T+0.5)}));log(`${flat.length} Außenkontur(en) auf ${fmtDE(T+0.5)} mm Tiefe gesetzt.`,'ok');updProps();updExport()}}
+const num2=v=>Math.round(v*100)/100;
 $('expSel').addEventListener('change',updExport);
+$('expThick').addEventListener('change',e=>{const v=parseFloat(e.target.value.replace(',','.'));if(okN(v,1,200)){pushUndo();S.def.thick=v;save();updUndo();updDefs()}else e.target.value=fmtDE(S.def.thick||19);updExport()});
+$('expThick').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.target.blur()}e.stopPropagation()});
 $('expB').addEventListener('click',async()=>{const es=exportList($('expSel').checked&&$('expSelRow').style.display!=='none'),svg=buildSVG(es);if(!svg)return;
- const n=await saveBlob(baseName()+'.svg',svg,'image/svg+xml','SVG für Shaper Origin');$('dExp').classList.remove('open');if(n)log(`SVG für die Origin gespeichert: ${n} (${es.length} Objekte). Auf den USB-Stick kopieren oder bei hub.shapertools.com hochladen.`,'ok');else log('Export abgebrochen.')});
+ const n=await saveBlob(baseName()+'.svg',svg,'image/svg+xml','SVG für Origin');$('dExp').classList.remove('open');if(n)log(`SVG für die Origin gespeichert: ${n} (${es.length} Objekte). Auf den USB-Stick kopieren oder bei hub.shapertools.com hochladen.`,'ok');else log('Export abgebrochen.')});
 
 /* ---------- DXF schreiben (für andere CAD-Programme) ---------- */
 function buildDXF(es){const L=[],w=(...a)=>{for(let i=0;i<a.length;i+=2)L.push(a[i],a[i+1])},n=v=>fmt(v,5);
  const ly=e=>(e.ly||'0').replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/Ä/g,'AE').replace(/Ö/g,'OE').replace(/Ü/g,'UE').replace(/ß/g,'ss').replace(/[^A-Za-z0-9_-]/g,'_')||'0';
  const line=(a,b,l)=>w(0,'LINE',8,l,10,n(a[0]),20,n(a[1]),11,n(b[0]),21,n(b[1]));
  const pl=(pts,bl,closed,l)=>{w(0,'POLYLINE',8,l,66,1,70,closed?1:0);pts.forEach((p,i)=>{w(0,'VERTEX',8,l,10,n(p[0]),20,n(p[1]));if(bl&&hasB(bl[i]))w(42,n(bl[i]))});w(0,'SEQEND',8,l)};
- w(0,'SECTION',2,'HEADER',9,'$ACADVER',1,'AC1015',9,'$INSUNITS',70,4,9,'$MEASUREMENT',70,1,0,'ENDSEC');
+ w(0,'SECTION',2,'HEADER',9,'$ACADVER',1,'AC1009',9,'$INSUNITS',70,4,9,'$MEASUREMENT',70,1,0,'ENDSEC');
  w(0,'SECTION',2,'ENTITIES');
  for(const e of es){const l=ly(e);switch(e.t){
   case'line':line(e.a,e.b,l);break;
@@ -901,7 +922,7 @@ function tidyImported(e){const keep=o=>{for(const k of['ct','cd','tool'])if(e[k]
 /* ---------- DXF lesen ---------- */
 function importDXF(text){const ln=text.split(/\r\n|\r|\n/),pairs=[];for(let i=0;i+1<ln.length;i+=2){const c=parseInt(ln[i],10);if(isNaN(c))throw new Error('Das ist keine lesbare DXF-Datei (Textformat).');pairs.push([c,ln[i+1].trim()])}
  if(!pairs.some(p=>p[0]===0&&p[1]==='EOF')&&!pairs.some(p=>p[0]===2&&p[1]==='ENTITIES'))throw new Error('Das ist keine lesbare DXF-Datei (Textformat).');
- let unit=1,sec='',i=0;const blocks={},top=[];let curBlock=null,skipped={};
+ let unit=1,sec='',i=0;const blocks=new Map(),top=[];let curBlock=null,skipped={},visits=0;
  const U={1:25.4,2:304.8,4:1,5:10,6:1000};
  const rec=()=>{const o={type:pairs[i][1],v:{},list:[]};i++;while(i<pairs.length&&pairs[i][0]!==0){const[c,v]=pairs[i];o.list.push([c,v]);if(!(c in o.v))o.v[c]=v;i++}return o};
  const f=(o,c,d=0)=>{const v=parseFloat(o.v[c]);return isFinite(v)?v:d};
@@ -917,7 +938,7 @@ function importDXF(text){const ln=text.split(/\r\n|\r|\n/),pairs=[];for(let i=0;
    if(Math.abs(ra-1)<1e-6){res.push(full?{t:'circle',c,r:a}:{t:'arc',c,r:a,a0:na(th+t0),a1:na(th+t1)});break}
    const n=clamp(Math.ceil((t1-t0)/TAU*Math.sqrt(a/0.01)*8),16,720),pts=[];for(let k=0;k<=n-(full?1:0);k++){const t=t0+(t1-t0)*k/n;pts.push(add(c,rotP([a*Math.cos(t),b*Math.sin(t)],[0,0],th)))}
    res.push({t:'pline',pts,closed:full});break}
-  case'SPLINE':{const deg_=Math.round(f(o,71,3)),kn=[],cp=[],fp=[];for(const[c,v]of o.list){if(c===40)kn.push(parseFloat(v));else if(c===10)cp.push([parseFloat(v),0]);else if(c===20&&cp.length)cp[cp.length-1][1]=parseFloat(v);else if(c===11)fp.push([parseFloat(v),0]);else if(c===21&&fp.length)fp[fp.length-1][1]=parseFloat(v)}
+  case'SPLINE':{const deg_=Math.round(f(o,71,3)),kn=[],cp=[],fp=[];if(!(deg_>=1&&deg_<=25)||o.list.length>60000){skipped['Kurve (SPLINE, zu groß)']=(skipped['Kurve (SPLINE, zu groß)']||0)+1;break}for(const[c,v]of o.list){if(c===40)kn.push(parseFloat(v));else if(c===10)cp.push([parseFloat(v),0]);else if(c===20&&cp.length)cp[cp.length-1][1]=parseFloat(v);else if(c===11)fp.push([parseFloat(v),0]);else if(c===21&&fp.length)fp[fp.length-1][1]=parseFloat(v)}
    let pts=null;if(cp.length>deg_&&kn.length===cp.length+deg_+1){const lo=kn[deg_],hi=kn[cp.length];let L=0;for(let k=1;k<cp.length;k++)L+=dist(cp[k-1],cp[k]);const n=clamp(Math.ceil(Math.sqrt(L/0.02))*2,16,2000);pts=[];
      for(let k=0;k<=n;k++){let t=lo+(hi-lo)*k/n;if(k===n)t=hi-1e-9*(hi-lo);let s=deg_;while(s<cp.length-1&&kn[s+1]<=t)s++;const d=[];for(let j=0;j<=deg_;j++)d.push([...cp[s-deg_+j]]);
       for(let r=1;r<=deg_;r++)for(let j=deg_;j>=r;j--){const den=kn[j+1+s-r]-kn[j+s-deg_],al=den?(t-kn[j+s-deg_])/den:0;d[j]=[(1-al)*d[j-1][0]+al*d[j][0],(1-al)*d[j-1][1]+al*d[j][1]]}pts.push(d[deg_])}
@@ -932,7 +953,7 @@ function importDXF(text){const ln=text.split(/\r\n|\r|\n/),pairs=[];for(let i=0;
   if(v==='SECTION'){sec=(pairs[i+1]||[])[1]||'';i+=2;continue}
   if(v==='ENDSEC'){sec='';i++;continue}if(v==='EOF')break;
   if(sec==='HEADER'){i++;continue}
-  if(sec==='BLOCKS'){if(v==='BLOCK'){const o=rec();curBlock={name:o.v[2]||'',base:[f(o,10),f(o,20)],items:[]};continue}if(v==='ENDBLK'){if(curBlock)blocks[curBlock.name]=curBlock;curBlock=null;rec();continue}}
+  if(sec==='BLOCKS'){if(v==='BLOCK'){const o=rec();curBlock={name:o.v[2]||'',base:[f(o,10),f(o,20)],items:[]};continue}if(v==='ENDBLK'){if(curBlock&&blocks.size<5000)blocks.set(curBlock.name,curBlock);curBlock=null;rec();continue}}
   if(sec==='ENTITIES'||sec==='BLOCKS'||sec===''){const tgt=sec==='BLOCKS'?(curBlock?curBlock.items:[]):top;
    if(v==='POLYLINE'){const o=rec(),pts=[],bl=[];while(i<pairs.length&&pairs[i][1]==='VERTEX'){const q=rec();pts.push([f(q,10),f(q,20)]);bl.push(f(q,42))}if(i<pairs.length&&pairs[i][1]==='SEQEND')rec();
     if(pts.length>1)tgt.push({ly:o.v[8]||'0',e:tidyImported({pts,bl:bl.some(hasB)?bl:null,closed:(f(o,70)&1)===1})});continue}
@@ -940,7 +961,7 @@ function importDXF(text){const ln=text.split(/\r\n|\r|\n/),pairs=[];for(let i=0;
    const o=rec();tgt.push(...conv(o));continue}
   i++}
  for(let k=0;k<pairs.length-1;k++)if(pairs[k][0]===9&&pairs[k][1]==='$INSUNITS'){unit=U[parseInt(pairs[k+1][1],10)]||1;break}
- const flat=[],MAXE=200000,expand=(items,depth,tf,insLy)=>{for(const it of items){if(flat.length>=MAXE){skipped['Objekte über 200 000']=(skipped['Objekte über 200 000']||0)+1;return}if(it.ins){const b=blocks[it.ins.name];if(!b||depth>6){skipped.INSERT=(skipped.INSERT||0)+1;continue}
+ const flat=[],MAXE=200000,expand=(items,depth,tf,insLy)=>{for(const it of items){if(flat.length>=MAXE){skipped['Objekte über 200 000']=(skipped['Objekte über 200 000']||0)+1;return}if(it.ins){const b=blocks.get(it.ins.name);if(++visits>100000){skipped['Blöcke (zu viele)']=(skipped['Blöcke (zu viele)']||0)+1;return}if(!b||depth>6){skipped.INSERT=(skipped.INSERT||0)+1;continue}
     if(Math.abs(Math.abs(it.ins.sx)-Math.abs(it.ins.sy))>1e-9||it.ins.sx<0||it.ins.sy<0){skipped['INSERT (verzerrt)']=(skipped['INSERT (verzerrt)']||0)+1;continue}
     const ins=it.ins;expand(b.items,depth+1,e=>tf(xf(scaleEnt(xf(e,mvF(mul(b.base,-1))),[0,0],ins.sx),p=>add(rotP(p,[0,0],ins.rot),ins.p),'rot')),it.ly==='0'&&insLy?insLy:it.ly)}
    else flat.push({ly:it.ly==='0'&&insLy?insLy:it.ly,e:tf(it.e)})}};
@@ -957,12 +978,13 @@ let fileMode='open';
 async function loadFile(f,mode){const name=f.name||'Datei',ext=(name.split('.').pop()||'').toLowerCase();let text;try{text=await f.text()}catch(err){log('Datei konnte nicht gelesen werden.','e');return}
  try{
   if(ext==='json'||(/^\s*\{/.test(text)&&ext!=='svg'&&ext!=='dxf')){const o=JSON.parse(text);if(!Array.isArray(o.ents))throw new Error('Das ist keine Origin-CAD-Zeichnung.');
-   const cd=cleanDoc(o),drop=o.ents.length-cd.ents.length;if(drop)log(`${drop} fehlerhafte Objekt(e) in der Datei übersprungen.`,'e');
+   const cd=cleanDoc(o),drop=o.ents.length-cd.ents.length;if(o.ents.length&&!cd.ents.length){log(`${name}: Keins der ${o.ents.length} Objekte in der Datei ist lesbar – die Zeichnung bleibt unverändert.`,'e');return}if(drop)log(`${drop} fehlerhafte Objekt(e) in der Datei übersprungen.`,'e');
    if(mode==='import'){pushUndo();cd.layers.forEach(l=>{if(!lyr(l.n))S.layers.push({...l})});sel.clear();addEnts(cd.ents.map(({id,...r})=>r)).forEach(e=>sel.add(e.id));afterChange();zoomAll();log(`Dazugeladen: ${name} (${cd.ents.length} Objekte, sind gewählt – mit V verschieben).`,'ok');return}
    pushUndo();S=cd;
    sel.clear();afterChange();updDefs();zoomAll();fileName=name;$('fname').textContent=name+' · Maße in mm';log('Geöffnet: '+name,'ok');return}
   const isSvg=ext==='svg'||/<svg[\s>]/i.test(text.slice(0,2000));if(!isSvg&&ext!=='dxf'&&!/^\s*0\s*[\r\n]+\s*SECTION/i.test(text.slice(0,200))){log(`${name}: Diese Art Datei kann ich nicht öffnen – nur Zeichnungen (.json), SVG und DXF.`,'e');return}const r=isSvg?importSVG(text):importDXF(text);
-  if(!r.ents.length){log(`In ${name} wurde nichts Zeichenbares gefunden. ${r.note}`,'e');return}
+  const good=r.ents.filter(e=>cleanEnt({...e,ly:e.ly||'0'})).length;
+  if(!good){log(`In ${name} wurde nichts Zeichenbares gefunden – die Zeichnung bleibt unverändert. ${r.note}`,'e');return}if(good<r.ents.length)log(`${r.ents.length-good} fehlerhafte Objekt(e) in ${name} übersprungen.`,'e');
   pushUndo();if(mode!=='import'){S={ents:[],layers:DEF_LAYERS(),cur:'Kontur',nid:1,def:{...S.def}};fileName=name.replace(/\.[^.]+$/,'')+'.json';$('fname').textContent=name+' · Maße in mm'}
   sel.clear();const made=addEnts(r.ents,isSvg?'Kontur':'0');if(mode==='import')made.forEach(e=>sel.add(e.id));afterChange();zoomAll();const b=bbox(made);
   log(`${mode==='import'?'Dazugeladen':'Geöffnet'}: ${name} – ${made.length} Objekte, ${fmtDE(b[2]-b[0])} × ${fmtDE(b[3]-b[1])} mm.${mode==='import'?' Sie sind gewählt – mit V verschieben.':''} ${r.note}`,'ok');
@@ -970,11 +992,12 @@ async function loadFile(f,mode){const name=f.name||'Datei',ext=(name.split('.').
  catch(err){log(`${name}: ${err&&err.message?err.message:'Datei konnte nicht gelesen werden.'}`,'e')}}
 $('file').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(f)loadFile(f,fileMode)});
 /* Datei aufs Fenster ziehen = öffnen */
-window.addEventListener('dragover',e=>{e.preventDefault()});window.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer&&e.dataTransfer.files[0];if(f)loadFile(f,S.ents.length?'import':'open')});
+window.addEventListener('dragover',e=>{e.preventDefault()});window.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer&&e.dataTransfer.files[0];if(f)loadFile(f,docSummary().length?'import':'open')});
 
 /* ---------- Vorlagen ---------- */
 const TPLKEY='origincad.tpl';
-function userTpls(){try{const a=JSON.parse(localStorage.getItem(TPLKEY)||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
+function userTpls(){try{const a=JSON.parse(localStorage.getItem(TPLKEY)||'[]');if(!Array.isArray(a))return[];
+ return a.slice(0,500).filter(t=>t&&typeof t==='object'&&Array.isArray(t.ents)).map(t=>({n:okStr(t.n,80)||'Vorlage',d:okStr(t.d,80),ents:t.ents.slice(0,20000).map(cleanEnt).filter(Boolean)})).filter(t=>t.ents.length)}catch(e){return[]}}
 function setUserTpls(a){try{localStorage.setItem(TPLKEY,JSON.stringify(a));return true}catch(e){log('Vorlage konnte nicht gespeichert werden (Speicher voll?).','e');return false}}
 const HOLE=(c,d,t,x={})=>({t:'circle',ly:'Kontur',c,r:d/2,ct:'pocket',cd:t,...x});
 function builtinTpls(){const K='Kontur',row=(x,y0,n)=>Array.from({length:n},(_,i)=>HOLE([x,y0+i*32],5,13,{tool:3}));
@@ -989,7 +1012,7 @@ function* placeTpl(t){const base=t.base||(()=>{const b=bbox(t.ents.filter(e=>e.t
  const at=(p,a)=>t.ents.map(e=>{let n=xf(e,mvF(sub(p,base)));if(a)n=xf(n,rotF(p,a),'rot');return n});let a=0;
  for(;;){const r=yield P(`„${t.n}“ – Einfügepunkt  [D]rehen um 90° · Enter = fertig`,{opts:['D'],prev:p=>at(p,a).map(e=>Object.assign(tmp(e.t,e),{ly:e.ly}))});
   if(r.opt==='D'){a=na(a+Math.PI/2);continue}if(!r.p)return;const q=r.p;doCommit(()=>addEnts(at(q,a).map(({id,...x})=>x)))}}
-function runWith(gen,label){cancel(true);curCmd=null;log('» '+label,'ok');G=gen;adv(undefined)}
+function runWith(gen,label){cancel(true);curCmd=null;steps=0;log('» '+label,'ok');G=gen;adv(undefined)}
 function openTpls(){const u=userTpls(),b=builtinTpls();
  const li=(t,i,own)=>`<tr><td><b>${esc(t.n)}</b><br><span class="muted">${esc(t.d||t.ents.length+' Objekte')}</span></td><td style="white-space:nowrap;text-align:right"><button class="btn" data-tpl="${own?'u':'b'}${i}">Einfügen</button>${own?` <button class="btn" data-tpldel="${i}" aria-label="Vorlage löschen">Löschen</button>`:''}</td></tr>`;
  $('tplT').innerHTML=(u.length?'<tr><th colspan="2">Eigene Vorlagen</th></tr>'+u.map((t,i)=>li(t,i,true)).join(''):'')+'<tr><th colspan="2">Mitgelieferte Vorlagen</th></tr>'+b.map((t,i)=>li(t,i,false)).join('');
@@ -1054,7 +1077,7 @@ function build3D(T){T=T||S.def.thick||19;const es=exportList(false),notes=[];if(
  const ob=[Infinity,Infinity,-Infinity,-Infinity];for(const q of baseU)for(const p of q){ob[0]=Math.min(ob[0],p[0]);ob[1]=Math.min(ob[1],p[1]);ob[2]=Math.max(ob[2],p[0]);ob[3]=Math.max(ob[3],p[1])}
  const w=ob[2]-ob[0],h=ob[3]-ob[1];
  return{T,sections,notes,bbox:ob,size:Math.max(w,h,T),vol,info:`${fmtDE(w)} × ${fmtDE(h)} × ${fmtDE(T)} mm · ${cuts.length} Fräsung(en)`}}
-function open3D(){const m=build3D();if(!m){log('Für die 3D-Ansicht fehlt noch etwas zum Fräsen – erst eine Kontur zeichnen.','e');return}cancel(true);
+function open3D(){const m=build3D();if(!m){log('Für die 3D-Vorschau fehlt noch etwas zum Fräsen – erst eine Kontur zeichnen.','e');return}cancel(true);
  if(window.CAD3D)window.CAD3D.open(m,v=>{pushUndo();S.def.thick=v;save();updUndo();return build3D(v)})}
 
 /* ---------- Start ---------- */
@@ -1064,13 +1087,14 @@ function sample0(){const K='Kontur',B='Bemaßung';S.nid=1;S.ents=[
  mk('slot',{a:[360,250],b:[360,350],r:10},K),
  mk('dim',{a:[0,0],b:[400,0],p:[200,-45],m:'h'},B),mk('dim',{a:[0,0],b:[0,600],p:[-45,300],m:'v'},B),
  mk('dim',{a:[400,0],b:[360,250],p:[440,125],m:'v'},B)]}
-let restored=false;try{const o=JSON.parse(localStorage.getItem('origincad.v1')||'null');if(o&&Array.isArray(o.ents)){S=cleanDoc(o);restored=true}const u=JSON.parse(localStorage.getItem('origincad.ui')||'null');if(u){Object.assign(tg,u.tg||{});gstep=u.gstep||10;$('gstep').value=gstep;if([90,45,30,15].includes(u.pstep))pstep=u.pstep;$('pstep').value=pstep}}catch(e){}
+let restored=false;try{const o=JSON.parse(localStorage.getItem('origincad.v1')||'null');if(o&&Array.isArray(o.ents)){S=cleanDoc(o);restored=true}const u=JSON.parse(localStorage.getItem('origincad.ui')||'null');if(u&&typeof u==='object'){if(u.tg&&typeof u.tg==='object')for(const k of Object.keys(tg))if(typeof u.tg[k]==='boolean')tg[k]=u.tg[k];if(okN(u.gstep,0.01,10000))gstep=u.gstep;if([90,45,30,15].includes(u.pstep))pstep=u.pstep}}catch(e){}
+$('gstep').value=gstep;$('pstep').value=pstep;
 if(!restored){sample0();log('Beispiel: Front 400 × 600 mit zwei Topfbändern Ø35 und Griffloch. Datei › Neu leert die Zeichnung.')}
 else log('Letzte Zeichnung wiederhergestellt.');
 log('Tipp: L + Enter für Linie, R für Rechteck, K für Kreis. F1 zeigt alle Befehle.');
 buildTools();updTools();updUndo();updDefs();updProps();updLayers();updPrompt();
 new ResizeObserver(()=>{const first=!W;resize();if(first)zoomAll()}).observe($('cvw'));
 if(matchMedia('(pointer:fine)').matches)inp.focus();
-window.__cad={buildPrintSVG,kp:{save:()=>saveFile(),help:t=>openHelp(t),contours,sectionsOf,commit:doCommit,undo,redo,addEnts,saveBlob,baseName,log,fmtDE,bbox,esc,cancel:()=>cancel(true),after:()=>{sel.clear();afterChange();zoomAll()},select:es=>{sel.clear();es.forEach(e=>sel.add(e.id));updProps();render()}},build3D,open3D,get curP(){return curP},setMouse:sp=>{mouse.sp=sp;mouse.in=true;computeSnap();render()},buildSVG,buildDXF,importSVG,importDXF,loadFile,exportList,fitArcs,userTpls,w2s,get S(){return S},run,onEnter,inp,adv,get REQ(){return REQ},sel,zoomAll,cutOf,camOf,act,tg,updProps,bbox,
+window.__cad={buildPrintSVG,kp:{get chg(){return chg},save:()=>saveFile(),help:t=>openHelp(t),contours,sectionsOf,commit:doCommit,undo,redo,addEnts,saveBlob,baseName,log,fmtDE,bbox,esc,cancel:()=>cancel(true),after:()=>{sel.clear();afterChange();zoomAll()},select:es=>{sel.clear();es.forEach(e=>sel.add(e.id));updProps();render()}},build3D,open3D,get curP(){return curP},setMouse:sp=>{mouse.sp=sp;mouse.in=true;computeSnap();render()},buildSVG,buildDXF,importSVG,importDXF,loadFile,exportList,fitArcs,userTpls,w2s,get S(){return S},run,onEnter,inp,adv,get REQ(){return REQ},sel,zoomAll,cutOf,camOf,act,tg,updProps,bbox,
  areaOf:(id,off)=>{const P=[ccw(toPaths(byId(id))[0].pts)];return(off?clOffset(P,off):P).reduce((s,q)=>s+area(q),0)}};
 }

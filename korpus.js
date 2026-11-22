@@ -19,11 +19,14 @@ const BT={kb:0,griff:'n',grA:128,grR:50,grO:80,plL:2800,plB:2070,kerf:4,rand:10,
 const SV_D=20,SV_BD=5;
 /* Geladene Planung prüfen (Datei oder Browserspeicher sind nicht vertrauenswürdig) */
 const FRONTS=['n','l','r','2','s','ml','mr','m2'];
+/* erlaubte Bereiche wie im Formular (geladene Werte werden darauf begrenzt) */
+const RNG={t:[5,60],rw:[3,25],fuge:[0,20],sh:[30,300],sr:[0,200],btD:[2,12],btT:[3,16],btA:[0,20],svT:[5,25],svX:[5,20],svO:[-10,10],svB:[5,25],plL:[500,6000],plB:[300,3000],kerf:[0,10],rand:[0,50],grA:[32,800],grR:[15,300],grO:[15,600],kb:[0,5],nt:[3,20],na:[5,100],ksD:[15,40]};
 function clean(o){if(!o||typeof o!=='object'||!Array.isArray(o.cabs))return null;const d=DEF(),k={},fin=v=>typeof v==='number'&&Number.isFinite(v)&&Math.abs(v)<=1e5;
  for(const f of Object.keys(d)){if(f==='cabs')continue;const dv=d[f],v=o[f];if(typeof dv==='number')k[f]=fin(v)?v:dv;else if(typeof dv==='boolean')k[f]=typeof v==='boolean'?v:dv;else k[f]=dv}
+ for(const f in RNG)k[f]=clampN(k[f],RNG[f][0],RNG[f][1]);
  k.lr=['boden','voll','aus'].includes(o.lr)?o.lr:d.lr;k.griff=['n','b'].includes(o.griff)?o.griff:d.griff;for(const f of['matK','matF','matR'])k[f]=MATS.some(m=>m[0]===o[f])?o[f]:'';
  const pts=a=>(Array.isArray(a)?a:[]).slice(0,60).filter(q=>q&&fin(q.x)&&fin(q.y)).map(q=>({x:q.x,y:q.y}));
- k.cabs=o.cabs.slice(0,50).map(c=>{const n=newCab();if(!c||typeof c!=='object')return n;for(const f of['b','h','d','zo','sfh','sn','nm','nf','ne'])if(fin(c[f]))n[f]=c[f];n.front=FRONTS.includes(c.front)?c.front:'2';
+ k.cabs=o.cabs.slice(0,50).map(c=>{const n=newCab();if(!c||typeof c!=='object')return n;for(const f of['b','h','d','zo','sfh','sn','nm','nf','ne'])if(fin(c[f]))n[f]=c[f];n.front=FRONTS.includes(c.front)?c.front:'2';n.nm=clampN(Math.round(n.nm),0,6);n.nf=clampN(Math.round(n.nf),0,12);n.ne=clampN(Math.round(n.ne),0,12);
   n.mw=(Array.isArray(c.mw)?c.mw:[]).slice(0,20).filter(fin);n.fb=pts(c.fb);n.eb=pts(c.eb);n.ks=pts(c.ks);return n});if(!k.cabs.length)k.cabs=[newCab()];tidy(k);return k}
 const K=()=>{const s=S();if(!s.korpus)s.korpus=DEF();for(const f in BT)if(s.korpus[f]==null)s.korpus[f]=BT[f];for(const c of s.korpus.cabs){if(!c.ks)c.ks=[];if(c.zo==null)c.zo=0;if(c.sfh==null)c.sfh=140}return s.korpus};
 const num=v=>Math.round(v*100)/100,de=v=>String(num(v)).replace('.',',');
@@ -50,8 +53,8 @@ function tidy(k){for(const c of k.cabs){c.b=clampN(c.b,150,3000);c.h=clampN(c.h,
   c.mw=c.mw.map(x=>num(clampN(x,k.t+40,c.b-2*k.t-40))).sort((a,b)=>a-b);for(let i=1;i<c.mw.length;i++)c.mw[i]=Math.max(c.mw[i],num(c.mw[i-1]+k.t+40));c.mw=c.mw.filter(x=>x<=c.b-2*k.t-40);/* Mittelwände nie übereinander */
   if(!c.ks)c.ks=[];for(const l of[c.fb,c.eb])for(const s of l){s.y=num(clampN(s.y,k.t+20,c.h-2*k.t-20));s.x=clampN(s.x,k.t+1,c.b-k.t-1)}
   for(const s of c.ks){s.y=num(clampN(s.y,k.t+30,c.h-k.t-25));s.x=clampN(s.x,k.t+1,c.b-k.t-1)}
-  if(c.front==='s'){c.mw=[];c.fb=[];c.eb=[];c.ks=[]}
-  if(c.front[0]==='m'){c.mw=[];c.sfh=clampN(c.sfh||140,80,c.h-300);const top=c.h-c.sfh-2*k.fuge-40;for(const l of[c.fb,c.eb])for(const q of l)q.y=Math.min(q.y,num(top-k.t));for(const q of c.ks)q.y=Math.min(q.y,num(top))}c.zo=clampN(c.zo||0,0,2600);c.sn=clampN(Math.round(c.sn)||1,1,8)}}
+  if(c.front==='s'){c.mw=[];c.nm=0;c.fb=[];c.eb=[];c.ks=[]}
+  if(c.front[0]==='m'){if(c.mw.length){/* ohne Mittelwand liegen die Böden der früheren Fächer übereinander: doppelte entfernen */const dd=l=>l.filter((q,i)=>!l.slice(0,i).some(o=>Math.abs(o.y-q.y)<k.t));c.fb=dd(c.fb);c.eb=dd(c.eb).filter(q=>!c.fb.some(o=>Math.abs(o.y-q.y)<k.t));c.ks=dd(c.ks)}c.mw=[];c.nm=0;c.sfh=clampN(c.sfh||140,80,c.h-300);const top=c.h-c.sfh-2*k.fuge-40;for(const l of[c.fb,c.eb])for(const q of l)q.y=Math.min(q.y,num(top-k.t));for(const q of c.ks)q.y=Math.min(q.y,num(top))}c.zo=clampN(c.zo||0,0,2600);c.sn=clampN(Math.round(c.sn)||1,1,8)}}
 
 /* ----- Teile erzeugen ----- */
 function dubPos(len){const steps=Math.floor((len-64)/32);if(steps<1)return[num(len/2)];const n=Math.max(2,Math.round(steps*32/192)+1),o=[];for(let i=0;i<n;i++)o.push(32+32*Math.round(i*steps/(n-1)));return[...new Set(o)]}
@@ -62,11 +65,11 @@ function parts(k){k=k||K();const out=[],t=k.t;let x0=0;
  k.cabs.forEach((c,ci)=>{const z0=cz(k,c),dE=k.nut?c.d-k.na-k.rw:c.d,svs=k.sv&&dE>=140?[37,dE-37]:[],xs=!k.dub?[]:svs.length?dubSv(dE):dubPos(dE),xs0=xs,svs0=svs;
   const SL=mk(ci,'Seite links',c.d,c.h,t,[x0,0,z0],[0,1,0],[0,0,1],{front:'x0'}),SR=mk(ci,'Seite rechts',c.d,c.h,t,[x0+c.b,c.d,z0],[0,-1,0],[0,0,1],{front:'xW'});
   const BO=mk(ci,'Boden',c.b-2*t,c.d,t,[x0+t,0,z0],[1,0,0],[0,1,0],{front:'y0'}),DE=mk(ci,'Deckel',c.b-2*t,c.d,t,[x0+t,c.d,z0+c.h],[1,0,0],[0,-1,0],{front:'yH'});
-  const hole=(p,x,y,d,depth,back,mark)=>p.holes.push({x:num(x),y:num(y),d,depth,back:!!back,...(mark?{mark:1}:{})});
+  const hole=(p,x,y,d,depth,back,mark,pin)=>p.holes.push({x:num(x),y:num(y),d,depth,back:!!back,...(mark?{mark:1}:{}),...(pin?{pin:1}:{})});
   /* Flächen, in die von links/rechts gebohrt wird: face(xKante, 'l'|'r') liefert Funktion (Tiefe, Höhe, Ø, Bohrtiefe) */
   const walls=[...c.mw].sort((a,b)=>a-b).map(x=>({x,p:mk(ci,'Mittelwand',dE,c.h-2*t,t,[x0+x,0,z0+t],[0,1,0],[0,0,1],{front:'x0'})}));
-  const faceL=xEdge=>{if(Math.abs(xEdge-t)<1e-6)return(dp,z,d,dt,m)=>hole(SL,dp,z,d,dt,false,m);const w=walls.find(w=>Math.abs(w.x+t-xEdge)<1e-6);return w?(dp,z,d,dt,m)=>hole(w.p,dp,z-t,d,dt,false,m):()=>{}};
-  const faceR=xEdge=>{if(Math.abs(xEdge-(c.b-t))<1e-6)return(dp,z,d,dt,m)=>hole(SR,c.d-dp,z,d,dt,false,m);const w=walls.find(w=>Math.abs(w.x-xEdge)<1e-6);return w?(dp,z,d,dt,m)=>hole(w.p,dp,z-t,d,dt,true,m):()=>{}};
+  const faceL=xEdge=>{if(Math.abs(xEdge-t)<1e-6)return(dp,z,d,dt,m,pin)=>hole(SL,dp,z,d,dt,false,m,pin);const w=walls.find(w=>Math.abs(w.x+t-xEdge)<1e-6);return w?(dp,z,d,dt,m,pin)=>hole(w.p,dp,z-t,d,dt,false,m,pin):()=>{}};
+  const faceR=xEdge=>{if(Math.abs(xEdge-(c.b-t))<1e-6)return(dp,z,d,dt,m,pin)=>hole(SR,c.d-dp,z,d,dt,false,m,pin);const w=walls.find(w=>Math.abs(w.x-xEdge)<1e-6);return w?(dp,z,d,dt,m,pin)=>hole(w.p,dp,z-t,d,dt,true,m,pin):()=>{}};
   /* Dübel Boden/Deckel ↔ Seiten */
   for(const zc of[t/2,c.h-t/2])for(const dx of xs){hole(SL,dx,zc,DUB_D,DUB_T);hole(SR,c.d-dx,zc,DUB_D,DUB_T)}
   for(const dx of xs){BO.ticks.push({x:0,y:dx,e:'l'},{x:BO.W,y:dx,e:'r'});DE.ticks.push({x:0,y:c.d-dx,e:'l'},{x:DE.W,y:c.d-dx,e:'r'})}
@@ -82,16 +85,17 @@ function parts(k){k=k||K();const out=[],t=k.t;let x0=0;
   for(const w of walls)for(const dx of xs){hole(BO,w.x-t/2,dx,DUB_D,DUB_T);hole(DE,w.x-t/2,c.d-dx,DUB_D,DUB_T);w.p.ticks.push({x:dx,y:0,e:'b'},{x:dx,y:w.p.H,e:'t'})}
   /* feste Böden */
   for(const s of c.fb){const f=compAt(c,k,s.x),p=mk(ci,'Fester Boden',f.x1-f.x0,dE,t,[x0+f.x0,dE,z0+s.y+t],[1,0,0],[0,-1,0],{front:'yH'}),L=faceL(f.x0),R=faceR(f.x1);/* Zeichnung zeigt die Unterseite */
-   /* gegenüber der Mittelwand liegt ein fester Boden auf fast gleicher Höhe? Dann dieses Bohrbild um 16 mm versetzen, sonst treffen sich die Bohrungen in der Wand */
-   const wr=walls.find(w=>Math.abs(w.x-f.x1)<1e-6),clash=wr&&c.fb.some(o=>o!==s&&Math.abs(compAt(c,k,o.x).x0-(wr.x+t))<1e-6&&Math.abs(o.y-s.y)<40),SH=v=>clash?(v+16<=dE-20?v+16:v-16):v,xs=xs0.map(SH),svs=svs0.map(SH);
+   /* liegt im Nachbarfach (hinter einer Mittelwand) ein fester Boden auf fast gleicher Höhe, wird in jedem zweiten Fach das Bohrbild um 16 mm versetzt –
+      so treffen sich die Bohrungen von beiden Seiten der Wand nie, auch bei mehreren Mittelwänden */
+   const cs=comps(c,k),fi=cs.findIndex(q=>Math.abs(q.x0-f.x0)<1e-6),nb=[cs[fi-1],cs[fi+1]].filter(Boolean),clash=fi%2===1&&c.fb.some(o=>o!==s&&Math.abs(o.y-s.y)<40&&nb.some(q=>Math.abs(compAt(c,k,o.x).x0-q.x0)<1e-6)),SH=v=>clash?(v+16<=dE-20?v+16:v-16):v,xs=xs0.map(SH),svs=svs0.map(SH);
    for(const dx of xs){L(dx,s.y+t/2,DUB_D,DUB_T);R(dx,s.y+t/2,DUB_D,DUB_T);p.ticks.push({x:0,y:dE-dx,e:'l'},{x:p.W,y:dE-dx,e:'r'})}
    for(const dx of svs){L(dx,s.y+t/2-k.svO,SV_BD,k.svB);R(dx,s.y+t/2-k.svO,SV_BD,k.svB);hole(p,k.svX,dE-dx,SV_D,k.svT);hole(p,p.W-k.svX,dE-dx,SV_D,k.svT)}}
   /* Einlegeböden + Lochreihen */
   const cols=[37,dE-37];
   for(const s of c.eb){const f=compAt(c,k,s.x);mk(ci,'Einlegeboden',f.x1-f.x0-2,dE-10,t,[x0+f.x0+1,10,z0+s.y],[1,0,0],[0,1,0],{front:'y0',tint:[1.04,1.04,1.04]});
-   if(k.lr==='boden'){const L=faceL(f.x0),R=faceR(f.x1);for(const dz of[-32,0,32]){const z=s.y-k.btA+dz;if(z<t+15||z>c.h-t-15)continue;for(const dp of cols){L(dp,z,k.btD,k.btT);R(dp,z,k.btD,k.btT)}}}}
+   if(k.lr==='boden'){const L=faceL(f.x0),R=faceR(f.x1);for(const dz of[-32,0,32]){const z=s.y-k.btA+dz;if(z<t+15||z>c.h-t-15)continue;for(const dp of cols){L(dp,z,k.btD,k.btT,0,1);R(dp,z,k.btD,k.btT,0,1)}}}}
   if(k.lr==='voll')for(const f of comps(c,k)){const L=faceL(f.x0),R=faceR(f.x1),fix=c.fb.filter(s=>Math.abs(compAt(c,k,s.x).x0-f.x0)<1e-6);
-   for(let z=t+64;z<=c.h-t-64+1e-6;z+=32){if(fix.some(s=>z>s.y-12&&z<s.y+t+12))continue;for(const dp of cols){L(dp,z,k.btD,k.btT);R(dp,z,k.btD,k.btT)}}}
+   for(let z=t+64;z<=c.h-t-64+1e-6;z+=32){if(fix.some(s=>z>s.y-12&&z<s.y+t+12))continue;for(const dp of cols){L(dp,z,k.btD,k.btT,0,1);R(dp,z,k.btD,k.btT,0,1)}}}
   /* Kleiderstangen: Stange in der Mitte der Tiefe, Lagermitte an den Seiten nur angezeichnet */
   for(const s of c.ks||[]){const f=compAt(c,k,s.x),D=k.ksD;mk(ci,'Kleiderstange Ø'+de(D),f.x1-f.x0-4,D,D,[x0+f.x0+2,dE/2+D/2,z0+s.y-D/2],[1,0,0],[0,0,1],{rod:true,mat:'Stange',tint:[0.9,0.95,1.05]});
    faceL(f.x0)(dE/2,s.y,D,0,1);faceR(f.x1)(dE/2,s.y,D,0,1)}
@@ -119,9 +123,13 @@ function parts(k){k=k||K();const out=[],t=k.t;let x0=0;
   const FR=fronts(c,k),zMin=Math.min(...FR.map(f=>f.z)),zMax=Math.max(...FR.map(f=>f.z+f.h));
   for(const f of FR){if(f.typ==='t')door(f);else drawer(f,f.z<=zMin+1e-6?t:f.z-fg/2,f.z+f.h>=zMax-1e-6?c.h-t:f.z+f.h+fg/2)}
  /* Bodenträger aufräumen: nicht in andere Löcher derselben Seite; von der Rückseite einer Mittelwand versetzt, wenn sie auf ein Loch der Vorderseite treffen */
-  const isPin=h=>!h.mark&&h.d===k.btD&&h.depth===k.btT;
+  const isPin=h=>!!h.pin;
   for(const p of out){if(p.ci!==ci||!p.holes.length)continue;p.holes=p.holes.filter(h=>!isPin(h)||!p.holes.some(o=>o!==h&&!o.mark&&!isPin(o)&&o.back===h.back&&Math.hypot(o.x-h.x,o.y-h.y)<(o.d+h.d)/2+1));
-   for(const h of p.holes){if(!h.back||!isPin(h))continue;const hit=()=>p.holes.some(o=>!o.back&&!o.mark&&Math.hypot(o.x-h.x,o.y-h.y)<(o.d+h.d)/2+1&&o.depth+h.depth>=p.T-1);if(hit()){const x1=h.x;h.x=num(x1+16<=p.W-20?x1+16:x1-16);if(hit())h.x=x1}}}
+   /* trifft ein Bodenträgerloch ein Loch von der anderen Seite (oder ein anderes Loch derselben Seite), wird es um 16 bzw. 32 mm verschoben, sonst weggelassen */
+   const near=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y)<(a.d+b.d)/2+1,drop=new Set();
+   const bad=h=>p.holes.some(o=>o!==h&&!o.mark&&!drop.has(o)&&near(o,h)&&(o.back===h.back||o.depth+h.depth>=p.T-1));
+   for(const h of p.holes.filter(isPin).sort((a,b)=>(b.back?1:0)-(a.back?1:0))){if(!bad(h))continue;const x1=h.x;let ok=false;for(const dx of[16,-16,32,-32]){const x=num(x1+dx);if(x<20||x>p.W-20)continue;h.x=x;if(!bad(h)){ok=true;break}}if(!ok){h.x=x1;drop.add(h)}}
+   if(drop.size)p.holes=p.holes.filter(h=>!drop.has(h))}
   x0+=c.b});
  for(const r of sockelRuns(k)){const W=r.xb-r.xa,yb=r.dm-50,len=yb-t-(k.sr+t),G={tint:[0.8,0.8,0.8]};
   mk(-1,'Sockelblende vorn',W,k.sh,t,[r.xa,k.sr+t,0],[1,0,0],[0,0,1],{...G});mk(-1,'Sockelblende hinten',W,k.sh,t,[r.xa,yb,0],[1,0,0],[0,0,1],{...G});
@@ -191,8 +199,10 @@ function draw(){const c=cv(),k=K();if(!c.clientWidth)return;const dpr=window.dev
 function dims(g,k,T){const de=v=>String(Math.round(v*10)/10).replace('.',',');const W=rowW(k),top=c=>cz(k,c)+c.h,Hm=Math.max(...k.cabs.map(top)),col='#5ad1e8',t=k.t;
  const line=(x1,y1,x2,y2)=>{g.beginPath();g.moveTo(x1,y1);g.lineTo(x2,y2);g.stroke()},tick=(x,y)=>{line(x-4,y+4,x+4,y-4)};
  g.strokeStyle=col;g.lineWidth=1;g.setLineDash([]);
- const dH=(xa,xb,py,txt,ext)=>{const a=sx(xa),b=sx(xb);line(a,py,b,py);tick(a,py);tick(b,py);if(ext){line(a,ext,a,py+5);line(b,ext,b,py+5)}if(b-a>=30||(txt.length<4&&b-a>=18))T(txt,(a+b)/2,py-9,col)};
- const dV=(za,zb,px,txt,ext,side=-1)=>{const a=sy(za),b=sy(zb);line(px,a,px,b);tick(px,a);tick(px,b);if(ext!=null){line(ext,a,px+side*5,a);line(ext,b,px+side*5,b)}if(a-b>=30)T(txt,px+side*9,(a+b)/2,col,'center',-Math.PI/2)};
+ /* Innenmaße werden weggelassen, wenn ihr Text auf einem anderen Maß landen würde (schmale Fächer) */
+ const used=[],free=r=>!used.some(u=>r[0]<u[0]+u[2]&&u[0]<r[0]+r[2]&&r[1]<u[1]+u[3]&&u[1]<r[1]+r[3]),tw=s=>s.length*7.4+8;
+ const dH=(xa,xb,py,txt,ext,inner)=>{const a=sx(xa),b=sx(xb),show=b-a>=30||(txt.length<4&&b-a>=18),r=[(a+b)/2-tw(txt)/2,py-17,tw(txt),16];if(inner&&(!show||!free(r)))return;line(a,py,b,py);tick(a,py);tick(b,py);if(ext){line(a,ext,a,py+5);line(b,ext,b,py+5)}if(show){used.push(r);T(txt,(a+b)/2,py-9,col)}};
+ const dV=(za,zb,px,txt,ext,side=-1,inner)=>{const a=sy(za),b=sy(zb),show=a-b>=30,r=[px+side*9-8,(a+b)/2-tw(txt)/2,16,tw(txt)];if(inner&&(!show||!free(r)||!free([px-3,b,6,a-b])))return;line(px,a,px,b);tick(px,a);tick(px,b);if(ext!=null){line(ext,a,px+side*5,a);line(ext,b,px+side*5,b)}if(show){used.push(r);T(txt,px+side*9,(a+b)/2,col,'center',-Math.PI/2)}};
  /* unten: Korpusbreiten, darunter Gesamtbreite */
  const y1=sy(0)+26,y2=sy(0)+54;let X=0;k.cabs.forEach(c=>{dH(X,X+c.b,y1,de(c.b),sy(0)+4);X+=c.b});if(k.cabs.length>1)dH(0,W,y2,de(W),y1+4);
  /* links: Abstand zum Boden (Sockel oder Hängehöhe) + Korpus, außen Gesamthöhe */
@@ -203,8 +213,8 @@ function dims(g,k,T){const de=v=>String(Math.round(v*10)/10).replace('.',',');co
  g.strokeStyle='rgba(90,209,232,.75)';X=0;
  k.cabs.forEach(c=>{const z0=cz(k,c);if(c.front!=='s')for(const f of comps(c,k)){const xm=(f.x0+f.x1)/2,inF=l=>l.filter(s=>Math.abs(compAt(c,k,s.x).x0-f.x0)<1e-6);
     const lv=[{a:t,b:t},...inF(c.fb).map(s=>({a:s.y,b:s.y+t})),...inF(c.eb).map(s=>({a:s.y,b:s.y+t})),{a:c.h-t,b:c.h-t}].sort((p,q)=>p.a-q.a);
-    const px=sx(X+f.x0)+13;for(let i=0;i<lv.length-1;i++){const lo=lv[i].b,hi=lv[i+1].a;if(hi-lo>1)dV(z0+lo,z0+hi,px,de(hi-lo),null,1)}
-    dH(X+f.x0,X+f.x1,sy(z0+c.h-t)+16,de(f.x1-f.x0));
+    dH(X+f.x0,X+f.x1,sy(z0+c.h-t)+16,de(f.x1-f.x0),0,1);
+    const px=sx(X+f.x0)+13;for(let i=0;i<lv.length-1;i++){const lo=lv[i].b,hi=lv[i+1].a;if(hi-lo>1)dV(z0+lo,z0+hi,px,de(hi-lo),null,1,1)}
     for(const s of inF(c.ks||[]))T('Stange '+de(s.y),sx(X+xm),sy(z0+s.y)+k.ksD/2*view.s+11,col)}
   for(const f of fronts(c,k))if(f.typ==='s'&&f.h*view.s>40){const tx=de(f.w)+' × '+de(f.h),px=sx(X+c.b/2),py=sy(z0+f.z+f.h/2)+15;g.font='12.5px "IBM Plex Sans",system-ui,sans-serif';const tw=g.measureText(tx).width;if(tw>c.b*view.s-8)continue;g.fillStyle='#16191dcc';g.fillRect(px-tw/2-3,py-8,tw+6,16);T(tx,px,py,'#e8d5b0')}
   X+=c.b})}
@@ -238,7 +248,7 @@ function form(){const k=K(),c=k.cabs[cur],inp=(id,lab,val,x='')=>`<div class="pr
  mats=MATS.map(m=>[m[0],m[0]?m[0]+' '+m[1]:m[1]]),frontTxt={n:'offen',l:'1 Tür',r:'1 Tür',2:'2 Türen',s:c.sn+' Schubkästen',ml:'Schubkasten + Tür',mr:'Schubkasten + Tür',m2:'Schubkasten + 2 Türen'}[c.front];
  $('kpform').innerHTML=`<div class="kpcabs">${k.cabs.map((q,i)=>`<button class="kptab ${i===cur?'on':''}" data-kpcab="${i}" title="Korpus ${i+1} bearbeiten">${i+1}</button>`).join('')}<button class="kptab add" id="kc_add" title="Weiteren Korpus rechts daneben anlegen">+ Korpus</button></div>
  ${sec('cab','Korpus '+(cur+1),`${de(c.b)} × ${de(c.h)} × ${de(c.d)} · ${frontTxt}`,`
-  <div class="pr"><label for="kc_typ">Schranktyp</label><select id="kc_typ"><option value="">– wählen –</option>${TYPEN.map((t,i)=>`<option value="${i}">${t[0]}</option>`).join('')}</select></div>
+  <div class="pr"><label for="kc_typ">Schranktyp</label><select id="kc_typ">${(()=>{/* gewählten Typ weiter anzeigen, solange die Maße noch dazu passen */const ti=TYPEN.findIndex(t=>Object.entries(t[1]).every(([f,v])=>c[f]===v));return`<option value="">${ti<0?'– eigene Maße –':'– wählen –'}</option>`+TYPEN.map((t,i)=>`<option value="${i}"${i===ti?' selected':''}>${t[0]}</option>`).join('')})()}</select></div>
   ${F_CAB.map(([f,l])=>inp('kc_'+f,l+' mm',c[f])).join('')}
   ${sel('kc_front','Front',c.front,[['n','Offen (keine Front)'],['l','1 Tür, Band links'],['r','1 Tür, Band rechts'],['2','2 Türen'],['s','Schubkästen (Blum TANDEM)'],['ml','Schubkasten oben + Tür links'],['mr','Schubkasten oben + Tür rechts'],['m2','Schubkasten oben + 2 Türen']])}
   ${c.front[0]==='m'?inp('kc_sfh','Höhe Schubkastenfront',c.sfh):''}${c.front==='s'?inp('kc_sn','Schubkästen',c.sn)+tandemInfo(c,k):''}
@@ -306,7 +316,7 @@ function printList(){const w=window.open('','_blank');if(!w){msg('Das Druckfenst
 function toDrawing(){const rows=list(K()).filter(r=>!r.p.rod),all=[];let x=0,y=0,rowH=0;const b=A.bbox(S().ents),bx=b?b[2]+150:0,by=b?b[1]:0;
  for(const r of rows){if(r.p.rod)continue;if(x>0&&x+r.p.W>3200){x=0;y+=rowH+80;rowH=0}for(const e of partEnts(r.p,r.n)){const mv=p=>[p[0]+bx+x,p[1]+by+y],n=JSON.parse(JSON.stringify(e));
    if(n.pts)n.pts=n.pts.map(mv);if(n.c)n.c=mv(n.c);if(n.a&&n.b){n.a=mv(n.a);n.b=mv(n.b)}if(n.p)n.p=mv(n.p);all.push(n)}x+=r.p.W+80;rowH=Math.max(rowH,r.p.H)}
- let made;A.commit(()=>{made=A.addEnts(all)});close();A.after();A.select(made);A.log(`Korpusplaner: ${rows.length} verschiedene Teile in die Zeichnung gelegt (sind gewählt). Jedes Teil einzeln wählen und mit EX als SVG ausgeben – oder im Planer in der Stückliste „SVG“ je Teil.`,'ok')}
+ let made;A.commit(()=>{made=A.addEnts(all)});close();A.after();A.select(made);A.log(`Korpusplaner: ${rows.length} verschiedene Teile in die Zeichnung gelegt (sind gewählt). Für die Origin: ein Teil wählen, Datei › SVG für Origin und dort „nur Gewählte“ anhaken – oder im Planer in der Stückliste „SVG“ je Teil.`,'ok')}
 
 /* ----- Zuschnittplan: Teile in Streifen auf Platten verteilen (einfache, sägegerechte Aufteilung) ----- */
 function nest(k){k=k||K();const pieces=[];list(k).filter(r=>!r.p.rod).forEach((r,i)=>{const p=r.p;/* Länge (größeres Maß) läuft in Plattenlänge = Maserung längs */

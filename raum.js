@@ -114,7 +114,7 @@ function drawOver(){const c=$('rmov'),cv=$('rm3d');if(!c||!V)return;const dpr=wi
 /* Rechteck aus zwei Punkten auf einer Ebene */
 function rectOf(p0,p1,n){const fi=n.findIndex(v=>Math.abs(v)>0.5),[u,v]=UV[fi+','+Math.sign(n[fi])],d=sub(p1,p0),a=dot(d,u),c=dot(d,v);return{o:add(add(p0,mul(u,Math.min(a,0))),mul(v,Math.min(c,0))).map(num),u,v,L:num(Math.abs(a)),B:num(Math.abs(c)),sa:Math.sign(a)||1,sb:Math.sign(c)||1}}
 /* ----- Werkzeuge ----- */
-function setTool(t){if(TOOLS[t]&&TOOLS[t].now){if(t==='zall'&&V)V.fit();return}cancelOp();tool=t;tapeRes=null;$('rmvcb').value='';document.querySelectorAll('#rmtools [data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
+function setTool(t){if(TOOLS[t]&&TOOLS[t].now){if(t==='zall'&&V)V.fit();return}cancelOp();if(t!==tool)lastPush=null;tool=t;tapeRes=null;$('rmvcb').value='';document.querySelectorAll('#rmtools [data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
  $('rm3d').style.cursor=t==='orbit'||t==='sel'?'default':t==='pan'?'grab':'crosshair';status();drawOver()}
 function cancelOp(){if(op&&op.orig){const b=body(op.id);if(b){for(const k of Object.keys(b))delete b[k];Object.assign(b,JSON.parse(op.orig))}show()}op=null;lock=null;infer=null;status();drawOver()}
 function status(txt){const T=TOOLS[tool];let s=txt||T.st;if(!txt){if(op&&op.t==='rect')s='Gegenüberliegende Ecke setzen – oder Maße eintippen, z. B. 600;400 und Enter';else if(op&&op.t==='circ')s='Radius ziehen – oder eintippen und Enter';else if(op&&op.t==='push')s='Maus bewegen und klicken – oder Abstand eintippen und Enter';else if(op&&op.t==='move')s='Ziel anklicken · Pfeiltasten sperren die Richtung (→ rot · ← grün · ↑ blau) · Strg = Kopie · Abstand eintippen und Enter';else if(op&&op.t==='tape')s='Zweiten Punkt anklicken';else if(tool==='rot')s=`Körper anklicken = 90° um die ${AXN[rotAx]} drehen · Achse wechseln mit → ← ↑`;else if(tool==='push'&&lastPush)s+=' · oder jetzt einen neuen Abstand eintippen, um den letzten Zug zu ändern'}
@@ -160,17 +160,19 @@ function commitMove(e){const o=op;op=null;lock=null;const b=body(o.id);if(!b)ret
  refresh(true);status()}
 /* Drücken/Ziehen */
 function pushTo(d){const b=body(op.id);if(!b)return;for(const k of Object.keys(b))delete b[k];Object.assign(b,JSON.parse(op.orig));const err=resize(b,op.face,d);if(err){status(err);return}op.d=d;setVcb(de(d));show();fillSel()}
-function commitPush(){const o=op;op=null;const b=body(o.id);if(!b)return;const neu=JSON.stringify(b);for(const k of Object.keys(b))delete b[k];Object.assign(b,JSON.parse(o.orig));if(neu!==o.orig){A.commit(()=>{for(const k of Object.keys(b))delete b[k];Object.assign(b,JSON.parse(neu))});lastPush={id:o.id,face:o.face,orig:o.orig,neu}}hover=null;refresh(true);status()}
+function commitPush(){const o=op;op=null;const b=body(o.id);if(!b)return;const neu=JSON.stringify(b);for(const k of Object.keys(b))delete b[k];Object.assign(b,JSON.parse(o.orig));if(neu!==o.orig){A.commit(()=>{for(const k of Object.keys(b))delete b[k];Object.assign(b,JSON.parse(neu))});lastPush={id:o.id,face:o.face,orig:o.orig,neu,chg:A.chg}}hover=null;refresh(true);status()}
 /* Rechteck / Kreis fertigstellen */
 function finishRect(){const q=rectOf(op.p0,op.p1,op.n);if(q.L<1||q.B<1){status('Das Rechteck ist zu klein – gegenüberliegende Ecke weiter weg setzen.');return}const f=op.face;op=null;infer=null;let b;A.commit(()=>{b=newBody({name:'Fläche',kind:'plane',L:q.L,B:q.B,H:0,o:q.o,u:q.u,v:q.v})});selId=b.id;refresh();status('Rechteck gezeichnet. Mit Drücken/Ziehen (P) hochziehen.')}
 function finishCirc(){if(!(op.r>=1)){status('Der Kreis ist zu klein.');return}const[u,v]=UV[op.face.i+','+op.face.sign],r=op.r,o=sub(sub(op.c,mul(u,r)),mul(v,r)).map(num);op=null;infer=null;let b;A.commit(()=>{b=newBody({name:'Kreisfläche',kind:'cyl',L:num(2*r),B:num(2*r),H:0,o,u,v})});selId=b.id;refresh();status('Kreis gezeichnet. Mit Drücken/Ziehen (P) hochziehen.')}
 /* Eingabe im Feld „Maße“ */
-function vcbEnter(){const raw=$('rmvcb').value.trim();if(!raw)return;const list=/[;x×\s]/.test(raw)||!(op&&op.t==='rect'&&/^\d+,\d{3,}$/.test(raw))?raw.split(/[;x×\s]+/):raw.split(','),nums=list.map(q=>parseFloat(q.replace(/,/g,'.'))).filter(v=>isFinite(v));if(!nums.length){status('Bitte eine Zahl eingeben.');return}const v=nums[0];
+/* Rechteck braucht zwei Maße: ein einzelnes Komma trennt dann Breite und Tiefe (600,40 = 600 × 40); Kommazahlen mit Strichpunkt: 600,5;400 */
+function vcbEnter(){const raw=$('rmvcb').value.trim();if(!raw)return;const list=op&&op.t==='rect'&&!/[;x×\s]/.test(raw)&&(raw.match(/,/g)||[]).length===1?raw.split(','):raw.split(/[;x×\s]+/),nums=list.map(q=>parseFloat(q.replace(/,/g,'.'))).filter(v=>isFinite(v));if(!nums.length){status('Bitte eine Zahl eingeben.');return}const v=nums[0];
  if(op&&op.t==='rect'){const q=op.p1?rectOf(op.p0,op.p1,op.n):{sa:1,sb:1},[u,vv]=UV[op.face.i+','+op.face.sign],L=Math.abs(v),B=Math.abs(nums[1]!=null?nums[1]:v);op.p1=add(add(op.p0,mul(u,L*q.sa)),mul(vv,B*q.sb));finishRect();return}
  if(op&&op.t==='circ'){op.r=Math.abs(v);finishCirc();return}
  if(op&&op.t==='push'){pushTo(v);commitPush();return}
  if(op&&op.t==='move'){const b=body(op.id),dir=op.lock!=null?(()=>{const a=[0,0,0];a[op.lock]=op.dir?Math.sign(op.dir[op.lock])||1:1;return a})():op.dir||[1,0,0];b.o=add(op.o0,mul(dir,v)).map(num);commitMove();return}
- if(!op&&tool==='push'&&lastPush&&body(lastPush.id)&&JSON.stringify(body(lastPush.id))===lastPush.neu){const b=body(lastPush.id);A.commit(()=>{for(const k of Object.keys(b))delete b[k];Object.assign(b,JSON.parse(lastPush.orig));resize(b,lastPush.face,v)});refresh(true);setVcb(de(v));return}
+ /* letzten Zug korrigieren – nur solange seitdem nichts anderes geändert wurde */
+ if(!op&&tool==='push'&&lastPush&&lastPush.chg===A.chg&&body(lastPush.id)&&JSON.stringify(body(lastPush.id))===lastPush.neu){const b=body(lastPush.id);A.commit(()=>{for(const k of Object.keys(b))delete b[k];Object.assign(b,JSON.parse(lastPush.orig));resize(b,lastPush.face,v)});lastPush.neu=JSON.stringify(b);lastPush.chg=A.chg;refresh(true);setVcb(de(v));status(`Letzten Zug auf ${de(v)} mm geändert.`);return}
  if(!op&&tool==='sel'&&selId!=null){status('Zum Ändern der Maße rechts unter „Objektinfo“ eintragen.');return}
  status('Erst einen Punkt setzen bzw. eine Fläche anklicken, dann das Maß eintippen.')}
 function hitBody(px,py){const ry=V.ray(px,py);let best=null,bt=Infinity,bf=null;for(const b of R().bodies){const m=box(b);let t0=-Infinity,t1=Infinity,ok=true,face=null;
@@ -270,6 +272,8 @@ function open(){A.cancel();R();if(window.KORPUS&&window.KORPUS.isOpen())window.K
   $('rm').addEventListener('click',e=>{const b=e.target.closest('[data-rm]');if(!b)return;const a=b.dataset.rm;if(a==='close')close();else if(a==='list')openList();else if(a==='pic')savePic();else if(a==='print')printAll();else if(a==='undo'){cancelOp();A.undo();refresh()}else if(a==='fit')V.fit();else V.view(a)});
   $('rmtools').addEventListener('click',e=>{const b=e.target.closest('[data-tool]');if(b)setTool(b.dataset.tool)});
   $('rm3d').addEventListener('pointermove',e=>{if(e.buttons)return;hooksMove(e)});$('rm3d').addEventListener('pointerleave',()=>{hover=null;if(!op)infer=null;drawOver()});
+  /* Antippen des Maßfelds markiert den Inhalt – Tippen ersetzt dann die Zahl, statt sie zu verlängern (iPad) */
+  {const el=$('rmvcb');let tap=false;el.addEventListener('pointerdown',()=>{tap=document.activeElement!==el});el.addEventListener('click',()=>{if(tap){tap=false;try{el.setSelectionRange(0,el.value.length)}catch(e){}}})}
   $('rmvcb').addEventListener('keydown',e=>{e.stopPropagation();if(/^[a-wyzA-WYZ ]$/.test(e.key)&&!e.ctrlKey&&!e.metaKey){e.preventDefault();$('rmvcb').blur();key(e);return}if(e.key==='Enter'){e.preventDefault();vcbEnter();$('rmvcb').blur()}else if(e.key==='Escape'){$('rmvcb').blur();key({key:'Escape',preventDefault(){},target:document.body})}});
   $('rmempty').addEventListener('click',e=>{const b=e.target.closest('[data-prim],[data-tool]');if(!b)return;if(b.dataset.prim)addPrim(b.dataset.prim);else setTool(b.dataset.tool)});
   $('rmdims').addEventListener('change',e=>{showDims=e.target.checked;drawOver()});
@@ -281,7 +285,7 @@ function key(e){const t=e.target,inField=t&&t.closest&&t.closest('#rm,#dRml')&&(
  if(document.querySelector('#dHelp.open')){if(e.key==='Escape')$('dHelp').classList.remove('open');return}
  if(e.key==='F1'){e.preventDefault();A.help('r');return}
  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();A.save();return}
- if(e.key==='Escape'){e.preventDefault();if($('dRml').classList.contains('open'))$('dRml').classList.remove('open');else if(op){cancelOp()}else if(tapeRes){tapeRes=null;drawOver()}else if(tool!=='sel')setTool('sel');else if(selId!=null){selId=null;refresh(true)}return}
+ if(e.key==='Escape'){e.preventDefault();if($('dRml').classList.contains('open'))$('dRml').classList.remove('open');else if(op){cancelOp()}else if(tapeRes){tapeRes=null;status();drawOver()}else if(tool!=='sel')setTool('sel');else if(selId!=null){selId=null;refresh(true)}return}
  if(inField)return;
  if(e.ctrlKey||e.metaKey){const k=e.key.toLowerCase();if(k==='z'){e.preventDefault();cancelOp();e.shiftKey?A.redo():A.undo();refresh()}else if(k==='y'){e.preventDefault();A.redo();refresh()}else if(k==='d'&&selId!=null){e.preventDefault();copySel()}
   else if((e.key==='Control'||e.key==='Meta')&&!e.repeat){if(op&&op.t==='move'){op.copy=!op.copy;status()}}return}
