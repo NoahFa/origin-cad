@@ -13,4 +13,5 @@ Live über GitHub Pages: https://noahfa.github.io/origin-cad/ (Push auf `main` v
 - Gespeicherte Zeichnungen (.json) müssen weiter lesbar bleiben; neue Felder nur freiwillig ergänzen.
 - Das Repository ist öffentlich: keine Passwörter, E-Mail-Adressen oder Kundendaten einchecken.
 - Fertige, geprüfte Änderungen darf Claude direkt auf `main` live stellen.
+- **Nach jeder größeren Änderung die vier Prüf-Agenten automatisch starten** (Noah, 22.11.2026): `cad-pruefer-fehler`, `cad-pruefer-oberflaeche`, `cad-pruefer-sicherheit`, `cad-pruefer-bedienbarkeit` aus `.claude/agents/` gleichzeitig im Hintergrund (Ablauf wie in `.claude/commands/pruefen.md`, auch per `/pruefen`). Eindeutige Fehler aus den Berichten beheben, Geschmacksfragen mit Noah absprechen.
 - Noah ist kein Programmierer: Antworten auf Deutsch, kurz, ohne Fachchinesisch, Ergebnis vor Erklärung.
