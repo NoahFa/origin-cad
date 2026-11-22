@@ -7,7 +7,7 @@ const A=window.__cad.kp,$=id=>document.getElementById(id),S=()=>window.__cad.S;
 const newCab=(o={})=>Object.assign({zo:0,sfh:140,b:600,h:720,d:560,ks:[],mw:[],fb:[],eb:[{x:300,y:350}],front:'2',sn:3,nm:0,nf:0,ne:1},o);
 const DEF=()=>({...BT,t:19,rw:8,nt:10,na:20,fuge:3,sockel:false,sh:100,sr:50,lr:'boden',dub:true,topf:true,nut:true,cabs:[newCab()]});
 const DUB_D=8,DUB_T=12,LR_D=5,LR_T=13,TOPF_D=35,TOPF_T=13,SK=16,TANDEM_NL=[250,270,300,350,400,450,500,550,600];
-let cur=0,pick=null,mode='sel',showFront=true,V3=null,drag=null,view={s:1,ox:0,oy:0},cache3=new Map(),timer=0;
+const openSec=new Set(['cab','in']);let cur=0,pick=null,mode='sel',showFront=true,V3=null,drag=null,view={s:1,ox:0,oy:0},cache3=new Map(),timer=0;
 /* Bodenträger: Häfele „Jimmy“ (282.25.716) zum Einstecken, Bohr-Ø 4 mm – btD Bohr-Ø, btT Bohrtiefe, btA Lochmitte unter der Boden-Unterkante */
 /* Beispielhafte Dekore aus dem EGGER-Programm (Farben am Bildschirm nur ungefähr) */
 const MATS=[['','Holz neutral (ohne Dekor)',[0.86,0.72,0.52]],['W1000','Premiumweiß',[0.95,0.95,0.94]],['W980','Platinweiß',[0.92,0.92,0.89]],['U708','Hellgrau',[0.79,0.80,0.79]],['U702','Kaschmirgrau',[0.77,0.73,0.67]],['U732','Staubgrau',[0.55,0.55,0.53]],['U961','Graphitgrau',[0.27,0.28,0.29]],['U999','Schwarz',[0.11,0.11,0.12]],
@@ -218,22 +218,38 @@ const F_ROW=[['t','Plattenstärke',5,60],['rw','Rückwandstärke',3,25],['fuge',
 const F_CAB=[['b','Breite'],['h','Höhe'],['d','Tiefe']];
 function form(){const k=K(),c=k.cabs[cur],inp=(id,lab,val,x='')=>`<div class="pr"><label for="${id}">${lab}</label><input id="${id}" type="text" inputmode="decimal" value="${de(val)}" ${x}></div>`,
  chk=(id,lab,on)=>`<label class="kpchk"><input type="checkbox" id="${id}" ${on?'checked':''}> ${lab}</label>`;
- $('kpform').innerHTML=`<h2>Korpus ${cur+1} <span>von ${k.cabs.length}</span></h2>
- <div class="pr"><label for="kc_typ">Schranktyp</label><select id="kc_typ"><option value="">– Maße übernehmen –</option>${TYPEN.map((t,i)=>`<option value="${i}">${t[0]}</option>`).join('')}</select></div>
- ${F_CAB.map(([f,l])=>inp('kc_'+f,l+' mm',c[f])).join('')}${inp('kc_zo','Unterkante über Boden',c.zo)}
- <div class="pr"><label for="kc_front">Front</label><select id="kc_front">${[['n','Offen (keine Front)'],['l','1 Tür, Band links'],['r','1 Tür, Band rechts'],['2','2 Türen'],['s','Schubkästen (Blum TANDEM)'],['ml','Schubkasten oben + Tür links'],['mr','Schubkasten oben + Tür rechts'],['m2','Schubkasten oben + 2 Türen']].map(([v,l])=>`<option value="${v}" ${c.front===v?'selected':''}>${l}</option>`).join('')}</select></div>
- ${c.front[0]==='m'?inp('kc_sfh','Höhe Schubkastenfront',c.sfh):''}${c.front==='s'?inp('kc_sn','Schubkästen',c.sn)+tandemInfo(c,k):`<h2 style="margin-top:14px">Innenaufteilung</h2>${inp('kc_nm','Mittelwände',c.nm)}${inp('kc_nf','Feste Böden je Fach',c.nf)}${inp('kc_ne','Einlegeböden je Fach',c.ne)}
- <button class="btn" id="kc_spread" style="width:100%">Gleichmäßig verteilen</button><p class="muted" style="margin-top:6px">Danach einzelne Böden und Wände in der Zeichnung mit der Maus verschieben.</p>`}
+ const sel=(id,lab,val,opts)=>`<div class="pr"><label for="${id}">${lab}</label><select id="${id}">${opts.map(([v,l])=>`<option value="${v}" ${val===v?'selected':''}>${l}</option>`).join('')}</select></div>`,
+ note=t=>`<p class="muted kpnote">${t}</p>`,
+ sec=(id,title,sub,body)=>`<details class="kpsec" data-sec="${id}" ${openSec.has(id)?'open':''}><summary><b>${title}</b><span>${sub}</span></summary><div class="kpsecb">${body}</div></details>`,
+ mats=MATS.map(m=>[m[0],m[0]?m[0]+' '+m[1]:m[1]]),frontTxt={n:'offen',l:'1 Tür',r:'1 Tür',2:'2 Türen',s:c.sn+' Schubkästen',ml:'Schubkasten + Tür',mr:'Schubkasten + Tür',m2:'Schubkasten + 2 Türen'}[c.front];
+ $('kpform').innerHTML=`<div class="kpcabs">${k.cabs.map((q,i)=>`<button class="kptab ${i===cur?'on':''}" data-kpcab="${i}" title="Korpus ${i+1} bearbeiten">${i+1}</button>`).join('')}<button class="kptab add" id="kc_add" title="Weiteren Korpus rechts daneben anlegen">+ Korpus</button></div>
+ ${sec('cab','Korpus '+(cur+1),`${de(c.b)} × ${de(c.h)} × ${de(c.d)} · ${frontTxt}`,`
+  <div class="pr"><label for="kc_typ">Schranktyp</label><select id="kc_typ"><option value="">– wählen –</option>${TYPEN.map((t,i)=>`<option value="${i}">${t[0]}</option>`).join('')}</select></div>
+  ${F_CAB.map(([f,l])=>inp('kc_'+f,l+' mm',c[f])).join('')}
+  ${sel('kc_front','Front',c.front,[['n','Offen (keine Front)'],['l','1 Tür, Band links'],['r','1 Tür, Band rechts'],['2','2 Türen'],['s','Schubkästen (Blum TANDEM)'],['ml','Schubkasten oben + Tür links'],['mr','Schubkasten oben + Tür rechts'],['m2','Schubkasten oben + 2 Türen']])}
+  ${c.front[0]==='m'?inp('kc_sfh','Höhe Schubkastenfront',c.sfh):''}${c.front==='s'?inp('kc_sn','Schubkästen',c.sn)+tandemInfo(c,k):''}
+  ${inp('kc_zo','Unterkante über Boden',c.zo)}${note('0 = steht auf dem Boden bzw. Sockel. Für Hängeschränke die Höhe eintragen.')}
+  <button class="btn kpdel" id="kc_del" ${k.cabs.length<2?'disabled':''}>Diesen Korpus löschen</button>`)}
+ ${c.front==='s'?'':sec('in','Innenaufteilung',`${c.mw.length} Wände · ${c.fb.length+c.eb.length} Böden${c.ks.length?' · Stange':''}`,`
+  ${inp('kc_nm','Mittelwände',c.nm)}${inp('kc_nf','Feste Böden je Fach',c.nf)}${inp('kc_ne','Einlegeböden je Fach',c.ne)}
+  <button class="btn" id="kc_spread" style="width:100%">Gleichmäßig verteilen</button>${note('Einzelne Böden, Wände und Stangen setzt und verschiebst du direkt in der Zeichnung.')}`)}
  <div id="kppick"></div>
- <div class="row" style="justify-content:flex-start;margin-top:14px"><button class="btn" id="kc_add">+ Korpus daneben</button><button class="btn" id="kc_del" ${k.cabs.length<2?'disabled style="opacity:.4"':''}>Korpus löschen</button></div>
- <h2 style="margin-top:20px">Für die ganze Zeile</h2>
- ${F_ROW.map(([f,l])=>inp('kr_'+f,l+' mm',k[f])).join('')}
- ${inp('kr_kb','Kantenband mm (0 = ohne)',k.kb)}<div class="pr"><label for="kr_griff">Griffe</label><select id="kr_griff"><option value="n" ${k.griff==='n'?'selected':''}>keine</option><option value="b" ${k.griff==='b'?'selected':''}>Bügelgriff</option></select></div>${k.griff==='b'?inp('kr_grA','Lochabstand Griff',k.grA)+inp('kr_grR','Griff: Abstand zur Türkante',k.grR)+inp('kr_grO','Griff: Abstand oben/unten',k.grO):''}
- ${[['matK','Korpus'],['matF','Fronten'],['matR','Rückwand']].map(([f,l])=>`<div class="pr"><label for="kr_${f}">${l}</label><select id="kr_${f}">${MATS.map(m=>`<option value="${m[0]}" ${k[f]===m[0]?'selected':''}>${m[0]?m[0]+' '+m[1]:m[1]}</option>`).join('')}</select></div>`).join('')}<p class="muted" style="margin:2px 0 10px">Beispiel-Dekore von EGGER. Farben am Bildschirm sind nur ungefähr.</p>
- ${chk('kr_nut','Rückwand in Nut (10 tief, 20 von hinten)',k.nut)}${chk('kr_dub','Dübel Ø8 an allen Stößen',k.dub)}${chk('kr_sv','Würth Systemverbinder SV 20 E',k.sv)}${k.sv?inp('kr_svT','Gehäuse Ø20: Bohrtiefe',k.svT)+inp('kr_svX','Gehäusemitte von der Kante',k.svX)+inp('kr_svO','Bolzen über Plattenmitte',k.svO)+'<p class="muted" style="margin:2px 0 8px">Für 19 mm: 14 tief, 9,5 von der Kante (16 mm: 12,5 und 8). Bolzenloch Ø5 in der Seite, 37 von vorn und hinten.</p>':''}${chk('kr_topf','Topfbänder Ø35 (Blum) mit Montageplatten',k.topf)}
- <div class="pr" style="margin-top:6px"><label for="kr_lr">Bodenträger</label><select id="kr_lr">${[['boden','3 Löcher je Einlegeboden'],['voll','Lochreihe durchgehend'],['aus','keine Löcher']].map(([v,l])=>`<option value="${v}" ${k.lr===v?'selected':''}>${l}</option>`).join('')}</select></div>
- ${k.lr!=='aus'?inp('kr_btD','Bohr-Ø mm',k.btD)+inp('kr_btT','Bohrtiefe mm',k.btT)+inp('kr_btA','Lochmitte unter Boden mm',k.btA)+'<p class="muted" style="margin:2px 0 8px">Voreingestellt für Häfele „Jimmy“ (Bohr-Ø 4). Löcher 37 mm von vorn und hinten, im 32er-Abstand.</p>':''}
- ${chk('kr_sockel','Sockel',k.sockel)}${k.sockel?inp('kr_sh','Sockelhöhe mm',k.sh)+inp('kr_sr','Rücksprung mm',k.sr):''}`;
+ <h2 class="kpall">Für alle Korpusse</h2>
+ ${sec('mat','Platte und Material',`${de(k.t)} mm${k.matK?' · '+k.matK:''}`,`
+  ${F_ROW.map(([f,l])=>inp('kr_'+f,l+' mm',k[f])).join('')}${inp('kr_kb','Kantenband mm (0 = ohne)',k.kb)}
+  ${sel('kr_matK','Dekor Korpus',k.matK,mats)}${sel('kr_matF','Dekor Fronten',k.matF,mats)}${sel('kr_matR','Dekor Rückwand',k.matR,mats)}${note('Beispiel-Dekore von EGGER. Farben am Bildschirm sind nur ungefähr.')}`)}
+ ${sec('verb','Verbindungen',[k.dub?'Dübel':'',k.sv?'SV 20 E':'',k.nut?'Nut':''].filter(Boolean).join(' · ')||'keine',`
+  ${chk('kr_nut','Rückwand in Nut (10 tief, 20 von hinten)',k.nut)}${chk('kr_dub','Dübel Ø8 an allen Stößen',k.dub)}${chk('kr_sv','Würth Systemverbinder SV 20 E',k.sv)}
+  ${k.sv?inp('kr_svT','Gehäuse Ø20: Bohrtiefe',k.svT)+inp('kr_svX','Gehäusemitte von der Kante',k.svX)+inp('kr_svO','Bolzen über Plattenmitte',k.svO)+note('Für 19 mm: 14 tief, 9,5 von der Kante (16 mm: 12,5 und 8). Bolzenloch Ø5 in der Seite, 37 von vorn und hinten.'):''}`)}
+ ${sec('besch','Beschläge',[k.topf?'Topfband':'',k.lr!=='aus'?'Bodenträger':'',k.griff==='b'?'Griffe':''].filter(Boolean).join(' · ')||'keine',`
+  ${chk('kr_topf','Topfbänder Ø35 (Blum) mit Montageplatten',k.topf)}
+  ${sel('kr_lr','Bodenträger',k.lr,[['boden','3 Löcher je Einlegeboden'],['voll','Lochreihe durchgehend'],['aus','keine Löcher']])}
+  ${k.lr!=='aus'?inp('kr_btD','Bohr-Ø mm',k.btD)+inp('kr_btT','Bohrtiefe mm',k.btT)+inp('kr_btA','Lochmitte unter Boden mm',k.btA)+note('Voreingestellt für Häfele „Jimmy“ (Bohr-Ø 4). Löcher 37 mm von vorn und hinten.'):''}
+  ${sel('kr_griff','Griffe',k.griff,[['n','keine'],['b','Bügelgriff']])}
+  ${k.griff==='b'?inp('kr_grA','Lochabstand',k.grA)+inp('kr_grR','Abstand zur Türkante',k.grR)+inp('kr_grO','Abstand oben/unten',k.grO):''}`)}
+ ${sec('sock','Sockel',k.sockel?de(k.sh)+' mm hoch':'ohne',`${chk('kr_sockel','Sockel unter den stehenden Korpussen',k.sockel)}${k.sockel?inp('kr_sh','Sockelhöhe mm',k.sh)+inp('kr_sr','Rücksprung mm',k.sr):''}`)}`;
+ $('kpform').querySelectorAll('details.kpsec').forEach(d=>d.addEventListener('toggle',()=>{d.open?openSec.add(d.dataset.sec):openSec.delete(d.dataset.sec)}));
+ $('kpform').querySelectorAll('[data-kpcab]').forEach(bt=>bt.onclick=()=>{cur=+bt.dataset.kpcab;pick=null;refresh()});
  const val=el=>{const v=parseFloat(el.value.replace(',','.'));return isFinite(v)?v:null},on=(id,fn)=>{const el=$(id);if(!el)return;el.addEventListener('change',()=>{fn(el);refresh()});if(el.tagName==='INPUT'&&el.type==='text')el.addEventListener('keydown',e=>{if(e.key==='Enter')el.blur()})};
  const set=(obj,f,min,max,after)=>el=>{const v=val(el);if(v==null)return;A.commit(()=>{obj[f]=clampN(v,min,max);after&&after();tidy(k)})};
  on('kc_b',set(c,'b',150,3000,()=>scaleX(c,k)));on('kc_h',set(c,'h',150,3000));on('kc_d',set(c,'d',120,1200));
@@ -322,4 +338,4 @@ function key(e){const t=e.target,inField=t&&(t.tagName==='INPUT'||t.tagName==='S
  if(e.key==='Escape'){e.preventDefault();if($('dKpn').classList.contains('open'))$('dKpn').classList.remove('open');else if($('dKpl').classList.contains('open'))$('dKpl').classList.remove('open');else if(mode!=='sel')setMode('sel');else if(pick){pick=null;refresh(true)}else close();return}
  if((e.ctrlKey||e.metaKey)&&!inField){const k=e.key.toLowerCase();if(k==='z'){e.preventDefault();e.shiftKey?A.redo():A.undo();refresh()}else if(k==='y'){e.preventDefault();A.redo();refresh()}return}
  if((e.key==='Delete'||e.key==='Backspace')&&!inField&&pick){e.preventDefault();removePick()}}
-return{select:i=>{cur=i;pick=null;refresh()},fronts,nest,MATS,open,close,isOpen,key,parts,list,partEnts,model3,get state(){return K()},refresh,get view(){return view},hitAt,csv,DEF}})();
+return{openAll:()=>{['cab','in','mat','verb','besch','sock'].forEach(x=>openSec.add(x));refresh()},select:i=>{cur=i;pick=null;refresh()},fronts,nest,MATS,open,close,isOpen,key,parts,list,partEnts,model3,get state(){return K()},refresh,get view(){return view},hitAt,csv,DEF}})();

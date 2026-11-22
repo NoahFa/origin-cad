@@ -239,7 +239,7 @@ const CMDS={
   if(rad>0)doCommit(()=>S.ents.push(mk('circle',{c,r:rad})))}},
  B:{n:'Bogen (3 Punkte)',g:'Z',i:'M4 18A9 9 0 0 1 20 18',*run(){const a=(yield P('Startpunkt')).p;if(!a)return;const m=(yield P('Punkt auf dem Bogen',{base:a,prev:p=>[tmp('line',{a,b:p})]})).p;if(!m)return;
   const r=yield P('Endpunkt',{base:m,prev:p=>{const e=arc3(a,m,p);return e?[e]:[]}});if(!r.p)return;const e=arc3(a,m,r.p,true);if(e)doCommit(()=>S.ents.push(e))}},
- PG:{n:'Polygon',g:'Z',i:'M12 3l8 5v8l-8 5-8-5V8z',*run(){const n=yield N('Anzahl Ecken',mem.pg);if(!n||n<3)return;const k=mem.pg=Math.round(n);const c=(yield P('Mittelpunkt')).p;if(!c)return;
+ PG:{less:1,n:'Polygon',g:'Z',i:'M12 3l8 5v8l-8 5-8-5V8z',*run(){const n=yield N('Anzahl Ecken',mem.pg);if(!n||n<3)return;const k=mem.pg=Math.round(n);const c=(yield P('Mittelpunkt')).p;if(!c)return;
   const r=yield P('Eckpunkt oder Radius (Zahl)',{base:c,num:true,prev:p=>[polyE(c,p,k)]});const p=r.n!=null?add(c,[r.n,0]):r.p;if(!p||dist(p,c)<1e-9)return;doCommit(()=>S.ents.push(polyE(c,p,k,true)))}},
  LL:{n:'Langloch',g:'Z',i:'M8 8h8a4 4 0 0 1 0 8H8a4 4 0 0 1 0-8z',*run(){const a=(yield P('Erster Mittelpunkt')).p;if(!a)return;const b=(yield P('Zweiter Mittelpunkt',{base:a,prev:p=>[tmp('line',{a,b:p})]})).p;if(!b||dist(a,b)<1e-9)return;
   const r=yield P('Breite (Zahl) oder Punkt auf dem Rand',{base:b,num:true,prev:p=>[tmp('slot',{a,b,r:Math.max(dSeg(p,a,b),.01)})]});const rad=r.n!=null?r.n/2:(r.p?dSeg(r.p,a,b):0);if(rad>0)doCommit(()=>S.ents.push(mk('slot',{a,b,r:rad})))}},
@@ -294,17 +294,17 @@ const CMDS={
   for(;;){const r=yield PK('Objekt wählen · Enter = fertig');if(!r.e)return;const e=r.e;if(e.t==='dim'){log('Bemaßung geht nicht.','e');continue}
    const s=yield P('Seite anklicken',{prev:p=>{const o=offsetEnt(e,d,p);return o?[o]:[]}});if(!s.p)return;const o=offsetEnt(e,d,s.p);if(o)doCommit(()=>S.ents.push(realize(o,e.ly)));else log('Versatz geht hier nicht (Radius zu klein).','e')}}},
  AR:{n:'Abrunden',g:'A',i:'M4 20v-8a8 8 0 0 1 8-8h8',*run(){const r=yield N('Radius',mem.rad);if(r==null||r<0)return;mem.rad=r;const a=yield PK('Erste Linie');if(!a.e)return;hlE=a.e;const b=yield PK('Zweite Linie');hlE=null;if(!b.e)return;doFillet(a,b,r,false)}},
- FA:{n:'Fasen',g:'A',i:'M4 20v-9l7-7h9',*run(){const r=yield N('Fasenlänge',mem.cha);if(r==null||r<0)return;mem.cha=r;const a=yield PK('Erste Linie');if(!a.e)return;hlE=a.e;const b=yield PK('Zweite Linie');hlE=null;if(!b.e)return;doFillet(a,b,r,true)}},
+ FA:{less:1,n:'Fasen',g:'A',i:'M4 20v-9l7-7h9',*run(){const r=yield N('Fasenlänge',mem.cha);if(r==null||r<0)return;mem.cha=r;const a=yield PK('Erste Linie');if(!a.e)return;hlE=a.e;const b=yield PK('Zweite Linie');hlE=null;if(!b.e)return;doFillet(a,b,r,true)}},
  ST:{n:'Stutzen',g:'A',i:'M3 12h7M14 12h7M12 3v4M12 17v4M8 8l8 8',*run(){for(;;){const r=yield PK('Teilstück zum Wegschneiden anklicken · Enter = fertig');if(!r.e)return;const e=r.e;if(e.t==='dim')continue;
   pushUndo();let t=e;const ex=explode(e);if(ex){replace(e,ex);t=nearest(ex,r.p)}const res=trimEnt(t,r.p);if(!res){dropUndo();log('Keine Schnittkante gefunden.','e');render();continue}replace(t,res);afterChange()}}},
- RK:{n:'Reihe kopieren',g:'A',i:'M3 9h5v6H3zM10 9h5v6h-5zM17 9h4v6h-4z',*run(){const es=yield* needSel();if(!es.length)return;const c=yield N('Anzahl Spalten (X)',mem.cols);if(!c||c<1)return;const rw=yield N('Anzahl Zeilen (Y)',mem.rows);if(!rw||rw<1)return;
+ RK:{less:1,n:'Reihe kopieren',g:'A',i:'M3 9h5v6H3zM10 9h5v6h-5zM17 9h4v6h-4z',*run(){const es=yield* needSel();if(!es.length)return;const c=yield N('Anzahl Spalten (X)',mem.cols);if(!c||c<1)return;const rw=yield N('Anzahl Zeilen (Y)',mem.rows);if(!rw||rw<1)return;
   mem.cols=Math.round(c);mem.rows=Math.round(rw);let dx=0,dy=0;if(mem.cols>1){dx=yield N('Abstand Spalten (X)',mem.dx);if(dx==null)return;mem.dx=dx}if(mem.rows>1){dy=yield N('Abstand Zeilen (Y)',mem.dy);if(dy==null)return;mem.dy=dy}
   doCommit(()=>{for(let i=0;i<mem.cols;i++)for(let j=0;j<mem.rows;j++){if(!i&&!j)continue;es.forEach(e=>S.ents.push(realize(xf(e,mvF([i*dx,j*dy])),e.ly)))}})}},
- ZL:{n:'Zerlegen',g:'A',i:'M4 4h6v6H4zM14 14h6v6h-6zM14 4l6 6M4 14l6 6',*run(){const es=yield* needSel();let k=0;doCommit(()=>es.forEach(e=>{const x=explode(e);if(x){replace(e,x);k++}}));log(k+' Objekt(e) zerlegt.')}},
+ ZL:{less:1,n:'Zerlegen',g:'A',i:'M4 4h6v6H4zM14 14h6v6h-6zM14 4l6 6M4 14l6 6',*run(){const es=yield* needSel();let k=0;doCommit(()=>es.forEach(e=>{const x=explode(e);if(x){replace(e,x);k++}}));log(k+' Objekt(e) zerlegt.')}},
  E:{n:'Löschen',g:'A',i:'M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13',*run(){const es=yield* needSel();if(!es.length)return;doCommit(()=>{S.ents=S.ents.filter(e=>!es.includes(e))});log(es.length+' gelöscht.')}},
  BM:{n:'Bemaßung',g:'M',i:'M4 8v10M20 8v10M4 13h16M7 10l-3 3 3 3M17 10l3 3-3 3',*run(){const a=(yield P('Erster Punkt')).p;if(!a)return;const b=(yield P('Zweiter Punkt',{base:a,prev:p=>[tmp('line',{a,b:p})]})).p;if(!b)return;
   const r=yield P('Lage der Maßlinie',{prev:p=>[dimAuto(a,b,p)]});if(!r.p)return;doCommit(()=>S.ents.push(realize(dimAuto(a,b,r.p),dimLayer())))}},
- BA:{n:'Bemaßung ausgerichtet',g:'M',i:'M6 18L18 6M3 15l6 6M15 3l6 6',*run(){const a=(yield P('Erster Punkt')).p;if(!a)return;const b=(yield P('Zweiter Punkt',{base:a,prev:p=>[tmp('line',{a,b:p})]})).p;if(!b||dist(a,b)<1e-9)return;
+ BA:{less:1,n:'Bemaßung ausgerichtet',g:'M',i:'M6 18L18 6M3 15l6 6M15 3l6 6',*run(){const a=(yield P('Erster Punkt')).p;if(!a)return;const b=(yield P('Zweiter Punkt',{base:a,prev:p=>[tmp('line',{a,b:p})]})).p;if(!b||dist(a,b)<1e-9)return;
   const r=yield P('Lage der Maßlinie',{prev:p=>[tmp('dim',{a,b,p,m:'al',ly:dimLayer()})]});if(!r.p)return;doCommit(()=>S.ents.push(mk('dim',{a,b,p:r.p,m:'al'},dimLayer())))}},
  BK:{n:'Kettenmaß',g:'M',i:'M3 8v9M10 8v9M21 8v9M3 13h18M6 11l-3 2 3 2M18 11l3 2-3 2',*run(){const a=(yield P('Erster Punkt')).p;if(!a)return;const b=(yield P('Zweiter Punkt',{base:a,prev:p=>[tmp('line',{a,b:p})]})).p;if(!b)return;
   const r=yield P('Lage der Maßlinie',{prev:p=>[dimAuto(a,b,p)]});if(!r.p)return;const d0=dimAuto(a,b,r.p),m=d0.m,pl=r.p;doCommit(()=>S.ents.push(realize(d0,dimLayer())));let last=b;
@@ -313,7 +313,7 @@ const CMDS={
   const q=prims(r.e).filter(x=>x.c).reduce((b,x)=>(!b||dPrim(r.p,x)<dPrim(r.p,b))?x:b,null);if(!q){log('Das ist kein Kreis oder Bogen.','e');return}
   let m=isFull(q)?'dia':'rad';for(;;){const s=yield P(`Lage des Maßes  ${m==='dia'?'[R]adius statt Durchmesser':'[D]urchmesser statt Radius'}`,{opts:['R','D'],prev:p=>[tmp('dim',{c:q.c,r:q.r,p,m,ly:dimLayer()})]});
    if(s.opt){m=s.opt==='D'?'dia':'rad';continue}if(!s.p)return;const p=s.p;doCommit(()=>S.ents.push(mk('dim',{c:[...q.c],r:q.r,p,m},dimLayer())));return}}},
- MS:{n:'Abstand messen',g:'M',i:'M3 8h18v8H3zM7 8v3M11 8v4M15 8v3',*run(){const a=(yield P('Erster Punkt')).p;if(!a)return;const r=yield P('Zweiter Punkt',{base:a,prev:p=>[tmp('line',{a,b:p})]});if(!r.p)return;const d=sub(r.p,a);
+ MS:{less:1,n:'Abstand messen',g:'M',i:'M3 8h18v8H3zM7 8v3M11 8v4M15 8v3',*run(){const a=(yield P('Erster Punkt')).p;if(!a)return;const r=yield P('Zweiter Punkt',{base:a,prev:p=>[tmp('line',{a,b:p})]});if(!r.p)return;const d=sub(r.p,a);
   log(`Abstand ${fmtDE(len(d))} mm · ΔX ${fmtDE(d[0])} · ΔY ${fmtDE(d[1])} · Winkel ${fmtDE(deg(ang(d)))}°`,'ok')}},
  VB:{n:'Verbinden (zur Kontur)',g:'F',i:'M10 14a4 4 0 0 1 0-6l2-2a4 4 0 0 1 6 6l-1 1M14 10a4 4 0 0 1 0 6l-2 2a4 4 0 0 1-6-6l1-1',*run(){const es=yield* needSel();if(!es.length)return;
   const r=joinEnts(es);if(!r.made.length){log('Nichts zu verbinden – die Enden treffen sich nicht (Abstand > 0,05 mm).','e');return}
@@ -321,10 +321,10 @@ const CMDS={
   const c=r.made.filter(e=>e.closed).length;log(`${r.made.length} Kontur(en) aus ${r.used.size} Teilen${c?`, davon ${c} geschlossen`:''}.`+(r.made.length>c?' Offen bleibt, wo Enden nicht aufeinandertreffen.':''),'ok')}},
  VE:{n:'Vereinigen',g:'F',i:'M4 4h10v6h6v10H10v-6H4z',*run(){yield* boolRun('ctUnion')}},
  AB:{n:'Abziehen',g:'F',i:'M4 4h16v8h-8v8H4zM15 15h5v5h-5z',*run(){yield* boolRun('ctDifference')}},
- SM:{n:'Schnittmenge',g:'F',i:'M9 5a7 7 0 1 0 0 14a7 7 0 1 0 0-14M15 5a7 7 0 1 0 0 14a7 7 0 1 0 0-14',*run(){yield* boolRun('ctIntersection')}},
+ SM:{less:1,n:'Schnittmenge',g:'F',i:'M9 5a7 7 0 1 0 0 14a7 7 0 1 0 0-14M15 5a7 7 0 1 0 0 14a7 7 0 1 0 0-14',*run(){yield* boolRun('ctIntersection')}},
  VO:{n:'Vorlage einfügen',g:'F',i:'M5 4h10l4 4v12H5zM15 4v4h4M9 13h6M12 10v6',now:()=>openTpls()},
- EX:{n:'SVG für Origin ausgeben',g:'F',i:'M12 4v11M8 11l4 4 4-4M5 19h14',now:()=>openExport()},
- DD:{n:'3D-Ansicht',g:'F',i:'M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12L4 7.5M12 12v9',now:()=>open3D()},
+ EX:{less:1,n:'SVG für Origin ausgeben',g:'F',i:'M12 4v11M8 11l4 4 4-4M5 19h14',now:()=>openExport()},
+ DD:{less:1,n:'3D-Ansicht',g:'F',i:'M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12L4 7.5M12 12v9',now:()=>open3D()},
  PR:{n:'Drucken / PDF',now:()=>printDrawing()},
  ZA:{n:'Zoom alles',now:()=>zoomAll()},
 };
@@ -400,11 +400,11 @@ function updPrompt(){$('prompt').textContent=REQ?REQ.prompt+(again&&!gotPt?' · 
 const ICON=d=>`<svg viewBox="0 0 24 24"><path d="${d}"/></svg>`;
 function buildTools(){const grp={Z:'Zeichnen',A:'Ändern',M:'Maße',F:'Fräsen'};let h='',last='';const mZ=[],mA=[],mF=[];
  for(const[k,c]of Object.entries(CMDS)){if(!c.g)continue;if(c.g!==last){h+=`<div class="grp">${grp[c.g]}</div>`;last=c.g}
-  h+=`<button class="tb" data-r="${k}" data-tip="${esc(c.n)}  (${CTRL_OF[k]?'Strg+'+CTRL_OF[k]+' · ':''}${k})" aria-label="${esc(c.n)}">${ICON(c.i)}</button>`;
+  if(!c.less)h+=`<button class="tb" data-r="${k}" data-tip="${esc(c.n)}  (${CTRL_OF[k]?'Strg+'+CTRL_OF[k]+' · ':''}${k})" aria-label="${esc(c.n)}">${ICON(c.i)}</button>`;
   (c.g==='Z'?mZ:c.g==='F'?mF:mA).push(`<li><button data-r="${k}">${esc(c.n)}<kbd>${keyLabel(k)}</kbd></button></li>`)}
  $('tools').innerHTML=`<button class="tb" data-a="select" id="bSel" data-tip="Auswählen  (Shift+A · Esc)" aria-label="Auswählen"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6.5 1.5L16 20l-2.5 1-3.5-7.5L5 18z"/></svg></button>`+h;$('mZ').innerHTML=mZ.join('');$('mA').innerHTML=mA.join('');$('mF').innerHTML=mF.join('')+'<hr><li><button data-a="cam">Fräsvorschau<kbd>F6</kbd></button></li>';
  $('helpT').innerHTML='<tr><th>Tasten</th><th>Befehl</th><th>Tasten</th><th>Befehl</th></tr>'+(()=>{const l=Object.entries(CMDS).map(([k,c])=>`<td>${CTRL_OF[k]?`<code>Strg+${CTRL_OF[k]}</code> `:''}<code>${k}</code></td><td>${esc(c.n)}</td>`);let o='';for(let i=0;i<l.length;i+=2)o+=`<tr>${l[i]}${l[i+1]||'<td></td><td></td>'}</tr>`;return o})()}
-function updTools(){document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('on',b.id==='bSel'?!curCmd:b.dataset.r===curCmd));for(const k in tg)$('t_'+k).classList.toggle('on',tg[k])}
+function updTools(){document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('on',b.id==='bSel'?!curCmd:b.dataset.r===curCmd));for(const k in tg)$('t_'+k).classList.toggle('on',tg[k]);$('a_cam').classList.toggle('on',tg.cam);$('legend').hidden=!tg.cam}
 
 /* Eigenschaften */
 const TN={dimr:'Radius-/Durchmessermaß',xline:'Hilfslinie (unendlich)',line:'Linie',pline:'Polylinie',rect:'Rechteck',circle:'Kreis',arc:'Bogen',slot:'Langloch',dim:'Bemaßung',text:'Text'};
@@ -558,6 +558,10 @@ function boxSel(a,b,cross,shift){const x0=Math.min(a[0],b[0]),x1=Math.max(a[0],b
   if(ok){shift?sel.delete(e.id):sel.add(e.id)}}}
 
 /* ---------- Maus ---------- */
+/* Hinweis zur Bedienung verschwindet nach der ersten Benutzung */
+try{if(localStorage.getItem('origincad.hint'))$('hint').style.display='none'}catch(e){}
+const hideHint=()=>{if($('hint').style.display==='none')return;$('hint').style.display='none';try{localStorage.setItem('origincad.hint','1')}catch(e){}};
+cv.addEventListener('wheel',hideHint,{passive:true});cv.addEventListener('pointerdown',hideHint);
 cv.addEventListener('contextmenu',e=>e.preventDefault());
 /* Finger: zwei Finger = Zoom/Verschieben; Punkt wird erst beim Loslassen gesetzt (Finger ziehen = Fang suchen) */
 let lastPT='mouse',pinch=null,tap=false;const TP=new Map();

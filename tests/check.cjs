@@ -220,7 +220,9 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  await p.click('[data-v3="bottom"]');await p.click('[data-v3="close"]');ok(!(await p.evaluate(()=>CAD3D.isOpen())),'Schließen geht');
 
  console.log('Korpusplaner');
- await fresh();await p.click('[data-a="korpus"]');await p.waitForTimeout(250);
+ await fresh();await p.click('.mbtn[data-a="korpus"]');await p.waitForTimeout(250);
+ r=await p.evaluate(()=>[...document.querySelectorAll('#kpform details')].map(d=>d.dataset.sec+(d.open?'+':'-')).join(' '));ok(r==='cab+ in+ mat- verb- besch- sock-','Planer: Korpus und Innenaufteilung offen, Technik-Abschnitte eingeklappt',r);
+ await p.click('#kpform details[data-sec="sock"] summary');ok(await p.isVisible('#kr_sockel'),'Abschnitt „Sockel“ klappt auf');await p.evaluate(()=>KORPUS.openAll());
  r=await p.evaluate(()=>KORPUS.list().map(x=>({n:x.n,name:x.p.name,W:x.p.W,H:x.p.H,T:x.p.T,holes:x.p.holes.length,gr:x.p.grooves.length})));
  const part=n=>r.find(x=>x.name===n);
  ok(r.length===8&&part('Seite links').W===560&&part('Seite links').H===720&&part('Boden').W===562&&part('Rückwand').W===580&&part('Rückwand').H===700&&part('Einlegeboden').W===560&&part('Einlegeboden').H===522,'Standard-Korpus 600×720×560: 8 Teile mit richtigen Maßen',JSON.stringify(r));
@@ -295,6 +297,12 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  r=await p.evaluate(()=>__cad.importDXF(__cad.buildDXF(__cad.S.ents)).ents.filter(e=>e.t==='text').map(e=>e.s).join());ok(/Ø80/.test(r)&&/R40/.test(r),'DXF enthält Ø80 und R40',r);
  const jsD=await p.evaluate(()=>JSON.stringify({app:'OriginCAD',v:3,...__cad.S}));await p.setInputFiles('#file',{name:'Masse.json',mimeType:'application/json',buffer:Buffer.from(jsD)});await p.waitForFunction(()=>document.getElementById('fname').textContent.startsWith('Masse.json'));
  ok((await ents()).filter(e=>e.t==='dim'&&e.c).length===2,'Radius-/Durchmessermaße werden gespeichert und geladen');
+
+ console.log('Aufgeräumte Oberfläche');
+ await fresh();await p.evaluate(()=>{if(__cad.tg.cam)__cad.act('cam')});r=await p.evaluate(()=>({keys:!!document.querySelector('.keys'),leg:document.getElementById('legend').hidden,acts:getComputedStyle(document.querySelector('.acts')).display,mob:getComputedStyle(document.getElementById('t_cam')).display,cols:getComputedStyle(document.getElementById('tools')).gridTemplateColumns.split(' ').length,scroll:document.getElementById('tools').scrollHeight-document.getElementById('tools').clientHeight}));
+ ok(!r.keys&&r.leg&&r.acts==='flex'&&r.mob==='none'&&r.cols===2&&r.scroll<=0,'Zeichenprogramm: Werkzeuge zweispaltig, Spickzettel weg, Legende aus, Vorschau/3D/Export oben rechts',JSON.stringify(r));
+ await p.click('#a_cam');ok(!(await p.evaluate(()=>document.getElementById('legend').hidden))&&(await p.evaluate(()=>document.getElementById('a_cam').classList.contains('on'))),'Fräsvorschau oben einschalten: Knopf leuchtet, Farblegende erscheint');await p.click('#a_cam');
+ await p.click('.acts [data-a="exportSvg"]');ok(await p.evaluate(()=>document.getElementById('dExp').classList.contains('open')),'„SVG für Origin“ oben öffnet den Export');await p.keyboard.press('Escape');
 
  console.log('Darstellung');
  for(const[n,vp]of[['tablet',{width:1024,height:768}],['handy',{width:390,height:844}]]){const q=await open(vp);await q.evaluate(()=>__cad.act('cam'));

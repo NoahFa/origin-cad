@@ -10,9 +10,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Origin CAD">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.webmanifest?v=17">
-<link rel="icon" href="icon.svg?v=17" type="image/svg+xml">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=17">
+<link rel="manifest" href="manifest.webmanifest?v=18">
+<link rel="icon" href="icon.svg?v=18" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=18">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -30,7 +30,7 @@
 html,body{height:100%}
 body{margin:0;background:var(--chrome);color:var(--ink);font:14px/1.4 "IBM Plex Sans",system-ui,sans-serif;overflow:hidden}
 button,input,select{font:inherit;color:inherit}
-.app{display:grid;height:100vh;height:100dvh;grid-template-rows:38px minmax(0,1fr) auto 30px;grid-template-columns:56px minmax(0,1fr) 272px;
+.app{display:grid;height:100vh;height:100dvh;grid-template-rows:42px minmax(0,1fr) auto 32px;grid-template-columns:98px minmax(0,1fr) 272px;
  grid-template-areas:"menu menu menu" "tools cv side" "cmd cmd side" "stat stat stat"}
 /* Menü */
 .menu{grid-area:menu;display:flex;align-items:center;gap:2px;padding:0 8px;border-bottom:1px solid var(--line);background:var(--panel)}
@@ -50,9 +50,13 @@ button,input,select{font:inherit;color:inherit}
 .ub{display:flex;align-items:center;gap:6px;border:0;background:none;padding:5px 9px;border-radius:5px;cursor:pointer;white-space:nowrap}
 .ub svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .ub:hover:not(:disabled){background:var(--hov)}.ub:disabled{opacity:.35;cursor:default}
+.acts{display:flex;gap:6px;margin-left:auto;flex:none;align-items:center}.acts+.fname{margin-left:12px}
+.ab{border:1px solid var(--line);background:var(--chrome);padding:5px 11px;border-radius:6px;cursor:pointer;white-space:nowrap;font-size:13.5px}.ab:hover{background:var(--hov)}.ab.on{background:var(--accs);color:var(--acc);border-color:color-mix(in srgb,var(--acc) 40%,transparent)}.ab.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+@media(max-width:1180px){.acts{display:none}}@media(min-width:1181px){.stat .mob{display:none}}@media(max-width:1380px){.acts+.fname{display:none}}
 .fname{margin-left:auto;color:var(--mut);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Werkzeuge */
-.tools{grid-area:tools;background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:2px}
+.tools{grid-area:tools;background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:6px 0 10px;display:grid;grid-template-columns:42px 42px;justify-content:center;align-content:start;gap:2px}
+.tools .grp{grid-column:1/-1;text-align:center}.tools #bSel{grid-column:1/-1;width:86px}
 .tools .grp{font-size:10px;color:var(--mut);margin:8px 0 2px;letter-spacing:.02em}
 .tb{width:42px;height:38px;border:0;background:none;border-radius:6px;display:grid;place-items:center;cursor:pointer;position:relative;flex:none}
 .tb svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
@@ -101,11 +105,11 @@ button,input,select{font:inherit;color:inherit}
 /* Status */
 .stat{grid-area:stat;display:flex;align-items:center;gap:4px;padding:0 8px;background:var(--chrome);border-top:1px solid var(--line);font:12.5px "IBM Plex Mono",monospace;overflow-x:auto}
 .xy{min-width:230px;color:var(--mut);white-space:nowrap}
-.tg{border:1px solid transparent;background:none;padding:2px 8px;border-radius:4px;cursor:pointer;color:var(--mut);font:inherit;white-space:nowrap}
+.tg{border:1px solid transparent;background:none;padding:3px 9px;border-radius:5px;cursor:pointer;color:var(--mut);font:12.5px "IBM Plex Sans",system-ui,sans-serif;white-space:nowrap}.tg:hover{background:var(--hov)}
 .tg.on{background:var(--accs);color:var(--acc);border-color:color-mix(in srgb,var(--acc) 40%,transparent)}
 .stat select{padding:1px 2px;border:1px solid var(--line);border-radius:4px;background:var(--panel);font:inherit;color:inherit}
 .stat input{width:56px;padding:1px 4px;border:1px solid var(--line);border-radius:4px;background:var(--panel);font:inherit;text-align:right}
-.stat .sp{flex:1}
+.stat .sp{flex:1}.stat .sep{width:1px;height:16px;background:var(--line);margin:0 6px;flex:none}
 /* Dialog */
 .dlg{position:fixed;inset:0;background:#0007;display:none;place-items:center;z-index:40;padding:16px}
 .dlg.open{display:grid}
@@ -132,13 +136,21 @@ button,input,select{font:inherit;color:inherit}
 .kpbar{grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
 .kpbar h3{margin:0 8px 0 0;font-size:17px;display:flex;align-items:center;gap:8px}.kpbar h3 i{width:14px;height:14px;background:var(--acc);border-radius:3px;display:block}.kpbar .sp{flex:1}
 .kpside{overflow-y:auto;padding:14px;background:var(--panel);border-right:1px solid var(--line)}
-.kpside h2{font-size:13px;font-weight:600;margin:0 0 10px;display:flex;justify-content:space-between}.kpside h2 span{color:var(--mut);font-weight:400}
+.kpside{padding:12px}.kpside h2.kpall{font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--mut);margin:18px 2px 6px}
+.kpcabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.kptab{min-width:34px;height:32px;padding:0 10px;border:1px solid var(--line);background:var(--chrome);border-radius:6px;cursor:pointer;font-weight:500}.kptab.on{background:var(--acc);border-color:var(--acc);color:#fff}.kptab.add{color:var(--mut)}.kptab:hover:not(.on){background:var(--hov)}
+.kpsec{border:1px solid var(--line);border-radius:8px;background:var(--chrome);margin-bottom:8px;overflow:hidden}
+.kpsec summary{list-style:none;cursor:pointer;padding:9px 12px;display:flex;flex-direction:column;gap:1px;position:relative}.kpsec summary::-webkit-details-marker{display:none}
+.kpsec summary b{font-size:13.5px;font-weight:600}.kpsec summary span{font-size:12.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:18px}
+.kpsec summary::after{content:"";position:absolute;right:13px;top:15px;width:7px;height:7px;border-right:1.6px solid var(--mut);border-bottom:1.6px solid var(--mut);transform:rotate(45deg);transition:transform .15s}.kpsec[open] summary::after{transform:rotate(225deg);top:18px}
+.kpsec[open] summary{border-bottom:1px solid var(--line)}.kpsec[open] summary span{display:none}
+.kpsecb{padding:10px 12px 12px;background:var(--panel)}.kpsecb .pr input,.kpsecb .pr select{background:var(--chrome)}
+.kpnote{margin:2px 0 8px!important;font-size:12.5px!important}.kpdel{width:100%;margin-top:4px;color:var(--mut)}.kpdel:disabled{display:none}
 .kpside .pr{grid-template-columns:minmax(0,1fr) 96px}.kpside .pr:has(select){grid-template-columns:86px minmax(0,1fr)}
 .kpchk{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin:7px 0;cursor:pointer}.kpchk input{width:17px;height:17px;flex:none;margin:1px 0 0}
 .kpsel{margin-top:12px;padding:10px;border-radius:7px;background:var(--accs);display:grid;gap:8px}.kpsel .pr{margin:0}
 .kpmid,.kp3{position:relative;min-height:0;background:#16191d;overflow:hidden}.kp3{border-left:1px solid var(--line)}
 .kpmid canvas,.kp3 canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}.kp3 canvas{cursor:grab}
-.kptools{position:absolute;left:10px;top:10px;display:flex;gap:6px;flex-wrap:wrap;z-index:1}
+.kptools{position:absolute;left:10px;top:10px;right:10px;display:flex;gap:6px;flex-wrap:wrap;z-index:1}.kptools .btn{padding:5px 9px;font-size:13px}
 .kptools .btn{background:#21252b;color:#e4e7eb;border-color:#353b44}.kptools .btn.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .kplabel{position:absolute;right:10px;top:10px;color:#9aa3ad;font-size:12.5px;background:#16191dcc;padding:4px 8px;border-radius:5px;pointer-events:none;z-index:1}
 .kphint{position:absolute;left:10px;bottom:8px;right:10px;color:#9aa3ad;font-size:12.5px;pointer-events:none}.kphint span{background:#16191dcc;padding:4px 8px;border-radius:5px}
@@ -146,7 +158,7 @@ button,input,select{font:inherit;color:inherit}
 @media(max-width:1000px){.kp{grid-template-columns:260px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) minmax(0,1fr)}.kpside{grid-row:2/4}.kp3{border-left:0;border-top:1px solid var(--line)}}
 @media(max-width:640px){.kp{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 240px minmax(0,1fr) minmax(0,1fr);overflow:auto}.kpside{grid-row:auto;border-right:0}}
 .row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
-@media(max-width:860px){.app{grid-template-columns:52px minmax(0,1fr);grid-template-rows:38px minmax(0,1fr) auto 220px 30px;grid-template-areas:"menu menu" "tools cv" "cmd cmd" "side side" "stat stat"}.side{border-left:0;border-top:1px solid var(--line)}.fname{display:none}.hint{display:none}.stat>*{flex:none}.xy{min-width:0;margin-right:6px}}
+@media(max-width:860px){.tools{grid-template-columns:42px}.tools #bSel{width:42px}.app{grid-template-columns:52px minmax(0,1fr);grid-template-rows:42px minmax(0,1fr) auto 220px 32px;grid-template-areas:"menu menu" "tools cv" "cmd cmd" "side side" "stat stat"}.side{border-left:0;border-top:1px solid var(--line)}.fname{display:none}.hint{display:none}.stat>*{flex:none}.xy{min-width:0;margin-right:6px}}
 @media(max-width:600px){.menu{padding:0 4px;gap:0}.brand{margin-right:4px}.brand span{display:none}.dd.wide{display:none}.ur{margin-left:auto;padding-left:4px;border-left:0}.ub span{display:none}.ub{padding:5px 7px}.dd>button{padding:6px 8px}.dd ul{max-width:92vw}}
 @media(prefers-reduced-motion:no-preference){.dlg .box{animation:pop .16s ease-out}@keyframes pop{from{transform:translateY(8px);opacity:0}}}
 </style>
@@ -190,25 +202,20 @@ button,input,select{font:inherit;color:inherit}
    <li><button data-a="help">Befehle &amp; Eingabe<kbd>F1</kbd></button></li>
   </ul></div>
   <div class="ur"><button class="ub" data-a="undo" id="bUndo" title="Rückgängig (Strg+Z)" aria-label="Rückgängig"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span>Rückgängig</span></button><button class="ub" data-a="redo" id="bRedo" title="Wiederholen (Strg+Y)" aria-label="Wiederholen"><svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3"/></svg></button></div>
+  <div class="acts"><button class="ab" data-a="cam" id="a_cam" title="Zeigt, wo der Fräser läuft und wo Material stehen bleibt (F6)">Fräsvorschau</button><button class="ab" data-a="view3d" title="Platte räumlich ansehen (F4)">3D</button><button class="ab pri" data-a="exportSvg" title="Datei für die Shaper Origin speichern">SVG für Origin</button></div>
   <div class="fname" id="fname">Zeichnung · Maße in mm</div>
  </nav>
  <div class="tools" id="tools"></div>
  <div class="cvw" id="cvw"><canvas id="cv"></canvas><div class="hint" id="hint">Mausrad = Zoom · Mittlere Maustaste oder Leertaste halten = Verschieben · Rechtsklick = Enter</div></div>
  <aside class="side">
   <section class="sec"><h2>Eigenschaften <span id="selc"></span></h2><div id="props"></div></section>
-  <section class="sec"><h2>Fräser-Standard <span>für alles ohne eigene Angabe</span></h2>
+  <section class="sec"><h2 title="Gilt für alles, bei dem du nichts Eigenes eingetragen hast">Fräser-Standard</h2>
    <div class="pr"><label for="d_tool">Fräser Ø mm</label><input id="d_tool" type="text" inputmode="decimal"></div>
    <div class="pr"><label for="d_depth">Tiefe mm</label><input id="d_depth" type="text" inputmode="decimal"></div>
-   <div class="legend"><i style="background:#3a3f46"></i>Außen <i style="background:#16191d;margin-left:8px"></i>Innen <i style="background:#7d848d;margin-left:8px"></i>Tasche<br><i style="background:#ffd166"></i>Auf Linie <i style="background:#6f9cff;margin-left:8px"></i>Hilfslinie <i style="background:#e5482d;margin-left:8px"></i>Material bleibt</div></section>
+   <div class="legend" id="legend" hidden><i style="background:#3a3f46"></i>Außen <i style="background:#16191d;margin-left:8px"></i>Innen <i style="background:#7d848d;margin-left:8px"></i>Tasche<br><i style="background:#ffd166"></i>Auf Linie <i style="background:#6f9cff;margin-left:8px"></i>Hilfslinie <i style="background:#e5482d;margin-left:8px"></i>Material bleibt</div></section>
   <section class="sec"><h2>Ebenen</h2><div id="layers"></div>
    <form class="addly" id="addly"><input id="lyname" placeholder="Neue Ebene" aria-label="Name der neuen Ebene"><button class="btn" type="submit">+</button></form></section>
-  <section class="sec keys">
-   <b>600,400</b> absoluter Punkt<br>
-   <b>@600,400</b> relativ zum letzten Punkt<br>
-   <b>@500&lt;30</b> 500 mm unter 30°<br>
-   <b>250</b> 250 mm in Mausrichtung<br>
-   <b>720-2*19</b> rechnen geht auch
-  </section>
+
  </aside>
  <div class="cmd">
   <div class="hist" id="hist"></div>
@@ -216,15 +223,16 @@ button,input,select{font:inherit;color:inherit}
  </div>
  <div class="stat">
   <span class="xy" id="xy">X 0 · Y 0</span>
-  <button class="tg" data-a="osnap" id="t_osnap">FANG</button>
-  <button class="tg" data-a="polar" id="t_polar" title="Winkelfang: Linie rastet auf 0°, 45°, 90° … ein (F10)">WINKEL</button><select id="pstep" aria-label="Schritt des Winkelfangs" title="Schritt des Winkelfangs"><option value="90">90°</option><option value="45" selected>45°</option><option value="30">30°</option><option value="15">15°</option></select>
-  <button class="tg" data-a="ortho" id="t_ortho" title="Ortho: nur waagrecht und senkrecht (F8)">ORTHO</button>
-  <button class="tg" data-a="grid" id="t_grid">RASTER</button>
-  <button class="tg" data-a="gsnap" id="t_gsnap">RFANG</button>
-  <button class="tg" data-a="cam" id="t_cam">FRÄSEN</button>
-  <button class="tg" data-a="view3d" id="t_3d" title="3D-Ansicht der Platte (F4)">3D</button>
-  <button class="tg" data-a="guide" id="t_guide" title="Auf der Ebene „Hilfslinien“ zeichnen (Shift+H oder F2)">HILFSLINIE</button>
-  <label for="gstep" style="margin-left:6px;color:var(--mut)">Raster</label><input id="gstep" type="number" min="0.1" step="any" value="10"><span style="color:var(--mut)">mm</span>
+  <button class="tg" data-a="osnap" id="t_osnap" title="Rastet auf Ecken, Mitten und Schnittpunkte ein (F3)">Objektfang</button>
+  <button class="tg" data-a="polar" id="t_polar" title="Winkelfang: Linie rastet auf 0°, 45°, 90° … ein (F10)">Winkelfang</button><select id="pstep" aria-label="Schritt des Winkelfangs" title="Schritt des Winkelfangs"><option value="90">90°</option><option value="45" selected>45°</option><option value="30">30°</option><option value="15">15°</option></select>
+  <button class="tg" data-a="ortho" id="t_ortho" title="Ortho: nur waagrecht und senkrecht (F8)">Nur gerade</button>
+  <button class="tg" data-a="guide" id="t_guide" title="Ab jetzt Hilfslinien zeichnen – blau, werden nicht gefräst (Shift+H oder F2)">Hilfslinien zeichnen</button>
+  <span class="sep"></span>
+  <button class="tg" data-a="grid" id="t_grid" title="Raster anzeigen (F7)">Raster</button>
+  <button class="tg" data-a="gsnap" id="t_gsnap" title="Punkte rasten auf das Raster ein (F9)">Rasterfang</button>
+  <button class="tg mob" data-a="cam" id="t_cam">Fräsvorschau</button>
+  <button class="tg mob" data-a="view3d" id="t_3d" title="3D-Ansicht der Platte (F4)">3D</button>
+  <label for="gstep" style="margin-left:2px;color:var(--mut)">Weite</label><input id="gstep" type="number" min="0.1" step="any" value="10"><span style="color:var(--mut)">mm</span>
   <span class="sp"></span><span style="color:var(--mut)" id="cnt"></span>
  </div>
 </div>
@@ -302,7 +310,7 @@ button,input,select{font:inherit;color:inherit}
   <button class="btn" data-kp="list">Stückliste</button><button class="btn" data-kp="nest">Zuschnittplan</button><button class="btn" data-kp="draw">Teile ins Zeichenprogramm</button><button class="btn pri" data-kp="close">Zurück zum Zeichnen</button></div>
  <div class="kpside" id="kpform"></div>
  <div class="kpmid"><canvas id="kpcv"></canvas>
-  <div class="kptools"><button class="btn on" data-kpm="sel">Auswählen</button><button class="btn" data-kpm="fb">+ Fester Boden</button><button class="btn" data-kpm="eb">+ Einlegeboden</button><button class="btn" data-kpm="mw">+ Mittelwand</button><button class="btn" data-kpm="ks">+ Kleiderstange</button></div>
+  <div class="kptools"><button class="btn on" data-kpm="sel">Auswählen</button><button class="btn" data-kpm="fb">+ Fester Boden</button><button class="btn" data-kpm="eb">+ Einlegeboden</button><button class="btn" data-kpm="mw">+ Mittelwand</button><button class="btn" data-kpm="ks">+ Stange</button></div>
   <div class="kphint"><span id="kphint"></span></div></div>
  <div class="kp3"><canvas id="kp3d"></canvas>
   <div class="kpview"><button class="btn" data-kp="iso">Schräg</button><button class="btn" data-kp="front">Vorn</button><button class="btn" data-kp="top">Oben</button><label><input type="checkbox" id="kpfront" checked> Türen und Fronten zeigen</label></div>
@@ -327,12 +335,12 @@ button,input,select{font:inherit;color:inherit}
  <div class="row"><button class="btn" data-close>Abbrechen</button><button class="btn pri" id="newB">Leeren</button></div>
 </div></div>
 
-<script src="vendor/clipper.js?v=17"></script>
-<script src="font.js?v=17"></script>
-<script src="vendor/earcut.min.js?v=17"></script>
-<script src="view3d.js?v=17"></script>
-<script src="cad.js?v=17"></script>
-<script src="korpus.js?v=17"></script>
+<script src="vendor/clipper.js?v=18"></script>
+<script src="font.js?v=18"></script>
+<script src="vendor/earcut.min.js?v=18"></script>
+<script src="view3d.js?v=18"></script>
+<script src="cad.js?v=18"></script>
+<script src="korpus.js?v=18"></script>
 <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>

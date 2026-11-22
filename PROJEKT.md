@@ -94,6 +94,13 @@ Eigener Bereich (Knopf „Korpusplaner“ in der Menüleiste), Datei `korpus.js`
 
 - **Bemaßung erweitert:** `BK` Kettenmaß, `BR` Radius/Durchmesser (`dim {c,r,p,m:'rad'|'dia'}`), **Drucken/PDF** (`PR`, Datei-Menü): `buildPrintSVG()` schwarz auf weiß, A4 eingepasst.
 
+## Oberfläche aufgeräumt (22.11.2026)
+- Werkzeugleiste zweispaltig; seltene Befehle (`less:1` in `CMDS`: Polygon, Reihe, Zerlegen, Fasen, Bemaßung ausgerichtet, Messen, Schnittmenge, Export, 3D) nur noch im Menü und per Kürzel.
+- Oben rechts die drei Ergebnis-Knöpfe: Fräsvorschau, 3D, SVG für Origin (unter 1180 px Breite stattdessen in der Statusleiste, Klasse `mob`).
+- Statusleiste nur Zeichenhilfen, ausgeschrieben (Objektfang, Winkelfang, Nur gerade, Hilfslinien zeichnen, Raster, Rasterfang).
+- Rechts: Spickzettel entfernt (steht in F1), Farblegende nur bei eingeschalteter Fräsvorschau. Bedienhinweis auf der Zeichenfläche verschwindet nach der ersten Benutzung.
+- Korpusplaner: Korpus-Reiter (1, 2, … + Korpus), aufklappbare Abschnitte (`openSec`); offen sind nur „Korpus“ und „Innenaufteilung“, eingeklappt mit Kurzinfo: Platte und Material, Verbindungen, Beschläge, Sockel.
+
 ## Ideen / offen
 - An der echten Origin prüfen: Wird die SVG mit Frästyp, Tiefe und Fräser-Ø richtig erkannt? (Format nach Shaper-Vorgabe gebaut, aber noch nicht an der Maschine getestet.)
 - Stutzen zerlegt Polylinien noch in Einzelstücke (danach `VB`)
