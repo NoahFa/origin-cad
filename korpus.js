@@ -295,10 +295,11 @@ function toDrawing(){const rows=list(K()).filter(r=>!r.p.rod),all=[];let x=0,y=0
  let made;A.commit(()=>{made=A.addEnts(all)});close();A.after();A.select(made);A.log(`Korpusplaner: ${rows.length} verschiedene Teile in die Zeichnung gelegt (sind gewählt). Jedes Teil einzeln wählen und mit EX als SVG ausgeben – oder im Planer in der Stückliste „SVG“ je Teil.`,'ok')}
 
 /* ----- Zuschnittplan: Teile in Streifen auf Platten verteilen (einfache, sägegerechte Aufteilung) ----- */
-function nest(k){k=k||K();const rows=list(k).filter(r=>!r.p.rod),groups=new Map(),uw=k.plL-2*k.rand,uh=k.plB-2*k.rand,misfit=[];
- rows.forEach((r,i)=>{const p=r.p,key=(p.matId||'')+'|'+p.T+'|'+(p.mat||(p.box?'Schubkasten':'Platte'));if(!groups.has(key))groups.set(key,{matId:p.matId,T:p.T,kind:p.mat||(p.box?'Schubkasten':'Platte'),pcs:[]});
-  /* Länge (größeres Maß) läuft in Plattenlänge = Maserung längs */
-  for(let n=0;n<r.n;n++)groups.get(key).pcs.push({nr:i+1,name:p.name,w:Math.max(p.cW,p.cH),h:Math.min(p.cW,p.cH)})});
+function nest(k){k=k||K();const pieces=[];list(k).filter(r=>!r.p.rod).forEach((r,i)=>{const p=r.p;/* Länge (größeres Maß) läuft in Plattenlänge = Maserung längs */
+  for(let n=0;n<r.n;n++)pieces.push({nr:i+1,name:p.name,w:Math.max(p.cW,p.cH),h:Math.min(p.cW,p.cH),matId:p.matId,T:p.T,kind:p.mat||(p.box?'Schubkasten':'Platte')})});return nestOf(pieces,k)}
+/* pieces: [{nr,name,w,h,matId,T,kind}] */
+function nestOf(pieces,k){k=k||K();const groups=new Map(),uw=k.plL-2*k.rand,uh=k.plB-2*k.rand,misfit=[];
+ for(const q of pieces){const key=(q.matId||'')+'|'+q.T+'|'+q.kind;if(!groups.has(key))groups.set(key,{matId:q.matId,T:q.T,kind:q.kind,pcs:[]});groups.get(key).pcs.push({nr:q.nr,name:q.name,w:q.w,h:q.h})}
  const out=[];
  for(const g of groups.values()){const sheets=[],grain=/^H/.test(g.matId||'');
   const pcs=g.pcs.filter(q=>{let ok=q.w<=uw+1e-6&&q.h<=uh+1e-6;if(!ok&&!grain&&q.h<=uw&&q.w<=uh){[q.w,q.h]=[q.h,q.w];ok=true}if(!ok)misfit.push(q);return ok}).sort((a,b)=>b.h-a.h||b.w-a.w);
@@ -312,7 +313,8 @@ function nestSVG(n,sh){const s=v=>Math.round(v*100)/100;let b=`<rect x="0" y="0"
  for(const q of sh.parts){const x=n.rand+q.x,y=n.rand+q.y,fs=Math.max(22,Math.min(46,q.h*0.32,q.w*0.11));b+=`<rect x="${s(x)}" y="${s(y)}" width="${s(q.w)}" height="${s(q.h)}" fill="#d9c29a" stroke="#222" stroke-width="2.5"/>`+
    (q.w>150&&q.h>44?`<text x="${s(x+q.w/2)}" y="${s(y+q.h/2+fs*0.35)}" font-size="${s(fs)}" text-anchor="middle" font-family="Arial,sans-serif" fill="#111">${q.nr} · ${de(q.w)} × ${de(q.h)}</text>`:`<text x="${s(x+q.w/2)}" y="${s(y+q.h/2+8)}" font-size="22" text-anchor="middle" font-family="Arial,sans-serif" fill="#111">${q.nr}</text>`)}
  return`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 ${n.plL+8} ${n.plB+8}" style="width:100%;height:auto;display:block">${b}</svg>`}
-function nestHTML(){const k=K(),n=nest(k);let h='';
+function nestHTML(){return nestHTMLOf(nest(K()))}
+function nestHTMLOf(n){let h='';
  for(const g of n.groups){h+=`<h4>${g.kind} ${de(g.T)} mm${g.matId?' · '+A.esc(matName(g.matId)):''} – ${g.sheets.length} Platte${g.sheets.length>1?'n':''}, Verschnitt ${Math.round(g.waste*100)} %</h4>`;g.sheets.forEach((sh,i)=>{h+=`<div class="kpsheet"><div class="muted">Platte ${i+1} von ${g.sheets.length} · ${sh.parts.length} Teile</div>${nestSVG(n,sh)}</div>`})}
  if(n.misfit.length)h+=`<div class="warn">Passt auf keine Platte: ${[...new Set(n.misfit.map(q=>`${A.esc(q.name)} ${de(q.w)} × ${de(q.h)}`))].join(', ')}</div>`;
  return h||'<p class="muted">Keine Teile.</p>'}
@@ -338,4 +340,4 @@ function key(e){const t=e.target,inField=t&&(t.tagName==='INPUT'||t.tagName==='S
  if(e.key==='Escape'){e.preventDefault();if($('dKpn').classList.contains('open'))$('dKpn').classList.remove('open');else if($('dKpl').classList.contains('open'))$('dKpl').classList.remove('open');else if(mode!=='sel')setMode('sel');else if(pick){pick=null;refresh(true)}else close();return}
  if((e.ctrlKey||e.metaKey)&&!inField){const k=e.key.toLowerCase();if(k==='z'){e.preventDefault();e.shiftKey?A.redo():A.undo();refresh()}else if(k==='y'){e.preventDefault();A.redo();refresh()}return}
  if((e.key==='Delete'||e.key==='Backspace')&&!inField&&pick){e.preventDefault();removePick()}}
-return{openAll:()=>{['cab','in','mat','verb','besch','sock'].forEach(x=>openSec.add(x));refresh()},select:i=>{cur=i;pick=null;refresh()},fronts,nest,MATS,open,close,isOpen,key,parts,list,partEnts,model3,get state(){return K()},refresh,get view(){return view},hitAt,csv,DEF}})();
+return{nestOf,nestHTMLOf,matName,mat,openAll:()=>{['cab','in','mat','verb','besch','sock'].forEach(x=>openSec.add(x));refresh()},select:i=>{cur=i;pick=null;refresh()},fronts,nest,MATS,open,close,isOpen,key,parts,list,partEnts,model3,get state(){return K()},refresh,get view(){return view},hitAt,csv,DEF}})();

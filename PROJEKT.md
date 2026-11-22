@@ -10,6 +10,7 @@ Live: https://noahfa.github.io/origin-cad/ (installierbar auf iPad/PC, läuft da
 - `font.js` – Einstrich-Schrift (Hershey Sans 1-stroke, Hinweis zur Herkunft steht in der Datei)
 - `view3d.js`, `vendor/earcut.min.js` (ISC) – 3D-Ansicht (mehrere Betrachter möglich: `CAD3D.create(canvas)`)
 - `korpus.js` – Korpusplaner
+- `raum.js` – 3D-Modus
 - `vendor/clipper.js` – Clipper 6.4.2 (Boost-Lizenz): Versatz und Formen kombinieren
 - `sw.js`, `manifest.webmanifest`, Symbole – App-Installation und Offline-Betrieb
 - `tests/check.cjs` – Prüfung im echten Browser: `node tests/check.cjs [Foto-Ordner]`
@@ -100,6 +101,16 @@ Eigener Bereich (Knopf „Korpusplaner“ in der Menüleiste), Datei `korpus.js`
 - Statusleiste nur Zeichenhilfen, ausgeschrieben (Objektfang, Winkelfang, Nur gerade, Hilfslinien zeichnen, Raster, Rasterfang).
 - Rechts: Spickzettel entfernt (steht in F1), Farblegende nur bei eingeschalteter Fräsvorschau. Bedienhinweis auf der Zeichenfläche verschwindet nach der ersten Benutzung.
 - Korpusplaner: Korpus-Reiter (1, 2, … + Korpus), aufklappbare Abschnitte (`openSec`); offen sind nur „Korpus“ und „Innenaufteilung“, eingeklappt mit Kurzinfo: Platte und Material, Verbindungen, Beschläge, Sockel.
+
+## 3D-Modus (22.11.2026)
+Eigener Bereich (Knopf „3D-Modus“), Datei `raum.js`, Daten in `S.raum = {bodies:[…], nid}`.
+- **Körper:** `{id,name,kind:'box'|'ext',L,B,H,poly?,o,u,v,mat}` – Grundfläche lokal X/Y (bei `ext` als `poly {outer,holes}` aus der Zeichnung), Höhe H in Richtung u×v; nur 90°-Lagen. `box(b)` = umschließender Quader im Raum.
+- **Anlegen:** Quader über Maße · Kontur aus der Zeichnung hochziehen (`contours()` in cad.js: gewählte oder alle geschlossenen Konturen, Innenkonturen werden Löcher) · Schrank aus dem Korpusplaner holen (als einfache Quader, Bohrungen bleiben im Planer).
+- **Bedienung:** anklicken = wählen, gewählten Körper ziehen = in der Ebene verschieben, Shift = Höhe; Einrasten an Flächen anderer Körper und am Boden (`snap`); Pfeiltasten 1 mm (Shift 10), Bild↑/↓ Höhe; drehen in 90°-Schritten; Lage/Maße/Material über Felder.
+- **Maße im Bild** (`drawOver`, eigene Zeichenfläche über dem 3D-Bild): Gesamtmaße und Maße des gewählten Körpers.
+- **Ausgabe:** Stückliste (größtes Maß = Länge, kleinstes = Stärke; Formteile mit umschließendem Rechteck), Zuschnittplan über `KORPUS.nestOf`, Bild speichern (PNG), Drucken mit Bild.
+- **Bewusst nicht:** Flächen drücken/ziehen, Körper verschneiden, schräge Drehungen, automatische Verbinder.
+- Der 3D-Betrachter (`view3d.js`) hat dafür Haken (`down/move/up/draw`), `project()`, `ray()`, `shot()`.
 
 ## Ideen / offen
 - An der echten Origin prüfen: Wird die SVG mit Frästyp, Tiefe und Fräser-Ø richtig erkannt? (Format nach Shaper-Vorgabe gebaut, aber noch nicht an der Maschine getestet.)

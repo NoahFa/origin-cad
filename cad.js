@@ -619,10 +619,10 @@ function toggleGuide(){if(S.cur==='Hilfslinien'){S.cur=lyr(prevLy)&&prevLy!=='Hi
  geoVer++;save();updLayers();log(S.cur==='Hilfslinien'?'Ab jetzt wird auf „Hilfslinien“ gezeichnet (blau, wird nicht gefräst). Shift+H schaltet zurück.':'Ab jetzt wird wieder auf „'+S.cur+'“ gezeichnet.','ok')}
 function selectMode(){inp.value='';const was=!!G;cancel(true);mouse.in&&computeSnap();log(was?'Auswahlmodus: Befehl beendet – jetzt Objekte anklicken oder Rahmen aufziehen.':'Auswahlmodus: Objekte anklicken oder Rahmen aufziehen. Shift+Klick nimmt wieder heraus.');updTools();render()}
 function act(a){const T={osnap:1,polar:1,ortho:1,grid:1,gsnap:1,cam:1};if(T[a]){tg[a]=!tg[a];log(({osnap:'Objektfang',polar:'Winkelfang',ortho:'Ortho',grid:'Raster',gsnap:'Rasterfang',cam:'Fräsvorschau'})[a]+(tg[a]?' an':' aus')+(a==='cam'&&tg[a]?' – gestrichelt: Weg der Fräsermitte · rot: hier bleibt Material stehen':''));updTools();computeSnap();render();saveUI();return}
- ({drucken:printDrawing,korpus:()=>window.KORPUS&&window.KORPUS.open(),view3d:open3D,guide:toggleGuide,select:selectMode,enter:onEnter,esc:()=>{inp.value='';cancel(false)},neu:()=>$('dNew').classList.add('open'),oeffnen:()=>{fileMode='open';$('file').click()},importieren:()=>{fileMode='import';$('file').click()},
+ ({raum:()=>window.RAUM&&window.RAUM.open(),drucken:printDrawing,korpus:()=>window.KORPUS&&window.KORPUS.open(),view3d:open3D,guide:toggleGuide,select:selectMode,enter:onEnter,esc:()=>{inp.value='';cancel(false)},neu:()=>$('dNew').classList.add('open'),oeffnen:()=>{fileMode='open';$('file').click()},importieren:()=>{fileMode='import';$('file').click()},
   exportSvg:openExport,exportDxf:exportDXF,tpl:openTpls,tplSave:openSaveTpl,speichern:saveFile,undo,redo,zoomAll,help:()=>$('dHelp').classList.add('open'),
   alle:()=>{S.ents.filter(vis).forEach(e=>sel.add(e.id));updProps();render()}})[a]?.()}
-window.addEventListener('keydown',e=>{if(window.KORPUS&&window.KORPUS.isOpen()){window.KORPUS.key(e);return}
+window.addEventListener('keydown',e=>{if(window.RAUM&&window.RAUM.isOpen()){window.RAUM.key(e);return}if(window.KORPUS&&window.KORPUS.isOpen()){window.KORPUS.key(e);return}
  const t=e.target,inProp=t!==inp&&(t.tagName==='INPUT'||t.tagName==='SELECT'||t.tagName==='TEXTAREA');
  if(document.querySelector('.dlg.open')){if(e.key==='Escape')document.querySelectorAll('.dlg.open').forEach(d=>d.classList.remove('open'));return}
  const F={F4:'view3d',F2:'guide',F1:'help',F3:'osnap',F6:'cam',F7:'grid',F8:'ortho',F9:'gsnap',F10:'polar'};if(F[e.key]){e.preventDefault();act(F[e.key]);return}
@@ -891,7 +891,7 @@ async function loadFile(f,mode){const name=f.name||'Datei',ext=(name.split('.').
  try{
   if(ext==='json'||(/^\s*\{/.test(text)&&ext!=='svg'&&ext!=='dxf')){const o=JSON.parse(text);if(!Array.isArray(o.ents))throw new Error('Das ist keine Origin-CAD-Zeichnung.');
    if(mode==='import'){pushUndo();(o.layers||[]).forEach(l=>{if(!lyr(l.n))S.layers.push({...l})});sel.clear();addEnts(o.ents.map(({id,...r})=>r)).forEach(e=>sel.add(e.id));afterChange();zoomAll();log(`Dazugeladen: ${name} (${o.ents.length} Objekte, sind gewählt – mit V verschieben).`,'ok');return}
-   pushUndo();S={ents:o.ents,layers:o.layers&&o.layers.length?o.layers:DEF_LAYERS(),cur:o.cur||'0',nid:Math.max(o.nid||1,...o.ents.map(x=>x.id+1),1),def:Object.assign(DEF_CUT(),o.def||{})};if(o.korpus&&Array.isArray(o.korpus.cabs)&&o.korpus.cabs.length)S.korpus=o.korpus;if(!lyr(S.cur))S.cur=S.layers[0].n;
+   pushUndo();S={ents:o.ents,layers:o.layers&&o.layers.length?o.layers:DEF_LAYERS(),cur:o.cur||'0',nid:Math.max(o.nid||1,...o.ents.map(x=>x.id+1),1),def:Object.assign(DEF_CUT(),o.def||{})};if(o.korpus&&Array.isArray(o.korpus.cabs)&&o.korpus.cabs.length)S.korpus=o.korpus;if(o.raum&&Array.isArray(o.raum.bodies))S.raum=o.raum;if(!lyr(S.cur))S.cur=S.layers[0].n;
    sel.clear();afterChange();updDefs();zoomAll();fileName=name;$('fname').textContent=name+' · Maße in mm';log('Geöffnet: '+name,'ok');return}
   const isSvg=ext==='svg'||/<svg[\s>]/i.test(text.slice(0,2000)),r=isSvg?importSVG(text):importDXF(text);
   if(!r.ents.length){log(`In ${name} wurde nichts Zeichenbares gefunden. ${r.note}`,'e');return}
@@ -949,6 +949,15 @@ function printDrawing(){const r=buildPrintSVG();if(!r){log('Die Zeichnung ist le
  w.document.write(`<!doctype html><html lang="de"><meta charset="utf-8"><title>${esc(baseName())}</title><style>@page{size:A4 ${land?'landscape':'portrait'};margin:10mm}html,body{height:100%;margin:0}body{font:11pt Arial,Helvetica,sans-serif;display:flex;flex-direction:column}.z{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}.z svg{max-height:${land?'165mm':'250mm'}}.k{display:flex;justify-content:space-between;gap:16px;border-top:1px solid #000;padding-top:4px;font-size:9.5pt}</style><div class="z">${r.svg}</div><div class="k"><b>${esc(baseName())}</b><span>Größe ${fmtDE(r.w0)} × ${fmtDE(r.h0)} mm · Maße in mm · an die Seite angepasst, nicht maßstäblich</span><span>${heute} · Origin CAD</span></div></html>`);
  w.document.close();w.focus();setTimeout(()=>w.print(),350);log('Druckansicht geöffnet – im Druckfenster „Als PDF speichern“ wählen, wenn du eine PDF willst.','ok')}
 
+/* Geschlossene Konturen als Flächen mit Löchern (für „hochziehen“ im 3D-Modus): gewählte oder alle sichtbaren */
+function contours(){const pick=e=>e.t!=='dim'&&e.t!=='xline'&&vis(e)&&isClosed(e)&&cutOf(e).eff!=='guide';let es=[...sel].map(byId).filter(e=>e&&pick(e));const bySel=es.length>0;if(!bySel)es=S.ents.filter(pick);
+ const P=es.map(e=>({e,pts:ccw(pathsOf(e)[0].pts)})),inside=(a,b)=>a!==b&&Math.abs(area(a.pts))<Math.abs(area(b.pts))&&inPoly(a.pts[0],b.pts);
+ const outer=P.filter(a=>P.filter(b=>inside(a,b)).length%2===0),out=[];
+ for(const o of outer){const holes=P.filter(h=>inside(h,o)&&P.filter(b=>inside(h,b)).length%2===1&&P.filter(b=>inside(h,b)&&inside(b,o)).length===0&&['inside','outside'].includes(cutOf(h.e).eff));
+  for(const pg of clEx('ctDifference',[o.pts],holes.map(h=>h.pts))){let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;for(const q of pg.outer){x0=Math.min(x0,q[0]);y0=Math.min(y0,q[1]);x1=Math.max(x1,q[0]);y1=Math.max(y1,q[1])}
+   const mv=r=>r.map(q=>[+(q[0]-x0).toFixed(3),+(q[1]-y0).toFixed(3)]);out.push({outer:mv(pg.outer),holes:pg.holes.map(mv),at:[x0,y0],w:+(x1-x0).toFixed(3),h:+(y1-y0).toFixed(3),depth:cutOf(o.e).d})}}
+ return{list:out,bySel}}
+
 /* ---------- 3D-Ansicht: Platte in Schichten zerlegen ---------- */
 function clEx(type,subj,clip){const c=new CL.Clipper();c.AddPaths(subj.map(toCl),CL.PolyType.ptSubject,true);if(clip&&clip.length)c.AddPaths(clip.map(toCl),CL.PolyType.ptClip,true);const t=new CL.PolyTree();
  c.Execute(CL.ClipType[type],t,CL.PolyFillType.pftNonZero,CL.PolyFillType.pftNonZero);const cl=q=>fromCl(CL.Clipper.CleanPolygon(q,SC*0.004));
@@ -994,6 +1003,6 @@ log('Tipp: L + Enter für Linie, R für Rechteck, K für Kreis. F1 zeigt alle Be
 buildTools();updTools();updUndo();updDefs();updProps();updLayers();updPrompt();
 new ResizeObserver(()=>{const first=!W;resize();if(first)zoomAll()}).observe($('cvw'));
 if(matchMedia('(pointer:fine)').matches)inp.focus();
-window.__cad={buildPrintSVG,kp:{sectionsOf,commit:doCommit,undo,redo,addEnts,saveBlob,baseName,log,fmtDE,bbox,esc,cancel:()=>cancel(true),after:()=>{sel.clear();afterChange();zoomAll()},select:es=>{sel.clear();es.forEach(e=>sel.add(e.id));updProps();render()}},build3D,open3D,get curP(){return curP},setMouse:sp=>{mouse.sp=sp;mouse.in=true;computeSnap();render()},buildSVG,buildDXF,importSVG,importDXF,loadFile,exportList,fitArcs,userTpls,w2s,get S(){return S},run,onEnter,inp,adv,get REQ(){return REQ},sel,zoomAll,cutOf,camOf,act,tg,updProps,bbox,
+window.__cad={buildPrintSVG,kp:{contours,sectionsOf,commit:doCommit,undo,redo,addEnts,saveBlob,baseName,log,fmtDE,bbox,esc,cancel:()=>cancel(true),after:()=>{sel.clear();afterChange();zoomAll()},select:es=>{sel.clear();es.forEach(e=>sel.add(e.id));updProps();render()}},build3D,open3D,get curP(){return curP},setMouse:sp=>{mouse.sp=sp;mouse.in=true;computeSnap();render()},buildSVG,buildDXF,importSVG,importDXF,loadFile,exportList,fitArcs,userTpls,w2s,get S(){return S},run,onEnter,inp,adv,get REQ(){return REQ},sel,zoomAll,cutOf,camOf,act,tg,updProps,bbox,
  areaOf:(id,off)=>{const P=[ccw(toPaths(byId(id))[0].pts)];return(off?clOffset(P,off):P).reduce((s,q)=>s+area(q),0)}};
 }

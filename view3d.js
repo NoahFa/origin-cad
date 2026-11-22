@@ -29,7 +29,7 @@ function look(e,c,up){const z=norm(sub(e,c)),x=norm(cross(up,z)),y=cross(z,x);re
 const VS=`attribute vec3 p;attribute vec3 n;attribute vec3 c;uniform mat4 m;varying vec3 vn;varying vec3 vc;void main(){vn=n;vc=c;gl_Position=m*vec4(p,1.);}`;
 const FS=`precision mediump float;varying vec3 vn;varying vec3 vc;uniform vec3 l;uniform vec3 l2;uniform float uf;uniform vec3 fc;void main(){if(uf>.5){gl_FragColor=vec4(fc,1.);return;}vec3 nn=normalize(vn);float d=max(dot(nn,l),0.)*.62+max(dot(nn,l2),0.)*.2+.36;gl_FragColor=vec4(vc*d,1.);}`;
 /* Ein Betrachter je Zeichenfläche */
-function create(cv){let gl=null,prog,loc,bufs=null,model=null,raf=0;const cam={az:-0.6,el:0.75,dist:1000,tx:0,ty:0,tz:0};
+function create(cv,hooks={}){let gl=null,prog,loc,bufs=null,model=null,raf=0,M=null,held=false;const cam={az:-0.6,el:0.75,dist:1000,tx:0,ty:0,tz:0};
  function init(){gl=cv.getContext('webgl',{antialias:true})||cv.getContext('experimental-webgl');if(!gl)return false;
   const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);return o};prog=gl.createProgram();gl.attachShader(prog,sh(gl.VERTEX_SHADER,VS));gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,FS));gl.linkProgram(prog);
   if(!gl.getProgramParameter(prog,gl.LINK_STATUS)){gl=null;return false}gl.useProgram(prog);
@@ -40,11 +40,16 @@ function create(cv){let gl=null,prog,loc,bufs=null,model=null,raf=0;const cam={a
  function draw(){raf=0;if(!gl||!bufs||!model)return;const dpr=Math.min(window.devicePixelRatio||1,2),w=Math.round(cv.clientWidth*dpr),h=Math.round(cv.clientHeight*dpr);if(!w||!h)return;if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}
   gl.viewport(0,0,w,h);gl.clearColor(0.09,0.10,0.115,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);
   const e=eye(),t=[cam.tx,cam.ty,cam.tz],up=Math.abs(Math.cos(cam.el))<1e-3?[Math.sin(cam.az)*-Math.sign(cam.el),Math.cos(cam.az)*Math.sign(cam.el),0]:[0,0,1];
-  gl.uniformMatrix4fv(loc.m,false,mul4(persp(0.6,w/h,Math.max(cam.dist/200,0.5),cam.dist*20+model.size*4),look(e,t,up)));
+  M=mul4(persp(0.6,w/h,Math.max(cam.dist/200,0.5),cam.dist*20+model.size*4),look(e,t,up));gl.uniformMatrix4fv(loc.m,false,M);
   const ld=norm(sub(e,t));gl.uniform3fv(loc.l,norm([ld[0]*0.5+0.3,ld[1]*0.5-0.35,ld[2]*0.5+0.75]));gl.uniform3fv(loc.l2,norm([-0.5,0.6,-0.6]));
   const at=(l,b,n)=>{if(l<0)return;gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.enableVertexAttribArray(l);gl.vertexAttribPointer(l,n,gl.FLOAT,false,0,0)};
   gl.uniform1f(loc.uf,0);at(loc.p,bufs.P,3);at(loc.n,bufs.N,3);at(loc.c,bufs.C,3);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);gl.drawArrays(gl.TRIANGLES,0,bufs.nt);gl.disable(gl.POLYGON_OFFSET_FILL);
-  if(loc.n>=0)gl.disableVertexAttribArray(loc.n);if(loc.c>=0)gl.disableVertexAttribArray(loc.c);gl.uniform1f(loc.uf,1);gl.uniform3fv(loc.fc,model.edge||EDGE);at(loc.p,bufs.L,3);gl.drawArrays(gl.LINES,0,bufs.nl)}
+  if(loc.n>=0)gl.disableVertexAttribArray(loc.n);if(loc.c>=0)gl.disableVertexAttribArray(loc.c);gl.uniform1f(loc.uf,1);gl.uniform3fv(loc.fc,model.edge||EDGE);at(loc.p,bufs.L,3);gl.drawArrays(gl.LINES,0,bufs.nl);if(hooks.draw)hooks.draw()}
+ /* Raumpunkt → Bildpunkt (CSS-Pixel) bzw. Bildpunkt → Sehstrahl */
+ function project(p){if(!M)return null;const x=M[0]*p[0]+M[4]*p[1]+M[8]*p[2]+M[12],y=M[1]*p[0]+M[5]*p[1]+M[9]*p[2]+M[13],w=M[3]*p[0]+M[7]*p[1]+M[11]*p[2]+M[15];if(w<=1e-6)return null;return[(x/w+1)/2*cv.clientWidth,(1-y/w)/2*cv.clientHeight]}
+ function ray(px,py){const e=eye(),t=[cam.tx,cam.ty,cam.tz],f=norm(sub(t,e)),up=Math.abs(Math.cos(cam.el))<1e-3?[Math.sin(cam.az)*-Math.sign(cam.el),Math.cos(cam.az)*Math.sign(cam.el),0]:[0,0,1],r=norm(cross(f,up)),u=cross(r,f),tn=Math.tan(0.3),asp=cv.clientWidth/cv.clientHeight,nx=(px/cv.clientWidth*2-1)*tn*asp,ny=(1-py/cv.clientHeight*2)*tn;
+  return{o:e,d:norm([f[0]+r[0]*nx+u[0]*ny,f[1]+r[1]*nx+u[1]*ny,f[2]+r[2]*nx+u[2]*ny]),f}}
+ function shot(){if(raf){cancelAnimationFrame(raf);raf=0}draw();return cv.toDataURL('image/png')}
  const redraw=()=>{if(gl&&!raf)raf=requestAnimationFrame(draw)};
  function fit(){const b=model.box||[model.bbox[0],model.bbox[1],0,model.bbox[2],model.bbox[3],model.T];cam.tx=(b[0]+b[3])/2;cam.ty=(b[1]+b[4])/2;cam.tz=(b[2]+b[5])/2;
   const r=Math.hypot(b[3]-b[0],b[4]-b[1],b[5]-b[2])/2,asp=cv.clientWidth&&cv.clientHeight?cv.clientWidth/cv.clientHeight:1.5;cam.dist=r/Math.sin(0.3)*(asp<1?1/asp:1)*1.08}
@@ -52,15 +57,15 @@ function create(cv){let gl=null,prog,loc,bufs=null,model=null,raf=0;const cam={a
  function setModel(m,keep){if(!gl&&!init())return false;const first=!model,old=model&&model.size;model=m;upload(mesh(m));if(first||!keep)view('iso');else{if(old&&Math.abs(m.size-old)>old*0.08)fit();redraw()}return true}
  const pts=new Map();let pd=0;
  cv.addEventListener('contextmenu',e=>e.preventDefault());
- cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.clientX,e.clientY,e.button,e.shiftKey]);pd=0});
- const end=e=>{pts.delete(e.pointerId);pd=0};cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+ cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);if(hooks.down&&e.button===0&&!pts.size&&hooks.down(e)){held=true;return}pts.set(e.pointerId,[e.clientX,e.clientY,e.button,e.shiftKey]);pd=0});
+ const end=e=>{if(held){held=false;if(hooks.up)hooks.up(e);return}pts.delete(e.pointerId);pd=0};cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
  const pan=(dx,dy)=>{const k=cam.dist*0.0011,sa=Math.sin(cam.az),ca=Math.cos(cam.az),se=Math.sin(cam.el),ce=Math.cos(cam.el);cam.tx+=(-dx*ca+dy*(-sa*se))*k;cam.ty+=(-dx*sa+dy*(ca*se))*k;cam.tz+=dy*ce*k};
- cv.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId)||!model)return;const o=pts.get(e.pointerId),dx=e.clientX-o[0],dy=e.clientY-o[1];o[0]=e.clientX;o[1]=e.clientY;
+ cv.addEventListener('pointermove',e=>{if(held){if(hooks.move)hooks.move(e);return}if(!pts.has(e.pointerId)||!model)return;const o=pts.get(e.pointerId),dx=e.clientX-o[0],dy=e.clientY-o[1];o[0]=e.clientX;o[1]=e.clientY;
   if(pts.size>=2){const[a,b]=[...pts.values()],d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(pd)cam.dist=Math.max(model.size*0.05,cam.dist*pd/Math.max(d,1));pd=d;pan(dx/2,dy/2);redraw();return}
   if(o[2]===2||o[2]===1||o[3])pan(dx,dy);else{cam.az-=dx*0.008;cam.el=Math.max(-Math.PI/2+1e-4,Math.min(Math.PI/2-1e-4,cam.el+dy*0.008))}redraw()});
  cv.addEventListener('wheel',e=>{if(!model)return;e.preventDefault();cam.dist=Math.max(model.size*0.05,cam.dist*Math.exp(e.deltaY*(e.deltaMode?0.05:0.0015)));redraw()},{passive:false});
  new ResizeObserver(redraw).observe(cv);
- return{setModel,view,redraw,cam,get ok(){return!!gl},get stats(){return bufs?{tris:bufs.nt/3,lines:bufs.nl/2}:null}}}
+ return{setModel,view,redraw,cam,project,ray,shot,fit:()=>{if(model){fit();redraw()}},get ok(){return!!gl},get stats(){return bufs?{tris:bufs.nt/3,lines:bufs.nl/2}:null}}}
 
 /* Fenster „3D-Ansicht“ für die einzelne Platte aus dem Zeichenprogramm */
 let V=null,cur=null,onThick=null,bound=false;

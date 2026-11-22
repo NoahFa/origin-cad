@@ -10,9 +10,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Origin CAD">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.webmanifest?v=18">
-<link rel="icon" href="icon.svg?v=18" type="image/svg+xml">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=18">
+<link rel="manifest" href="manifest.webmanifest?v=19">
+<link rel="icon" href="icon.svg?v=19" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=19">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -128,6 +128,16 @@ button,input,select{font:inherit;color:inherit}
 .v3wrap{position:relative;flex:1;min-height:0;border-radius:8px;overflow:hidden;background:#16191d}.v3wrap canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
 .v3hint{position:absolute;left:10px;bottom:8px;color:#9aa3ad;font-size:12.5px;pointer-events:none;background:#16191dcc;padding:4px 8px;border-radius:5px}
 .dlg .box.v3 .warn{margin:0}
+/* 3D-Modus */
+.rm{position:fixed;inset:0;z-index:35;background:var(--chrome);display:none;grid-template-rows:auto minmax(0,1fr);grid-template-columns:300px minmax(0,1fr)}.rm.open{display:grid}
+.rmmain{position:relative;min-height:0;background:#16191d;overflow:hidden}.rmmain canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}#rm3d{cursor:grab}#rmov{pointer-events:none}
+.rmsep{height:1px;background:var(--line);margin:12px 0}.rmlist{display:grid;gap:4px}
+.rmit{display:flex;flex-direction:column;gap:1px;text-align:left;border:1px solid var(--line);background:var(--chrome);border-radius:6px;padding:6px 10px;cursor:pointer}.rmit:hover{background:var(--hov)}.rmit.on{border-color:var(--acc);background:var(--accs)}
+.rmit b{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rmit span{font-size:12.5px;color:var(--mut)}
+.rm3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 6px}.rm3 label{grid-column:1/-1;color:var(--mut);font-size:13px}.rm3 input{width:100%;padding:5px 8px;border:1px solid var(--line);border-radius:5px;background:var(--chrome);text-align:right}.rm3 span{font-size:11.5px;color:var(--mut);text-align:center}
+.rmrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.rmrow span{color:var(--mut);font-size:13px;margin-right:2px}.rmrow .btn{padding:5px 9px;font-size:13px}
+#rmlBody table{border-collapse:collapse;width:100%;font-size:13.5px}#rmlBody h4{font-size:14px}
+@media(max-width:860px){.rm{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 260px minmax(0,1fr)}.rm .kpside{border-right:0;border-bottom:1px solid var(--line)}}
 /* Korpusplaner */
 .kpnset{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0;font-size:13px;color:var(--mut)}.kpnset input{width:72px;margin-left:6px;padding:4px 7px;border:1px solid var(--line);border-radius:5px;background:var(--chrome);text-align:right}
 #kpnBody h4{margin:16px 0 6px;font-size:14px}.kpsheet{margin-bottom:12px}
@@ -159,7 +169,7 @@ button,input,select{font:inherit;color:inherit}
 @media(max-width:640px){.kp{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 240px minmax(0,1fr) minmax(0,1fr);overflow:auto}.kpside{grid-row:auto;border-right:0}}
 .row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
 @media(max-width:860px){.tools{grid-template-columns:42px}.tools #bSel{width:42px}.app{grid-template-columns:52px minmax(0,1fr);grid-template-rows:42px minmax(0,1fr) auto 220px 32px;grid-template-areas:"menu menu" "tools cv" "cmd cmd" "side side" "stat stat"}.side{border-left:0;border-top:1px solid var(--line)}.fname{display:none}.hint{display:none}.stat>*{flex:none}.xy{min-width:0;margin-right:6px}}
-@media(max-width:600px){.menu{padding:0 4px;gap:0}.brand{margin-right:4px}.brand span{display:none}.dd.wide{display:none}.ur{margin-left:auto;padding-left:4px;border-left:0}.ub span{display:none}.ub{padding:5px 7px}.dd>button{padding:6px 8px}.dd ul{max-width:92vw}}
+@media(max-width:600px){.menu{padding:0 4px;gap:0}.brand{margin-right:4px}.brand span{display:none}.mbtn{padding:6px 6px;font-size:13px}.dd.wide{display:none}.ur{margin-left:auto;padding-left:4px;border-left:0}.ub span{display:none}.ub{padding:5px 7px}.dd>button{padding:6px 8px}.dd ul{max-width:92vw}}
 @media(prefers-reduced-motion:no-preference){.dlg .box{animation:pop .16s ease-out}@keyframes pop{from{transform:translateY(8px);opacity:0}}}
 </style>
 </head>
@@ -198,6 +208,7 @@ button,input,select{font:inherit;color:inherit}
    <li><button data-a="gsnap">Rasterfang<kbd>F9</kbd></button></li>
   </ul></div>
   <button class="mbtn" data-a="korpus" title="Schränke und Korpusse planen">Korpusplaner</button>
+  <button class="mbtn" data-a="raum" title="Körper frei im Raum zusammensetzen">3D-Modus</button>
   <div class="dd"><button>Hilfe</button><ul>
    <li><button data-a="help">Befehle &amp; Eingabe<kbd>F1</kbd></button></li>
   </ul></div>
@@ -259,6 +270,7 @@ button,input,select{font:inherit;color:inherit}
   <tr><td>Winkelfang</td><td>Beim Zeichnen rastet die Richtung auf 0°, 45°, 90° … ein, sobald du nah dran bist (grüne Hilfslinie). Schrittweite unten neben „WINKEL“ wählbar. Dann einfach die Länge tippen, z. B. <code>250</code>. ORTHO erzwingt immer waagrecht/senkrecht.</td></tr>
   <tr><td>Fräsen</td><td>Objekt wählen, rechts unter „Fräsen“ Frästyp, Tiefe und Fräser-Ø eintragen. Leer = Fräser-Standard. „Automatisch“: geschlossene Kontur = Außen, liegt sie in einer anderen = Innen, offene Linie = Auf Linie, Ebene „Hilfslinien“ = Hilfslinie.</td></tr>
   <tr><td>Fräsvorschau</td><td>gestrichelt = Weg der Fräsermitte · rot = hier kommt der Fräser nicht hin, Material bleibt stehen</td></tr>
+  <tr><td>3D-Modus</td><td>Oben „3D-Modus“: Quader über Maße anlegen oder eine gezeichnete Kontur hochziehen, dann im Raum verschieben, drehen und stapeln. Schränke aus dem Korpusplaner lassen sich holen und ergänzen. Mit Stückliste, Zuschnittplan, Maßen im Bild und Bild zum Speichern.</td></tr>
   <tr><td>Korpusplaner</td><td>Oben „Korpusplaner“: Schrank über Maße anlegen, Böden und Mittelwände mit der Maus setzen, mehrere Korpusse nebeneinander. Rechts läuft die 3D-Ansicht mit. „Stückliste“ liefert Zuschnittliste und je Teil eine SVG mit allen Bohrungen.</td></tr>
   <tr><td>3D-Ansicht</td><td><code>F4</code> oder Knopf „3D“ unten: zeigt die Platte räumlich mit allen Ausschnitten, Bohrungen, Taschen und Gravuren in der eingetragenen Tiefe. Plattenstärke oben im 3D-Fenster eintragen.</td></tr>
   <tr><td>Bemaßen</td><td><code>BM</code> waagrecht/senkrecht · <code>BA</code> schräg · <code>BK</code> Kettenmaß (nach dem ersten Maß einfach die nächsten Punkte anklicken) · <code>BR</code> Radius oder Durchmesser (Kreis anklicken). Maße wandern beim Verschieben (<code>V</code>) mit.</td></tr>
@@ -329,18 +341,32 @@ button,input,select{font:inherit;color:inherit}
  <div id="kpnBody"></div>
  <div class="row"><button class="btn" data-kpn="print">Drucken</button><button class="btn pri" data-close>Schließen</button></div>
 </div></div>
+<div class="rm" id="rm">
+ <div class="kpbar"><h3><i></i>3D-Modus</h3><span class="muted" id="rminfo"></span><span class="muted" id="rmmsg" style="color:var(--acc)"></span><span class="sp"></span>
+  <button class="ub" data-rm="undo" title="Rückgängig (Strg+Z)"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span>Rückgängig</span></button>
+  <button class="btn" data-rm="list">Stückliste und Zuschnitt</button><button class="btn" data-rm="pic">Bild speichern</button><button class="btn" data-rm="print">Drucken</button><button class="btn pri" data-rm="close">Zurück zum Zeichnen</button></div>
+ <div class="kpside" id="rmside"></div>
+ <div class="rmmain"><canvas id="rm3d"></canvas><canvas id="rmov"></canvas>
+  <div class="kpview"><button class="btn" data-rm="iso">Schräg</button><button class="btn" data-rm="front">Vorn</button><button class="btn" data-rm="top">Oben</button><button class="btn" data-rm="fit" title="Alles ins Bild holen">Alles zeigen</button><label><input type="checkbox" id="rmdims" checked> Maße zeigen</label></div>
+  <div class="kphint"><span>Körper anklicken = wählen · gewählten Körper ziehen = verschieben (rastet ein) · Shift + ziehen = hoch/runter · neben die Körper ziehen = Ansicht drehen · Mausrad = Zoom</span></div></div>
+</div>
+<div class="dlg" id="dRml" style="z-index:45"><div class="box" style="max-width:980px">
+ <h3>Stückliste und Zuschnitt</h3><div id="rmlBody"></div>
+ <div class="row"><button class="btn" data-rml="print">Drucken mit Bild</button><button class="btn pri" data-close>Schließen</button></div>
+</div></div>
 <div class="dlg" id="dNew"><div class="box" style="max-width:420px">
  <h3>Neue Zeichnung?</h3>
  <p class="muted">Die aktuelle Zeichnung wird geleert. Rückgängig (Strg+Z) holt sie zurück.</p>
  <div class="row"><button class="btn" data-close>Abbrechen</button><button class="btn pri" id="newB">Leeren</button></div>
 </div></div>
 
-<script src="vendor/clipper.js?v=18"></script>
-<script src="font.js?v=18"></script>
-<script src="vendor/earcut.min.js?v=18"></script>
-<script src="view3d.js?v=18"></script>
-<script src="cad.js?v=18"></script>
-<script src="korpus.js?v=18"></script>
+<script src="vendor/clipper.js?v=19"></script>
+<script src="font.js?v=19"></script>
+<script src="vendor/earcut.min.js?v=19"></script>
+<script src="view3d.js?v=19"></script>
+<script src="cad.js?v=19"></script>
+<script src="korpus.js?v=19"></script>
+<script src="raum.js?v=19"></script>
 <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>
