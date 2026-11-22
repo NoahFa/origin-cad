@@ -5,11 +5,14 @@
 window.KORPUS=(()=>{
 const A=window.__cad.kp,$=id=>document.getElementById(id),S=()=>window.__cad.S;
 const newCab=(o={})=>Object.assign({b:600,h:720,d:560,mw:[],fb:[],eb:[{x:300,y:350}],front:'2',sn:3,nm:0,nf:0,ne:1},o);
-const DEF=()=>({btD:4,btT:10,btA:2,t:19,rw:8,nt:10,na:20,fuge:3,sockel:false,sh:100,sr:50,lr:'boden',dub:true,topf:true,nut:true,cabs:[newCab()]});
+const DEF=()=>({...BT,t:19,rw:8,nt:10,na:20,fuge:3,sockel:false,sh:100,sr:50,lr:'boden',dub:true,topf:true,nut:true,cabs:[newCab()]});
 const DUB_D=8,DUB_T=12,LR_D=5,LR_T=13,TOPF_D=35,TOPF_T=13,SK=16,TANDEM_NL=[250,270,300,350,400,450,500,550,600];
 let cur=0,pick=null,mode='sel',showFront=true,V3=null,drag=null,view={s:1,ox:0,oy:0},cache3=new Map(),timer=0;
 /* Bodenträger: Häfele „Jimmy“ (282.25.716) zum Einstecken, Bohr-Ø 4 mm – btD Bohr-Ø, btT Bohrtiefe, btA Lochmitte unter der Boden-Unterkante */
-const BT={btD:4,btT:10,btA:2};
+const BT={btD:4,btT:10,btA:2,sv:true,svT:14,svX:9.5,svO:0,svB:13};
+/* Würth Systemverbinder SV 20 E: Gehäuse Ø20 in der Fläche des waagrechten Teils (svT tief, Mitte svX von der Stirnkante),
+   Systembolzen in Ø5-Bohrung der Seite (svB tief), 37 mm von vorn und hinten; svO = Bolzen über (+) / unter (−) der Plattenmitte */
+const SV_D=20,SV_BD=5;
 const K=()=>{const s=S();if(!s.korpus)s.korpus=DEF();for(const f in BT)if(s.korpus[f]==null)s.korpus[f]=BT[f];return s.korpus};
 const num=v=>Math.round(v*100)/100,de=v=>String(num(v)).replace('.',',');
 const clampN=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -29,10 +32,11 @@ function tidy(k){for(const c of k.cabs){c.b=clampN(c.b,150,3000);c.h=clampN(c.h,
 
 /* ----- Teile erzeugen ----- */
 function dubPos(len){const steps=Math.floor((len-64)/32);if(steps<1)return[num(len/2)];const n=Math.max(2,Math.round(steps*32/192)+1),o=[];for(let i=0;i<n;i++)o.push(32+32*Math.round(i*steps/(n-1)));return[...new Set(o)]}
+function dubSv(len){/* Dübel zwischen den Verbindern: 64 hinter dem vorderen und vor dem hinteren, ab 300 mm Abstand einer in der Mitte */const a=101,b=len-101;if(b-a<32)return[num(len/2)];const o=[a];if(b-a>300)o.push(a+32*Math.round((b-a)/64));o.push(num(b));return o}
 function hingeYs(H){const n=H>1600?4:H>900?3:2,o=[];for(let i=0;i<n;i++)o.push(num(100+(H-200)*i/(n-1)));return o}
 function parts(k){k=k||K();const out=[],t=k.t;let x0=0;const z0=k.sockel?k.sh:0;
  const mk=(ci,name,W,H,T,o,u,v,x={})=>{const p=Object.assign({ci,name,W:num(W),H:num(H),T,o,u,v,holes:[],grooves:[],ticks:[],tint:[1,1,1]},x);out.push(p);return p};
- k.cabs.forEach((c,ci)=>{const dE=k.nut?c.d-k.na-k.rw:c.d,xs=k.dub?dubPos(dE):[];
+ k.cabs.forEach((c,ci)=>{const dE=k.nut?c.d-k.na-k.rw:c.d,svs=k.sv&&dE>=140?[37,dE-37]:[],xs=!k.dub?[]:svs.length?dubSv(dE):dubPos(dE);
   const SL=mk(ci,'Seite links',c.d,c.h,t,[x0,0,z0],[0,1,0],[0,0,1],{front:'x0'}),SR=mk(ci,'Seite rechts',c.d,c.h,t,[x0+c.b,c.d,z0],[0,-1,0],[0,0,1],{front:'xW'});
   const BO=mk(ci,'Boden',c.b-2*t,c.d,t,[x0+t,0,z0],[1,0,0],[0,1,0],{front:'y0'}),DE=mk(ci,'Deckel',c.b-2*t,c.d,t,[x0+t,c.d,z0+c.h],[1,0,0],[0,-1,0],{front:'yH'});
   const hole=(p,x,y,d,depth,back)=>p.holes.push({x:num(x),y:num(y),d,depth,back:!!back});
@@ -43,6 +47,9 @@ function parts(k){k=k||K();const out=[],t=k.t;let x0=0;const z0=k.sockel?k.sh:0;
   /* Dübel Boden/Deckel ↔ Seiten */
   for(const zc of[t/2,c.h-t/2])for(const dx of xs){hole(SL,dx,zc,DUB_D,DUB_T);hole(SR,c.d-dx,zc,DUB_D,DUB_T)}
   for(const dx of xs){BO.ticks.push({x:0,y:dx,e:'l'},{x:BO.W,y:dx,e:'r'});DE.ticks.push({x:0,y:c.d-dx,e:'l'},{x:DE.W,y:c.d-dx,e:'r'})}
+  /* Systemverbinder Boden/Deckel ↔ Seiten: Gehäuse innen im Boden (oben) und im Deckel (unten) */
+  for(const dx of svs){for(const[zc,sg]of[[t/2,1],[c.h-t/2,-1]]){hole(SL,dx,zc+sg*k.svO,SV_BD,k.svB);hole(SR,c.d-dx,zc+sg*k.svO,SV_BD,k.svB)}
+   for(const x of[k.svX,BO.W-k.svX]){hole(BO,x,dx,SV_D,k.svT);hole(DE,x,c.d-dx,SV_D,k.svT)}}
   /* Rückwand */
   if(k.nut){SL.grooves.push({x:dE,y:-4,w:k.rw,h:c.h+8,depth:k.nt});SR.grooves.push({x:k.na,y:-4,w:k.rw,h:c.h+8,depth:k.nt});
    BO.grooves.push({x:-4,y:dE,w:BO.W+8,h:k.rw,depth:k.nt});DE.grooves.push({x:-4,y:k.na,w:DE.W+8,h:k.rw,depth:k.nt});
@@ -51,8 +58,9 @@ function parts(k){k=k||K();const out=[],t=k.t;let x0=0;const z0=k.sockel?k.sh:0;
   /* Mittelwände ↔ Boden/Deckel */
   for(const w of walls)for(const dx of xs){hole(BO,w.x-t/2,dx,DUB_D,DUB_T);hole(DE,w.x-t/2,c.d-dx,DUB_D,DUB_T);w.p.ticks.push({x:dx,y:0,e:'b'},{x:dx,y:w.p.H,e:'t'})}
   /* feste Böden */
-  for(const s of c.fb){const f=compAt(c,k,s.x),p=mk(ci,'Fester Boden',f.x1-f.x0,dE,t,[x0+f.x0,0,z0+s.y],[1,0,0],[0,1,0],{front:'y0'}),L=faceL(f.x0),R=faceR(f.x1);
-   for(const dx of xs){L(dx,s.y+t/2,DUB_D,DUB_T);R(dx,s.y+t/2,DUB_D,DUB_T);p.ticks.push({x:0,y:dx,e:'l'},{x:p.W,y:dx,e:'r'})}}
+  for(const s of c.fb){const f=compAt(c,k,s.x),p=mk(ci,'Fester Boden',f.x1-f.x0,dE,t,[x0+f.x0,dE,z0+s.y+t],[1,0,0],[0,-1,0],{front:'yH'}),L=faceL(f.x0),R=faceR(f.x1);/* Zeichnung zeigt die Unterseite */
+   for(const dx of xs){L(dx,s.y+t/2,DUB_D,DUB_T);R(dx,s.y+t/2,DUB_D,DUB_T);p.ticks.push({x:0,y:dE-dx,e:'l'},{x:p.W,y:dE-dx,e:'r'})}
+   for(const dx of svs){L(dx,s.y+t/2-k.svO,SV_BD,k.svB);R(dx,s.y+t/2-k.svO,SV_BD,k.svB);hole(p,k.svX,dE-dx,SV_D,k.svT);hole(p,p.W-k.svX,dE-dx,SV_D,k.svT)}}
   /* Einlegeböden + Lochreihen */
   const cols=[37,dE-37];
   for(const s of c.eb){const f=compAt(c,k,s.x);mk(ci,'Einlegeboden',f.x1-f.x0-2,dE-10,t,[x0+f.x0+1,10,z0+s.y],[1,0,0],[0,1,0],{front:'y0',tint:[1.04,1.04,1.04]});
@@ -167,7 +175,7 @@ function form(){const k=K(),c=k.cabs[cur],inp=(id,lab,val,x='')=>`<div class="pr
  <div class="row" style="justify-content:flex-start;margin-top:14px"><button class="btn" id="kc_add">+ Korpus daneben</button><button class="btn" id="kc_del" ${k.cabs.length<2?'disabled style="opacity:.4"':''}>Korpus löschen</button></div>
  <h2 style="margin-top:20px">Für die ganze Zeile</h2>
  ${F_ROW.map(([f,l])=>inp('kr_'+f,l+' mm',k[f])).join('')}
- ${chk('kr_nut','Rückwand in Nut (10 tief, 20 von hinten)',k.nut)}${chk('kr_dub','Dübel Ø8 an allen Stößen',k.dub)}${chk('kr_topf','Topfbänder Ø35 (Blum) mit Montageplatten',k.topf)}
+ ${chk('kr_nut','Rückwand in Nut (10 tief, 20 von hinten)',k.nut)}${chk('kr_dub','Dübel Ø8 an allen Stößen',k.dub)}${chk('kr_sv','Würth Systemverbinder SV 20 E',k.sv)}${k.sv?inp('kr_svT','Gehäuse Ø20: Bohrtiefe',k.svT)+inp('kr_svX','Gehäusemitte von der Kante',k.svX)+inp('kr_svO','Bolzen über Plattenmitte',k.svO)+'<p class="muted" style="margin:2px 0 8px">Für 19 mm: 14 tief, 9,5 von der Kante (16 mm: 12,5 und 8). Bolzenloch Ø5 in der Seite, 37 von vorn und hinten.</p>':''}${chk('kr_topf','Topfbänder Ø35 (Blum) mit Montageplatten',k.topf)}
  <div class="pr" style="margin-top:6px"><label for="kr_lr">Bodenträger</label><select id="kr_lr">${[['boden','3 Löcher je Einlegeboden'],['voll','Lochreihe durchgehend'],['aus','keine Löcher']].map(([v,l])=>`<option value="${v}" ${k.lr===v?'selected':''}>${l}</option>`).join('')}</select></div>
  ${k.lr!=='aus'?inp('kr_btD','Bohr-Ø mm',k.btD)+inp('kr_btT','Bohrtiefe mm',k.btT)+inp('kr_btA','Lochmitte unter Boden mm',k.btA)+'<p class="muted" style="margin:2px 0 8px">Voreingestellt für Häfele „Jimmy“ (Bohr-Ø 4). Löcher 37 mm von vorn und hinten, im 32er-Abstand.</p>':''}
  ${chk('kr_sockel','Sockel',k.sockel)}${k.sockel?inp('kr_sh','Sockelhöhe mm',k.sh)+inp('kr_sr','Rücksprung mm',k.sr):''}`;
@@ -179,7 +187,7 @@ function form(){const k=K(),c=k.cabs[cur],inp=(id,lab,val,x='')=>`<div class="pr
  const sp=$('kc_spread');if(sp)sp.onclick=()=>{A.commit(()=>{spread(c,k);tidy(k)});pick=null;refresh()};
  $('kc_add').onclick=()=>{A.commit(()=>{k.cabs.splice(cur+1,0,JSON.parse(JSON.stringify(c)))});cur++;pick=null;refresh()};
  $('kc_del').onclick=()=>{if(k.cabs.length<2)return;A.commit(()=>{k.cabs.splice(cur,1)});cur=Math.max(0,cur-1);pick=null;refresh()};
- for(const[f,,min,max]of F_ROW)on('kr_'+f,set(k,f,min,max));for(const f of['nut','dub','topf','sockel'])on('kr_'+f,el=>A.commit(()=>{k[f]=el.checked}));
+ for(const[f,,min,max]of F_ROW)on('kr_'+f,set(k,f,min,max));on('kr_svT',set(k,'svT',5,25));on('kr_svX',set(k,'svX',5,20));on('kr_svO',set(k,'svO',-10,10));for(const f of['nut','dub','sv','topf','sockel'])on('kr_'+f,el=>A.commit(()=>{k[f]=el.checked}));
  on('kr_lr',el=>A.commit(()=>{k.lr=el.value}));on('kr_btD',set(k,'btD',2,12));on('kr_btT',set(k,'btT',3,16));on('kr_btA',set(k,'btA',0,20));on('kr_sh',set(k,'sh',30,300));on('kr_sr',set(k,'sr',0,200));fillPick()}
 function scaleX(c,k){/* bei neuer Breite: Mittelwände neu verteilen, Böden bleiben in ihrem Fach */spreadWalls(c,k)}
 function spreadWalls(c,k){const n=c.mw.length,iw=c.b-2*k.t;c.mw=c.mw.map(x=>Math.min(x,c.b-2*k.t-1));const fx=[c.fb,c.eb].map(l=>l.map(s=>{const cs=comps(c,k);return Math.max(0,cs.findIndex(f=>s.x>=f.x0&&s.x<=f.x1))}));
