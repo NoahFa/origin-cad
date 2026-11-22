@@ -2,7 +2,7 @@
 // Aufruf: node tests/check.cjs   (optional: Ordner für Fotos als 1. Angabe)
 const {chromium}=require('playwright');const http=require('http');const fs=require('fs');const path=require('path');
 const ROOT=path.join(__dirname,'..'),SHOTS=process.argv[2]||null;
-const MIME={'.html':'text/html','.js':'text/javascript','.json':'application/json','.webmanifest':'application/manifest+json','.svg':'image/svg+xml','.png':'image/png'};
+const MIME={'.woff2':'font/woff2','.html':'text/html','.js':'text/javascript','.json':'application/json','.webmanifest':'application/manifest+json','.svg':'image/svg+xml','.png':'image/png'};
 const srv=http.createServer((q,r)=>{let f=decodeURIComponent(q.url.split('?')[0]);if(f.endsWith('/'))f+='index.html';const p=path.join(ROOT,f);if(!p.startsWith(ROOT)||!fs.existsSync(p)){r.writeHead(404);r.end();return}r.writeHead(200,{'content-type':MIME[path.extname(p)]||'application/octet-stream'});r.end(fs.readFileSync(p))});
 let fails=0;const ok=(c,t,extra='')=>{console.log((c?'  ok   ':'  FEHLER ')+t+(c?'':' '+extra));if(!c)fails++};
 const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
@@ -86,7 +86,7 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  console.log('Speichern und Laden');
  const json=await p.evaluate(()=>JSON.stringify({app:'OriginCAD',v:2,...__cad.S}));
  await p.setInputFiles('#file',{name:'Test.json',mimeType:'application/json',buffer:Buffer.from(json)});await p.waitForFunction(()=>document.getElementById('fname').textContent.startsWith('Test.json'));
- ok(JSON.stringify(await ents())===JSON.stringify(JSON.parse(json).ents),'Datei mit Fräs-Angaben kommt unverändert zurück');
+ const canon=a=>JSON.stringify(a,(k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(x=>[x,v[x]])):v);ok(canon(await ents())===canon(JSON.parse(json).ents),'Datei mit Fräs-Angaben kommt unverändert zurück');
  const old=JSON.stringify({ents:[{id:1,t:'line',ly:'0',a:[0,0],b:[10,0]}],layers:[{n:'0',c:'#c9ced6',v:true}],cur:'0',nid:2});
  await p.setInputFiles('#file',{name:'Alt.json',mimeType:'application/json',buffer:Buffer.from(old)});await p.waitForFunction(()=>document.getElementById('fname').textContent.startsWith('Alt.json'));
  r=await p.evaluate(()=>__cad.cutOf(__cad.S.ents[0]));ok(r.t==='online'&&r.tool===6&&r.d===6,'Alte Zeichnung aus Etappe 1 lässt sich öffnen');
@@ -380,6 +380,50 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  ok(r.s.join()==='300,300,-50'&&r.c.join()==='200,400'&&/Formteil/.test(r.e)&&r.f.join()==='box,30,-30','Ziehen: Kugel um die Mitte · Zylinder Höhe · Formteil nur Höhe · flache Fläche auch nach unten',JSON.stringify(r));
  const jsR=await p.evaluate(()=>JSON.stringify({app:'OriginCAD',v:3,...__cad.S}));const nR=await p.evaluate(()=>RAUM.state.bodies.length);await p.click('[data-rm="close"]');await fresh();await p.setInputFiles('#file',{name:'Raum.json',mimeType:'application/json',buffer:Buffer.from(jsR)});await p.waitForFunction(()=>document.getElementById('fname').textContent.startsWith('Raum.json'));
  ok((await p.evaluate(()=>__cad.S.raum&&__cad.S.raum.bodies.length))===nR,'3D-Modell wird mit der Zeichnung gespeichert und geladen');
+
+ console.log('Korrekturen aus der Prüfung');
+ await fresh();await C('L','0,0','100,0','','B','100,0','50,-50','0,0');await p.keyboard.press('Escape');await p.evaluate(()=>__cad.act('alle'));await C('VB');
+ r=await p.evaluate(()=>{const e=__cad.S.ents[0];return{n:__cad.S.ents.length,t:e.t,pts:e.pts.length,cl:e.closed,svg:/A50 50/.test(__cad.buildSVG(__cad.exportList(false))),ct:__cad.cutOf(e).t}});
+ ok(r.n===1&&r.t==='pline'&&r.pts===3&&r.cl&&r.svg&&r.ct==='outside','Linie + Halbkreis verbinden: geschlossene Kontur, Bogen bleibt im SVG',JSON.stringify(r));
+ r=await p.evaluate(()=>{const x=__cad.importSVG('<svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="100mm" viewBox="0 0 100 100"><path d="M0,50 L100,50 A50,50 0 0 0 0,50 Z"/></svg>');return x.ents.map(e=>e.t+':'+(e.closed?'zu':'offen')+':'+(e.pts?e.pts.length:0)).join()});
+ ok(r==='pline:zu:3','SVG mit Linie + Bogen: geschlossen, Bogen bleibt',r);
+ await fresh();await C('R','0,0','@200,100');await p.keyboard.press('Escape');await p.evaluate(()=>__cad.act('alle'));await C('D','0,0','30');
+ r=await p.evaluate(()=>{const e=__cad.S.ents[0];return{rect:!!e.rect,kind:document.querySelector('#props input[readonly]')?document.querySelector('#props input[readonly]').value:''}});ok(!r.rect,'Gedrehtes Rechteck ist danach kein achsparalleles Rechteck mehr',JSON.stringify(r));
+ await p.evaluate(()=>{__cad.S.ents[0].ct='pocket';__cad.S.ents[0].cd=12});await p.evaluate(()=>__cad.act('alle'));await C('ZL');r=await p.evaluate(()=>__cad.S.ents.map(e=>e.ct+'/'+e.cd).join());ok(r==='pocket/12,pocket/12,pocket/12,pocket/12','Zerlegen behält Frästyp und Tiefe',r);
+ await fresh();await C('K','0,0','12,5');await p.keyboard.press('Escape');r=await p.evaluate(()=>__cad.S.ents[0].r);ok(r===12.5,'Kreis: „12,5“ ist der Radius 12,5 (Kommazahl)',String(r));
+ await C('L','10;5','@20;0','');await p.keyboard.press('Escape');r=await p.evaluate(()=>{const e=__cad.S.ents[1];return e.a.concat(e.b).join()});ok(r==='10,5,30,5','Punkte mit Strichpunkt: 10;5 und @20;0',r);
+ // Korpusplaner
+ await p.click('.mbtn[data-a="korpus"]');await p.fill('#kc_b','1000');await p.keyboard.press('Enter');await p.fill('#kc_nm','1');await p.keyboard.press('Enter');await p.fill('#kc_nf','1');await p.keyboard.press('Enter');await p.fill('#kc_ne','1');await p.keyboard.press('Enter');
+ const clashes=()=>p.evaluate(()=>{let n=0;for(const q of KORPUS.parts())for(const a of q.holes)for(const b of q.holes)if(a!==b&&!a.mark&&!b.mark&&Math.hypot(a.x-b.x,a.y-b.y)<(a.d+b.d)/2+0.5&&(a.back!==b.back?a.depth+b.depth>=q.T-0.5:true))n++;return n});
+ ok((await clashes())===0,'Mittelwand mit festen Böden und Einlegeböden beidseits: keine Bohrungen treffen sich');
+ await p.selectOption('#kr_lr','voll');ok((await clashes())===0,'Lochreihe durchgehend: keine Überschneidung mit Montageplatten oder Gegenseite');await p.selectOption('#kr_lr','boden');
+ await p.fill('#kc_nm','0');await p.keyboard.press('Enter');await p.selectOption('#kc_front','m2');await p.fill('#kc_sfh','300');await p.keyboard.press('Enter');await p.fill('#kc_ne','3');await p.keyboard.press('Enter');await p.click('#kc_spread');
+ r=await p.evaluate(()=>KORPUS.state.cabs[0].eb.map(s=>s.y).sort((a,b)=>a-b));ok(r.length===3&&r[1]-r[0]>=19&&r[2]-r[1]>=19&&r[2]<=720-300-6-40-19,'Verteilen bei Schubkasten oben: Böden liegen getrennt unter dem Schubkasten',r.join());
+ await p.click('[data-kp="close"]');
+ // 3D: Zahl nach Verschieben ändert keinen alten Zug
+ await p.click('.mbtn[data-a="raum"]');const rb2=await p.locator('#rm3d').boundingBox(),P2=w=>p.evaluate(w=>RAUM.viewer.project(w),w),clk=async w=>{const s=await P2(w);await p.mouse.move(rb2.x+s[0],rb2.y+s[1]);await p.mouse.click(rb2.x+s[0],rb2.y+s[1])};
+ await p.keyboard.press('r');await clk([0,0,0]);await p.keyboard.type('600,400');await p.keyboard.press('Enter');r=await p.evaluate(()=>{const b=RAUM.state.bodies[0];return[b.L,b.B]});ok(r.join()==='600,400','3D-Rechteck „600,400“ wird 600 × 400',r.join());
+ await p.evaluate(()=>RAUM.viewer.fit());await p.keyboard.press('p');await clk([300,200,0]);await p.keyboard.type('19');await p.keyboard.press('Enter');
+ await p.keyboard.press('m');await clk([300,200,19]);await p.keyboard.press('ArrowRight');const s2=await P2([300,200,19]);await p.mouse.move(rb2.x+s2[0]+50,rb2.y+s2[1],{steps:3});await p.keyboard.type('150');await p.keyboard.press('Enter');
+ await p.keyboard.press('p');await p.keyboard.type('25');await p.keyboard.press('Enter');r=await p.evaluate(()=>{const b=RAUM.state.bodies[0];return{x:RAUM.box(b)[0],H:b.H}});ok(r.x===150&&r.H===19,'Nach dem Verschieben setzt eine getippte Zahl keinen alten Zug zurück',JSON.stringify(r));
+ await p.click('[data-rm="close"]');await fresh();
+
+ console.log('Sicherheit');
+ r=await p.evaluate(async()=>{await document.fonts.ready;return{sans:document.fonts.check('500 14px "IBM Plex Sans"'),mono:document.fonts.check('14px "IBM Plex Mono"'),csp:!!document.querySelector('meta[http-equiv="Content-Security-Policy"]'),ext:[...document.querySelectorAll('link[href^="http"],script[src^="http"]')].length}});
+ ok(r.sans&&r.mono&&r.csp&&r.ext===0,'Schrift aus dem Projekt geladen, nichts von fremden Servern, Sicherheitsregel gesetzt',JSON.stringify(r));
+ await p.evaluate(()=>{window.__hack=0});
+ const evil={app:'OriginCAD',v:3,ents:[{id:1,t:'circle',ly:'0',c:[0,0],r:10,ct:'constructor'},{id:2,t:'circle',ly:'0',c:[5,5],r:1e300},{id:3,t:'line',ly:'<img src=x onerror="window.__hack=1">',a:[0,0],b:[10,0]}],
+  layers:[{n:'0',c:'#000"><img src=x onerror="window.__hack=2">',v:true}],cur:'0',nid:4,
+  korpus:{t:19,cabs:[{b:600,h:720,d:560,front:'s',sn:'<img src=x onerror="window.__hack=3">',mw:[],fb:[],eb:[],ks:[]}],matK:'<img src=x onerror="window.__hack=4">',na:'<img src=x onerror="window.__hack=5">'},
+  raum:{bodies:[{id:'"><img src=x onerror="window.__hack=6">',name:'<b>x</b>',kind:'box',L:100,B:100,H:19,o:[0,0,0],u:[1,0,0],v:[0,1,0]},{id:7,kind:'sph',L:1e300,B:1,H:1,o:[0,0,0],u:[1,0,0],v:[0,1,0]}],nid:8}};
+ await p.setInputFiles('#file',{name:'Boese.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(evil))});await p.waitForFunction(()=>document.getElementById('fname').textContent.startsWith('Boese.json'));
+ await p.click('.mbtn[data-a="korpus"]');await p.waitForTimeout(150);await p.click('[data-kp="close"]');await p.click('.mbtn[data-a="raum"]');await p.waitForTimeout(150);await p.click('[data-rm="close"]');await p.waitForTimeout(200);
+ r=await p.evaluate(()=>({hack:window.__hack,ents:__cad.S.ents.map(e=>e.t+(e.ct||'')).join(),col:__cad.S.layers[0].c,sn:__cad.S.korpus.cabs[0].sn,matK:__cad.S.korpus.matK,bodies:__cad.S.raum.bodies.map(b=>b.id+':'+b.kind).join()}));
+ ok(r.hack===0&&r.ents==='circle,line'&&r.col==='#c9ced6'&&r.sn===3&&r.matK===''&&r.bodies==='1:box','Präparierte Zeichnung: kein fremder Code, unsinnige Werte und riesige Radien verworfen',JSON.stringify(r));
+ const big=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M0 0 C 1e300 0 1e300 1e300 0 1e300 Z"/><ellipse cx="0" cy="0" rx="1e12" ry="5"/><rect x="0" y="0" width="50" height="20"/></svg>');
+ const t0=Date.now();await p.setInputFiles('#file',{name:'Riesig.svg',mimeType:'image/svg+xml',buffer:big});await p.waitForFunction(()=>document.getElementById('fname').textContent.startsWith('Riesig.svg'),null,{timeout:15000});
+ ok(Date.now()-t0<5000&&(await p.evaluate(()=>__cad.S.ents.length))>=1,'SVG mit riesigen Zahlen: kein Absturz, kein Hängen ('+(Date.now()-t0)+' ms)');
+ await fresh();
 
  console.log('Darstellung');
  for(const[n,vp]of[['tablet',{width:1024,height:768}],['handy',{width:390,height:844}]]){const q=await open(vp);await q.evaluate(()=>__cad.act('cam'));

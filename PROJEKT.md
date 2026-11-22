@@ -116,11 +116,18 @@ Eigener Bereich (Knopf „3D-Modus“), Datei `raum.js`, Daten in `S.raum = {bod
 
 - **Anlegen an Kante** (`AN`, Ändern): gerade Kante eines Objekts → Zielkante → Abstand (0 = bündig). `edgeAt()` findet die Kante, `alignTo()` dreht um die Kantenmitte (kleinster Winkel, max. ±90°) und schiebt senkrecht auf die Ziellinie; das Objekt bleibt auf seiner Seite. Gewählte Objekte wandern gemeinsam mit.
 
+## Prüfung vom 22.11.2026 (v25, vier Prüf-Agenten) – umgesetzt in v26
+- **Sicherheit:** Alles Geladene (Datei, Dazuladen, Vorlagen, Browserspeicher) läuft durch `cleanDoc`/`cleanEnt` (cad.js), `KORPUS.clean`, `RAUM.clean` – nur bekannte Typen, endliche Zahlen bis 1e6, Farben `#rrggbb`, Listen-Werte aus festen Listen. Obergrenze 4000 Punkte je Bogen, DXF-Blöcke höchstens 200 000 Objekte, Autosave erst nach dem Zeichnen. Content-Security-Policy (`script-src 'self'`), Service-Worker-Anmeldung in `start.js`, Schrift IBM Plex im Projekt (`fonts/`, keine Google-Anfragen mehr). `THIRD-PARTY-LICENSES.md`.
+- **Gleiche Adresse wie Zuhause (noahfa.github.io):** Browserspeicher und Offline-Speicher werden geteilt. Zuhause löscht seit v58 nur noch eigene Speicher. **Offen, Entscheidung Noah:** eigene Adresse für Origin CAD (z. B. eigene Domain).
+- **Fehler behoben:** geschlossene Kontur aus 2 Punkten mit Bogen (`fix2`), „rect“ nach Drehen/Spiegeln/Anlegen (`setAll`), Zerlegen behält Fräsangaben, Strg+Y während eines Befehls, VS-Meldung, DXF mit Kopf ($INSUNITS mm), Block-Ebene 0 erbt, „12,5“ als Kommazahl bei Zahl-Abfragen (Punkte mit `;`), 3D: getippte Zahl ändert nur den unmittelbar letzten Zug, gehaltene Strg-Taste, „600,400“. Korpusplaner: feste Böden beidseits einer Mittelwand → Bohrbild des linken Bodens 16 mm versetzt, Bodenträger weichen anderen Löchern aus, Verteilen bei Schubkasten oben, Mittelwände nie übereinander.
+
 ## Ideen / offen
-- An der echten Origin prüfen: Wird die SVG mit Frästyp, Tiefe und Fräser-Ø richtig erkannt? (Format nach Shaper-Vorgabe gebaut, aber noch nicht an der Maschine getestet.)
+- Eigene Adresse (Domain) für Origin CAD – siehe Prüfung.
+- Hängeschrank über einem Unterschrank platzieren (Korpusse liegen bisher nur nebeneinander).
+- Weitere Punkte aus der Prüfung zu Bedienung und Darstellung siehe unten bzw. nächste Etappe.
+- An der echten Origin prüfen: Wird die SVG mit Frästyp, Tiefe und Fräser-Ø richtig erkannt?
 - Stutzen zerlegt Polylinien noch in Einzelstücke (danach `VB`)
 - Eigene Vorlagen zwischen Geräten austauschen (bisher: Zeichnung als .json speichern und „Dazuladen“)
-- Drucken / PDF mit Bemaßung
 
 ## Shaper-SVG-Format (so wird ausgegeben)
 - Namespace im `<svg>`: `xmlns:shaper="http://www.shapertools.com/namespaces/shaper"`

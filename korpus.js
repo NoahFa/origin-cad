@@ -17,6 +17,14 @@ const BT={kb:0,griff:'n',grA:128,grR:50,grO:80,plL:2800,plB:2070,kerf:4,rand:10,
 /* Würth Systemverbinder SV 20 E: Gehäuse Ø20 in der Fläche des waagrechten Teils (svT tief, Mitte svX von der Stirnkante),
    Systembolzen in Ø5-Bohrung der Seite (svB tief), 37 mm von vorn und hinten; svO = Bolzen über (+) / unter (−) der Plattenmitte */
 const SV_D=20,SV_BD=5;
+/* Geladene Planung prüfen (Datei oder Browserspeicher sind nicht vertrauenswürdig) */
+const FRONTS=['n','l','r','2','s','ml','mr','m2'];
+function clean(o){if(!o||typeof o!=='object'||!Array.isArray(o.cabs))return null;const d=DEF(),k={},fin=v=>typeof v==='number'&&Number.isFinite(v)&&Math.abs(v)<=1e5;
+ for(const f of Object.keys(d)){if(f==='cabs')continue;const dv=d[f],v=o[f];if(typeof dv==='number')k[f]=fin(v)?v:dv;else if(typeof dv==='boolean')k[f]=typeof v==='boolean'?v:dv;else k[f]=dv}
+ k.lr=['boden','voll','aus'].includes(o.lr)?o.lr:d.lr;k.griff=['n','b'].includes(o.griff)?o.griff:d.griff;for(const f of['matK','matF','matR'])k[f]=MATS.some(m=>m[0]===o[f])?o[f]:'';
+ const pts=a=>(Array.isArray(a)?a:[]).slice(0,60).filter(q=>q&&fin(q.x)&&fin(q.y)).map(q=>({x:q.x,y:q.y}));
+ k.cabs=o.cabs.slice(0,50).map(c=>{const n=newCab();if(!c||typeof c!=='object')return n;for(const f of['b','h','d','zo','sfh','sn','nm','nf','ne'])if(fin(c[f]))n[f]=c[f];n.front=FRONTS.includes(c.front)?c.front:'2';
+  n.mw=(Array.isArray(c.mw)?c.mw:[]).slice(0,20).filter(fin);n.fb=pts(c.fb);n.eb=pts(c.eb);n.ks=pts(c.ks);return n});if(!k.cabs.length)k.cabs=[newCab()];tidy(k);return k}
 const K=()=>{const s=S();if(!s.korpus)s.korpus=DEF();for(const f in BT)if(s.korpus[f]==null)s.korpus[f]=BT[f];for(const c of s.korpus.cabs){if(!c.ks)c.ks=[];if(c.zo==null)c.zo=0;if(c.sfh==null)c.sfh=140}return s.korpus};
 const num=v=>Math.round(v*100)/100,de=v=>String(num(v)).replace('.',',');
 const clampN=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -33,13 +41,13 @@ function fronts(c,k){const fg=k.fuge,o=[],doors=(ty,z,h)=>{if(ty==='l'||ty==='r'
 /* ----- Fächer ----- */
 function comps(c,k){const xs=[...c.mw].sort((a,b)=>a-b),o=[];let x=k.t;for(const w of xs){o.push({x0:x,x1:w});x=w+k.t}o.push({x0:x,x1:c.b-k.t});return o}
 const compAt=(c,k,x)=>{const cs=comps(c,k);return cs.find(f=>x>=f.x0&&x<=f.x1)||cs.reduce((a,f)=>Math.abs((f.x0+f.x1)/2-x)<Math.abs((a.x0+a.x1)/2-x)?f:a)};
-function spread(c,k){const iw=c.b-2*k.t,ih=c.h-2*k.t;c.mw=[];for(let i=0;i<c.nm;i++)c.mw.push(num(k.t+(iw-c.nm*k.t)/(c.nm+1)*(i+1)+i*k.t));
+function spread(c,k){const iw=c.b-2*k.t,ih=(c.front[0]==='m'?c.h-(c.sfh||140)-2*k.fuge-40:c.h-k.t)-k.t;/* bei Schubkasten oben nur bis darunter verteilen */c.mw=[];for(let i=0;i<c.nm;i++)c.mw.push(num(k.t+(iw-c.nm*k.t)/(c.nm+1)*(i+1)+i*k.t));
  c.fb=[];c.eb=[];const all=c.nf+c.ne;
  for(const f of comps(c,k)){const x=num((f.x0+f.x1)/2);for(let i=0;i<all;i++){const y=num(k.t+(ih-all*k.t)/(all+1)*(i+1)+i*k.t);/* feste Böden möglichst in die Mitte */
    const fixed=c.nf>0&&isFixedSlot(i,all,c.nf);(fixed?c.fb:c.eb).push({x,y})}}}
 function isFixedSlot(i,all,nf){const pos=[];for(let j=0;j<nf;j++)pos.push(Math.round((all-1)*(j+1)/(nf+1)));return pos.includes(i)}
 function tidy(k){for(const c of k.cabs){c.b=clampN(c.b,150,3000);c.h=clampN(c.h,150,3000);c.d=clampN(c.d,120,1200);
-  c.mw=c.mw.map(x=>num(clampN(x,k.t+40,c.b-2*k.t-40))).filter((x,i,a)=>a.indexOf(x)===i);
+  c.mw=c.mw.map(x=>num(clampN(x,k.t+40,c.b-2*k.t-40))).sort((a,b)=>a-b);for(let i=1;i<c.mw.length;i++)c.mw[i]=Math.max(c.mw[i],num(c.mw[i-1]+k.t+40));c.mw=c.mw.filter(x=>x<=c.b-2*k.t-40);/* Mittelwände nie übereinander */
   if(!c.ks)c.ks=[];for(const l of[c.fb,c.eb])for(const s of l){s.y=num(clampN(s.y,k.t+20,c.h-2*k.t-20));s.x=clampN(s.x,k.t+1,c.b-k.t-1)}
   for(const s of c.ks){s.y=num(clampN(s.y,k.t+30,c.h-k.t-25));s.x=clampN(s.x,k.t+1,c.b-k.t-1)}
   if(c.front==='s'){c.mw=[];c.fb=[];c.eb=[];c.ks=[]}
@@ -51,7 +59,7 @@ function dubSv(len){/* Dübel zwischen den Verbindern: 64 hinter dem vorderen un
 function hingeYs(H){const n=H>1600?4:H>900?3:2,o=[];for(let i=0;i<n;i++)o.push(num(100+(H-200)*i/(n-1)));return o}
 function parts(k){k=k||K();const out=[],t=k.t;let x0=0;
  const mk=(ci,name,W,H,T,o,u,v,x={})=>{const p=Object.assign({ci,name,W:num(W),H:num(H),T,o,u,v,holes:[],grooves:[],ticks:[],tint:[1,1,1]},x);p.matId=p.rod?'':p.isFront?k.matF:p.mat==='Rückwand'?k.matR:k.matK;if(p.matId)p.tint=p.name.startsWith('Sockel')?[0.8,0.8,0.8]:[1,1,1];out.push(p);return p};
- k.cabs.forEach((c,ci)=>{const z0=cz(k,c),dE=k.nut?c.d-k.na-k.rw:c.d,svs=k.sv&&dE>=140?[37,dE-37]:[],xs=!k.dub?[]:svs.length?dubSv(dE):dubPos(dE);
+ k.cabs.forEach((c,ci)=>{const z0=cz(k,c),dE=k.nut?c.d-k.na-k.rw:c.d,svs=k.sv&&dE>=140?[37,dE-37]:[],xs=!k.dub?[]:svs.length?dubSv(dE):dubPos(dE),xs0=xs,svs0=svs;
   const SL=mk(ci,'Seite links',c.d,c.h,t,[x0,0,z0],[0,1,0],[0,0,1],{front:'x0'}),SR=mk(ci,'Seite rechts',c.d,c.h,t,[x0+c.b,c.d,z0],[0,-1,0],[0,0,1],{front:'xW'});
   const BO=mk(ci,'Boden',c.b-2*t,c.d,t,[x0+t,0,z0],[1,0,0],[0,1,0],{front:'y0'}),DE=mk(ci,'Deckel',c.b-2*t,c.d,t,[x0+t,c.d,z0+c.h],[1,0,0],[0,-1,0],{front:'yH'});
   const hole=(p,x,y,d,depth,back,mark)=>p.holes.push({x:num(x),y:num(y),d,depth,back:!!back,...(mark?{mark:1}:{})});
@@ -74,6 +82,8 @@ function parts(k){k=k||K();const out=[],t=k.t;let x0=0;
   for(const w of walls)for(const dx of xs){hole(BO,w.x-t/2,dx,DUB_D,DUB_T);hole(DE,w.x-t/2,c.d-dx,DUB_D,DUB_T);w.p.ticks.push({x:dx,y:0,e:'b'},{x:dx,y:w.p.H,e:'t'})}
   /* feste Böden */
   for(const s of c.fb){const f=compAt(c,k,s.x),p=mk(ci,'Fester Boden',f.x1-f.x0,dE,t,[x0+f.x0,dE,z0+s.y+t],[1,0,0],[0,-1,0],{front:'yH'}),L=faceL(f.x0),R=faceR(f.x1);/* Zeichnung zeigt die Unterseite */
+   /* gegenüber der Mittelwand liegt ein fester Boden auf fast gleicher Höhe? Dann dieses Bohrbild um 16 mm versetzen, sonst treffen sich die Bohrungen in der Wand */
+   const wr=walls.find(w=>Math.abs(w.x-f.x1)<1e-6),clash=wr&&c.fb.some(o=>o!==s&&Math.abs(compAt(c,k,o.x).x0-(wr.x+t))<1e-6&&Math.abs(o.y-s.y)<40),SH=v=>clash?(v+16<=dE-20?v+16:v-16):v,xs=xs0.map(SH),svs=svs0.map(SH);
    for(const dx of xs){L(dx,s.y+t/2,DUB_D,DUB_T);R(dx,s.y+t/2,DUB_D,DUB_T);p.ticks.push({x:0,y:dE-dx,e:'l'},{x:p.W,y:dE-dx,e:'r'})}
    for(const dx of svs){L(dx,s.y+t/2-k.svO,SV_BD,k.svB);R(dx,s.y+t/2-k.svO,SV_BD,k.svB);hole(p,k.svX,dE-dx,SV_D,k.svT);hole(p,p.W-k.svX,dE-dx,SV_D,k.svT)}}
   /* Einlegeböden + Lochreihen */
@@ -108,6 +118,10 @@ function parts(k){k=k||K();const out=[],t=k.t;let x0=0;
     mk(ci,'Schubkasten Boden',bw-2*SK+2*GR-1,bl-SK+GR-0.5,k.rw,[bx+SK-GR+0.5,SK-GR+0.5,bz+13],[1,0,0],[0,1,0],{box:true,mat:'Rückwand'})};
   const FR=fronts(c,k),zMin=Math.min(...FR.map(f=>f.z)),zMax=Math.max(...FR.map(f=>f.z+f.h));
   for(const f of FR){if(f.typ==='t')door(f);else drawer(f,f.z<=zMin+1e-6?t:f.z-fg/2,f.z+f.h>=zMax-1e-6?c.h-t:f.z+f.h+fg/2)}
+ /* Bodenträger aufräumen: nicht in andere Löcher derselben Seite; von der Rückseite einer Mittelwand versetzt, wenn sie auf ein Loch der Vorderseite treffen */
+  const isPin=h=>!h.mark&&h.d===k.btD&&h.depth===k.btT;
+  for(const p of out){if(p.ci!==ci||!p.holes.length)continue;p.holes=p.holes.filter(h=>!isPin(h)||!p.holes.some(o=>o!==h&&!o.mark&&!isPin(o)&&o.back===h.back&&Math.hypot(o.x-h.x,o.y-h.y)<(o.d+h.d)/2+1));
+   for(const h of p.holes){if(!h.back||!isPin(h))continue;const hit=()=>p.holes.some(o=>!o.back&&!o.mark&&Math.hypot(o.x-h.x,o.y-h.y)<(o.d+h.d)/2+1&&o.depth+h.depth>=p.T-1);if(hit()){const x1=h.x;h.x=num(x1+16<=p.W-20?x1+16:x1-16);if(hit())h.x=x1}}}
   x0+=c.b});
  for(const r of sockelRuns(k)){const W=r.xb-r.xa,yb=r.dm-50,len=yb-t-(k.sr+t),G={tint:[0.8,0.8,0.8]};
   mk(-1,'Sockelblende vorn',W,k.sh,t,[r.xa,k.sr+t,0],[1,0,0],[0,0,1],{...G});mk(-1,'Sockelblende hinten',W,k.sh,t,[r.xa,yb,0],[1,0,0],[0,0,1],{...G});
@@ -240,7 +254,7 @@ function form(){const k=K(),c=k.cabs[cur],inp=(id,lab,val,x='')=>`<div class="pr
   ${sel('kr_matK','Dekor Korpus',k.matK,mats)}${sel('kr_matF','Dekor Fronten',k.matF,mats)}${sel('kr_matR','Dekor Rückwand',k.matR,mats)}${note('Beispiel-Dekore von EGGER. Farben am Bildschirm sind nur ungefähr.')}`)}
  ${sec('verb','Verbindungen',[k.dub?'Dübel':'',k.sv?'SV 20 E':'',k.nut?'Nut':''].filter(Boolean).join(' · ')||'keine',`
   ${chk('kr_nut','Rückwand in Nut (10 tief, 20 von hinten)',k.nut)}${chk('kr_dub','Dübel Ø8 an allen Stößen',k.dub)}${chk('kr_sv','Würth Systemverbinder SV 20 E',k.sv)}
-  ${k.sv?inp('kr_svT','Gehäuse Ø20: Bohrtiefe',k.svT)+inp('kr_svX','Gehäusemitte von der Kante',k.svX)+inp('kr_svO','Bolzen über Plattenmitte',k.svO)+note('Für 19 mm: 14 tief, 9,5 von der Kante (16 mm: 12,5 und 8). Bolzenloch Ø5 in der Seite, 37 von vorn und hinten.'):''}`)}
+  ${k.sv?inp('kr_svT','Gehäuse Ø20: Bohrtiefe',k.svT)+inp('kr_svX','Gehäusemitte von der Kante',k.svX)+inp('kr_svO','Bolzen zur Gehäuseseite versetzt',k.svO)+note('Für 19 mm: 14 tief, 9,5 von der Kante (16 mm: 12,5 und 8). Bolzenloch Ø5 in der Seite, 37 von vorn und hinten.'):''}`)}
  ${sec('besch','Beschläge',[k.topf?'Topfband':'',k.lr!=='aus'?'Bodenträger':'',k.griff==='b'?'Griffe':''].filter(Boolean).join(' · ')||'keine',`
   ${chk('kr_topf','Topfbänder Ø35 (Blum) mit Montageplatten',k.topf)}
   ${sel('kr_lr','Bodenträger',k.lr,[['boden','3 Löcher je Einlegeboden'],['voll','Lochreihe durchgehend'],['aus','keine Löcher']])}
@@ -340,4 +354,6 @@ function key(e){const t=e.target,inField=t&&(t.tagName==='INPUT'||t.tagName==='S
  if(e.key==='Escape'){e.preventDefault();if($('dKpn').classList.contains('open'))$('dKpn').classList.remove('open');else if($('dKpl').classList.contains('open'))$('dKpl').classList.remove('open');else if(mode!=='sel')setMode('sel');else if(pick){pick=null;refresh(true)}else close();return}
  if((e.ctrlKey||e.metaKey)&&!inField){const k=e.key.toLowerCase();if(k==='z'){e.preventDefault();e.shiftKey?A.redo():A.undo();refresh()}else if(k==='y'){e.preventDefault();A.redo();refresh()}return}
  if((e.key==='Delete'||e.key==='Backspace')&&!inField&&pick){e.preventDefault();removePick()}}
-return{nestOf,nestHTMLOf,matName,mat,openAll:()=>{['cab','in','mat','verb','besch','sock'].forEach(x=>openSec.add(x));refresh()},select:i=>{cur=i;pick=null;refresh()},fronts,nest,MATS,open,close,isOpen,key,parts,list,partEnts,model3,get state(){return K()},refresh,get view(){return view},hitAt,csv,DEF}})();
+return{nestOf,nestHTMLOf,matName,mat,openAll:()=>{['cab','in','mat','verb','besch','sock'].forEach(x=>openSec.add(x));refresh()},clean,select:i=>{cur=i;pick=null;refresh()},fronts,nest,MATS,open,close,isOpen,key,parts,list,partEnts,model3,get state(){return K()},refresh,get view(){return view},hitAt,csv,DEF}})();
+/* wiederhergestellte Planung aus dem Browserspeicher prüfen */
+{const s=window.__cad.S;if(s.korpus)s.korpus=window.KORPUS.clean(s.korpus)||undefined}

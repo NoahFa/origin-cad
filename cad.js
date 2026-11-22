@@ -25,6 +25,31 @@ function ev(s){s=s.replace(/\s+/g,'');let i=0;
  try{if(!s)return null;const v=ex();return i===s.length&&isFinite(v)?v:null}catch(e){return null}}
 
 /* ---------- Zustand ---------- */
+/* ---------- Geladene Daten prüfen (Dateien und Browserspeicher sind nicht vertrauenswürdig) ---------- */
+const LIM=1e6,okN=(v,lo=-LIM,hi=LIM)=>typeof v==='number'&&Number.isFinite(v)&&v>=lo&&v<=hi,okP=p=>Array.isArray(p)&&p.length===2&&okN(p[0])&&okN(p[1]);
+const okStr=(v,n=120)=>typeof v==='string'?v.slice(0,n):'';
+function cleanEnt(e){if(!e||typeof e!=='object')return null;const o={t:e.t,ly:okStr(e.ly,60)||'0'};
+ switch(e.t){
+ case'line':if(!okP(e.a)||!okP(e.b))return null;o.a=[...e.a];o.b=[...e.b];break;
+ case'circle':if(!okP(e.c)||!okN(e.r,1e-6,LIM))return null;o.c=[...e.c];o.r=e.r;break;
+ case'arc':if(!okP(e.c)||!okN(e.r,1e-6,LIM)||!okN(e.a0,-1e3,1e3)||!okN(e.a1,-1e3,1e3))return null;Object.assign(o,{c:[...e.c],r:e.r,a0:e.a0,a1:e.a1});break;
+ case'slot':if(!okP(e.a)||!okP(e.b)||!okN(e.r,1e-6,LIM))return null;Object.assign(o,{a:[...e.a],b:[...e.b],r:e.r});break;
+ case'pline':{if(!Array.isArray(e.pts)||e.pts.length<2||e.pts.length>200000||!e.pts.every(okP))return null;o.pts=e.pts.map(p=>[...p]);o.closed=!!e.closed;if(e.rect)o.rect=true;
+  if(Array.isArray(e.bl)){if(!e.bl.every(v=>okN(v,-1e3,1e3)))return null;o.bl=e.bl.slice(0,o.pts.length)}break}
+ case'text':if(!okP(e.p)||!okN(e.h,0.01,1e4))return null;Object.assign(o,{p:[...e.p],s:okStr(e.s,500)||' ',h:e.h,a:okN(e.a,-1e3,1e3)?e.a:0});break;
+ case'xline':if(!okP(e.p)||!okP(e.d)||Math.hypot(...e.d)<1e-9)return null;o.p=[...e.p];o.d=nrm(e.d);break;
+ case'dim':if(!okP(e.p))return null;if(e.m==='rad'||e.m==='dia'){if(!okP(e.c)||!okN(e.r,1e-6,LIM))return null;Object.assign(o,{c:[...e.c],r:e.r,p:[...e.p],m:e.m});break}
+  if(!okP(e.a)||!okP(e.b))return null;Object.assign(o,{a:[...e.a],b:[...e.b],p:[...e.p],m:['h','v','al'].includes(e.m)?e.m:'al'});break;
+ default:return null}
+ if(typeof e.ct==='string'&&Object.prototype.hasOwnProperty.call(CUTS,e.ct))o.ct=e.ct;if(okN(e.cd,0.01,1000))o.cd=e.cd;if(okN(e.tool,0.01,200))o.tool=e.tool;return o}
+function cleanLayers(ls){const out=[];for(const l of Array.isArray(ls)?ls:[]){const n=okStr(l&&l.n,60);if(!n||out.some(q=>q.n===n))continue;out.push({n,c:/^#[0-9a-f]{6}$/i.test(l.c)?l.c:'#c9ced6',v:l.v!==false})}return out.length?out:DEF_LAYERS()}
+/* ganze Zeichnung prüfen; Korpusplaner und 3D-Modus prüfen ihre Teile selbst (cleanDoc.korpus / cleanDoc.raum) */
+function cleanDoc(o){const ents=[],seen=new Set();let id=1;for(const e of(Array.isArray(o.ents)?o.ents:[]).slice(0,500000)){const c=cleanEnt(e);if(!c)continue;const k=Number.isInteger(e.id)&&e.id>0&&e.id<1e9&&!seen.has(e.id)?e.id:0;ents.push({id:k,...c});if(k)seen.add(k)}
+ for(const e of ents){if(!e.id){while(seen.has(id))id++;e.id=id;seen.add(id)}}id=Math.max(1,...ents.map(e=>e.id+1));
+ const layers=cleanLayers(o.layers);for(const e of ents)if(!layers.some(l=>l.n===e.ly))layers.push({n:e.ly,c:'#c9ced6',v:true});
+ const d=o.def||{},def=DEF_CUT();for(const k of Object.keys(def))if(okN(d[k],0.01,1000))def[k]=d[k];
+ const r={ents,layers,cur:layers.some(l=>l.n===o.cur)?o.cur:(layers.some(l=>l.n==='Kontur')?'Kontur':layers[0].n),nid:id,def};
+ if(o.korpus)r.korpus=window.KORPUS?window.KORPUS.clean(o.korpus):o.korpus;if(o.raum)r.raum=window.RAUM?window.RAUM.clean(o.raum):o.raum;return r}
 const DEF_LAYERS=()=>[{n:'0',c:'#c9ced6',v:true},{n:'Kontur',c:'#f4f6f8',v:true},{n:'Hilfslinien',c:'#6f9cff',v:true},{n:'Bemaßung',c:'#5ad1e8',v:true}];
 const DEF_CUT=()=>({tool:6,depth:6,thick:19});
 let S={ents:[],layers:DEF_LAYERS(),cur:'Kontur',nid:1,def:DEF_CUT()};
@@ -101,7 +126,7 @@ function bbox(es){let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;for(cons
 
 /* ---------- Konturen als Punktfolgen (für Fräsvorschau und Formen kombinieren) ---------- */
 const TOL=0.01; /* größte Abweichung beim Annähern von Bögen, mm */
-function arcPts(c,r,t0,sw){const st=2*Math.acos(clamp(1-TOL/Math.max(r,TOL),-1,1)),n=Math.max(2,Math.ceil(Math.abs(sw)/st)),o=[];for(let i=1;i<=n;i++)o.push(pol(c,r,t0+sw*i/n));return o}
+function arcPts(c,r,t0,sw){const st=2*Math.acos(clamp(1-TOL/Math.max(r,TOL),-1,1)),n=Math.min(4000,Math.max(2,Math.ceil(Math.abs(sw)/st)||2)),o=[];for(let i=1;i<=n;i++)o.push(pol(c,r,t0+sw*i/n));return o}
 function segPts(a,b,bu){if(!hasB(bu))return[b];const q=bulgeArc(a,b,bu),o=arcPts(q.c,q.r,ang(sub(a,q.c)),4*Math.atan(bu));o[o.length-1]=b;return o}
 const isClosed=e=>e.t==='circle'||e.t==='slot'||(e.t==='pline'&&!!e.closed&&e.pts.length>2);
 /* liefert [{pts,closed}] */
@@ -161,7 +186,13 @@ function xf(e,f,k='mv'){const n=clone(e);
  return n}
 const mvF=d=>p=>add(p,d),rotF=(c,t)=>p=>rotP(p,c,t);
 const mirF=(a,b)=>p=>{const d=nrm(sub(b,a)),q=add(a,mul(d,dot(sub(p,a),d)));return sub(mul(q,2),p)};
-function explode(e){if(e.t==='pline'||e.t==='slot')return prims(e).map(q=>q.a?mk('line',{a:q.a,b:q.b},e.ly):mk('arc',{c:q.c,r:q.r,a0:na(q.a0),a1:na(q.a1)},e.ly));return null}
+/* geschlossene Polylinie aus nur 2 Punkten (z. B. Linie + Bogen oder zwei Halbkreise): gewölbte Segmente halbieren, damit sie überall als geschlossene Kontur gilt */
+function fix2(o){if(!o||!o.closed||!o.pts||o.pts.length!==2)return o;const bl=o.bl||[0,0];if(!bl.some(hasB))return o;const P=[],B=[];
+ for(let i=0;i<2;i++){const a=o.pts[i],b=o.pts[(i+1)%2],bu=bl[i]||0;P.push(a);if(hasB(bu)){const c=dist(a,b),u=nrm(sub(b,a)),m=add(mid(a,b),mul([u[1],-u[0]],bu*c/2)),h=Math.tan(Math.atan(bu)/2);B.push(h);P.push(m);B.push(h)}else B.push(0)}
+ o.pts=P;o.bl=B;return o}
+/* Objekt durch neue Fassung ersetzen (auch Felder entfernen, die es nicht mehr hat, z. B. „rect“ nach dem Drehen) */
+function setAll(e,n){for(const k of Object.keys(e))if(k!=='id'&&!(k in n))delete e[k];Object.assign(e,n,{id:e.id})}
+function explode(e){if(e.t==='pline'||e.t==='slot')return prims(e).map(q=>{const n=q.a?mk('line',{a:q.a,b:q.b},e.ly):mk('arc',{c:q.c,r:q.r,a0:na(q.a0),a1:na(q.a1)},e.ly);for(const k of['ct','cd','tool'])if(e[k]!=null)n[k]=e[k];return n});return null}
 const nearest=(es,p)=>es.reduce((b,e)=>(!b||dEnt(p,e)<dEnt(p,b))?e:b,null);
 function rectE(a,b,real){const o={pts:[a,[b[0],a[1]],b,[a[0],b[1]]],closed:true,rect:true};return real?mk('pline',o):tmp('pline',o)}
 function polyE(c,p,n,real){const r=dist(c,p),t0=ang(sub(p,c)),pts=[];for(let i=0;i<n;i++)pts.push(pol(c,r,t0+i*TAU/n));return real?mk('pline',{pts,closed:true}):tmp('pline',{pts,closed:true})}
@@ -218,7 +249,7 @@ function pushUndo(){undoS.push(snapS());if(undoS.length>200)undoS.shift();redoS=
 function dropUndo(){S=JSON.parse(undoS.pop());updUndo()}
 function doCommit(fn){pushUndo();fn();afterChange()}
 function undo(){if(G)cancel(true);if(!undoS.length){log('Nichts rückgängig zu machen.');return}redoS.push(snapS());S=JSON.parse(undoS.pop());sel.clear();log('Rückgängig.');afterChange()}
-function redo(){if(!redoS.length){log('Nichts zu wiederholen.');return}undoS.push(snapS());S=JSON.parse(redoS.pop());sel.clear();afterChange()}
+function redo(){if(G)cancel(true);if(!redoS.length){log('Nichts zu wiederholen.');return}undoS.push(snapS());S=JSON.parse(redoS.pop());sel.clear();afterChange()}
 
 /* ---------- Befehle ---------- */
 const STR=prompt=>({k:'str',prompt}),P=(prompt,o={})=>({k:'pt',prompt,...o}),N=(prompt,def)=>({k:'num',prompt:prompt+(def!=null?` <${fmt(def)}>`:''),def}),PK=prompt=>({k:'pick',prompt}),OP=(prompt,opts,def)=>({k:'opt',prompt,opts,def});
@@ -283,7 +314,7 @@ const CMDS={
   for(;;){const r=yield P('Zielpunkt · Enter = fertig',{base:b,prev:p=>es.map(e=>xf(e,mvF(sub(p,b))))});if(!r.p)return;const d=sub(r.p,b);doCommit(()=>es.forEach(e=>S.ents.push(realize(xf(e,mvF(d)),e.ly))))}}},
  D:{n:'Drehen',g:'A',i:'M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5',*run(){const es=yield* needSel();if(!es.length)return;const b=(yield P('Drehpunkt')).p;if(!b)return;
   const r=yield P('Winkel in Grad (Zahl) oder Punkt',{base:b,num:true,prev:p=>es.map(e=>xf(e,rotF(b,ang(sub(p,b))),'rot'))});const t=r.n!=null?r.n*D2R:(r.p?ang(sub(r.p,b)):null);if(t==null)return;
-  doCommit(()=>es.forEach(e=>Object.assign(e,xf(e,rotF(b,t),'rot'))))}},
+  doCommit(()=>es.forEach(e=>setAll(e,xf(e,rotF(b,t),'rot'))))}},
  SK:{n:'Skalieren',g:'A',i:'M4 20h7v-7H4zM4 20L20 4M13 4h7v7',*run(){const es=yield* needSel();if(!es.length)return;const b=(yield P('Basispunkt (bleibt stehen)')).p;if(!b)return;
   const k=yield N('Faktor (2 = doppelt, 0.5 = halb, 25.4 = Zoll → mm)',mem.sk);if(!k||k<=0)return;mem.sk=k;doCommit(()=>es.forEach(e=>{Object.assign(e,scaleEnt(e,b,k))}));es.forEach(e=>sel.add(e.id));updProps();render()}},
  AN:{n:'Anlegen an Kante',g:'A',i:'M3 21L21 3M6 12l6-6 4 4-6 6zM14 14l2 2',*run(){
@@ -291,13 +322,13 @@ const CMDS={
   const r2=yield PK('Zielkante anklicken, an die es angelegt werden soll');hlE=null;if(!r2.e)return;if(r2.e===e){log('Bitte eine Kante eines anderen Objekts anklicken.','e');return}const t=edgeAt(r2.e,r2.p);if(!t){log('Die Zielkante muss gerade sein.','e');return}
   const gap=yield N('Abstand zur Zielkante (0 = bündig)',mem.gap||0);if(gap==null)return;mem.gap=gap;
   const es=sel.has(e.id)?[...sel].map(byId).filter(x=>x&&x.t!=='dim'||x===e):[e];
-  const res=alignTo(es,s,t,gap);doCommit(()=>es.forEach((x,i)=>Object.assign(x,res[i])));log(`Angelegt: um ${fmtDE(deg(res.rot))}° gedreht${gap?`, ${fmtDE(gap)} mm Abstand`:', bündig'}.`,'ok')}},
+  const res=alignTo(es,s,t,gap);doCommit(()=>es.forEach((x,i)=>setAll(x,res[i])));log(`Angelegt: um ${fmtDE(deg(res.rot))}° gedreht${gap?`, ${fmtDE(gap)} mm Abstand`:', bündig'}.`,'ok')}},
  SP:{n:'Spiegeln',g:'A',i:'M12 3v18M9 7L4 17h5zM15 7l5 10h-5z',*run(){const es=yield* needSel();if(!es.length)return;const a=(yield P('Erster Punkt der Spiegelachse')).p;if(!a)return;
   const r=yield P('Zweiter Punkt der Spiegelachse',{base:a,prev:p=>dist(p,a)<1e-9?[]:[tmp('line',{a,b:p}),...es.map(e=>xf(e,mirF(a,p),'mir'))]});if(!r.p||dist(r.p,a)<1e-9)return;const b=r.p;
   const o=yield OP('Original löschen?  [J]a / [N]ein <N>',['J','N'],'N');if(!o)return;
-  doCommit(()=>es.forEach(e=>{if(o==='J')Object.assign(e,xf(e,mirF(a,b),'mir'));else S.ents.push(realize(xf(e,mirF(a,b),'mir'),e.ly))}))}},
+  doCommit(()=>es.forEach(e=>{if(o==='J')setAll(e,xf(e,mirF(a,b),'mir'));else S.ents.push(realize(xf(e,mirF(a,b),'mir'),e.ly))}))}},
  VS:{n:'Versatz (Parallele)',g:'A',i:'M4 17L17 4M8 20L20 8',*run(){const d=yield N('Abstand',mem.off);if(!d||d<=0)return;mem.off=d;
-  for(;;){const r=yield PK('Objekt wählen · Enter = fertig');if(!r.e)return;const e=r.e;if(e.t==='dim'){log('Bemaßung geht nicht.','e');continue}
+  for(;;){const r=yield PK('Objekt wählen · Enter = fertig');if(!r.e)return;const e=r.e;if(e.t==='dim'){log('Bemaßung geht nicht.','e');continue}if(e.t==='pline'&&plineHasArcs(e)&&!isClosed(e)){log('Versatz geht bei offenen Polylinien mit Bögen nicht – erst mit ZL zerlegen.','e');continue}
    const s=yield P('Seite anklicken',{prev:p=>{const o=offsetEnt(e,d,p);return o?[o]:[]}});if(!s.p)return;const o=offsetEnt(e,d,s.p);if(o)doCommit(()=>S.ents.push(realize(o,e.ly)));else log('Versatz geht hier nicht (Radius zu klein).','e')}}},
  AR:{n:'Abrunden',g:'A',i:'M4 20v-8a8 8 0 0 1 8-8h8',*run(){const r=yield N('Radius',mem.rad);if(r==null||r<0)return;mem.rad=r;const a=yield PK('Erste Linie');if(!a.e)return;hlE=a.e;const b=yield PK('Zweite Linie');hlE=null;if(!b.e)return;doFillet(a,b,r,false)}},
  FA:{less:1,n:'Fasen',g:'A',i:'M4 20v-9l7-7h9',*run(){const r=yield N('Fasenlänge',mem.cha);if(r==null||r<0)return;mem.cha=r;const a=yield PK('Erste Linie');if(!a.e)return;hlE=a.e;const b=yield PK('Zweite Linie');hlE=null;if(!b.e)return;doFillet(a,b,r,true)}},
@@ -367,7 +398,7 @@ function joinEnts(es,tol=0.05){const pc=[];
     if(front){ch.pts=[...add.pts.slice(0,-1),...ch.pts];ch.bl=[...add.bl,...ch.bl]}else{ch.pts=[...ch.pts,...add.pts.slice(1)];ch.bl=[...ch.bl,...add.bl]}grew=true;break}}
   let closed=false;if(ch.pts.length>2&&dist(ch.pts[0],ch.pts[ch.pts.length-1])<tol){ch.pts.pop();closed=true}
   if(parts.length<2&&!closed)continue;
-  const o={pts:ch.pts,closed};if(ch.bl.some(hasB))o.bl=ch.bl;const f=parts[0];const n=mk('pline',o,f.ly);for(const k of['ct','cd','tool'])if(f[k]!=null)n[k]=f[k];
+  const o={pts:ch.pts,closed};if(ch.bl.some(hasB))o.bl=ch.bl;fix2(o);const f=parts[0];const n=mk('pline',o,f.ly);for(const k of['ct','cd','tool'])if(f[k]!=null)n[k]=f[k];
   made.push(n);parts.forEach(x=>used.add(x))}
  return{used,made}}
 /* Formen kombinieren */
@@ -448,7 +479,7 @@ function updProps(){const es=[...sel].map(byId).filter(Boolean);$('selc').textCo
   h+=`<div class="row" style="justify-content:flex-start"><button class="btn" data-r="E">Löschen</button><button class="btn" data-r="KO">Kopieren</button><button class="btn" data-r="V">Verschieben</button></div>`}
  $('props').innerHTML=h;
  const ly=$('p_ly');if(ly)ly.onchange=()=>{if(ly.value)doCommit(()=>es.forEach(e=>e.ly=ly.value))};
- const cl=$('p_cl');if(cl)cl.onchange=()=>doCommit(()=>es[0].closed=cl.checked);
+ const cl=$('p_cl');if(cl)cl.onchange=()=>doCommit(()=>{es[0].closed=cl.checked;fix2(es[0])});
  bindCamProps(es);
  $('props').querySelectorAll('input[data-i]').forEach(el=>{const f=PF[kind(es[0])][+el.dataset.i];if(!f[2])return;
   el.addEventListener('change',()=>{if(f[3]==='str'){const v=el.value.trim();if(!v){el.value=f[1](es[0]);return}doCommit(()=>f[2](es[0],v));return}const v=ev(el.value.replace(',','.'));if(v==null){el.value=fmt(f[1](es[0]),3);return}doCommit(()=>f[2](es[0],v))});
@@ -476,7 +507,7 @@ for(const[id,k]of[['d_tool','tool'],['d_depth','depth']]){const el=$(id);el.addE
 const EYE='<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',EYEX='<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM4 4l16 16"/></svg>';
 const DEL='<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 function updLayers(){$('layers').innerHTML=S.layers.map((l,i)=>{const c=S.ents.filter(e=>e.ly===l.n).length;return`<div class="ly ${l.n===S.cur?'cur':''}"><input type="radio" name="curly" data-i="${i}" data-a="cur" ${l.n===S.cur?'checked':''} aria-label="Aktuelle Ebene ${esc(l.n)}">
- <input type="color" value="${l.c}" data-i="${i}" data-a="col" aria-label="Farbe"><span class="lyn" title="${esc(l.n)}">${esc(l.n)} <span class="cnt">${c}</span></span>
+ <input type="color" value="${esc(l.c)}" data-i="${i}" data-a="col" aria-label="Farbe"><span class="lyn" title="${esc(l.n)}">${esc(l.n)} <span class="cnt">${c}</span></span>
  <button data-i="${i}" data-a="vis" aria-label="Sichtbar">${l.v?EYE:EYEX}</button><button data-i="${i}" data-a="del" aria-label="Ebene löschen" ${c||l.n==='0'?'disabled style="opacity:.25"':''}>${DEL}</button></div>`}).join('');
  $('cnt').textContent=S.ents.length+' Objekte';const g=$('t_guide');if(g)g.classList.toggle('on',S.cur==='Hilfslinien')}
 $('layers').addEventListener('input',e=>{const t=e.target,l=S.layers[+t.dataset.i];if(!l)return;geoVer++;if(t.dataset.a==='col'){l.c=t.value;save();render()}if(t.dataset.a==='cur'){S.cur=l.n;save();updLayers()}});
@@ -612,6 +643,9 @@ cv.addEventListener('wheel',e=>{e.preventDefault();const f=Math.exp(-e.deltaY*(e
 /* ---------- Tastatur ---------- */
 function parsePt(t){const base=(REQ&&REQ.base)||lastPt;let rel=false;if(t[0]==='@'){rel=true;t=t.slice(1)}
  if(t.includes('<')){const[a,b]=t.split('<'),d=ev(a),w=ev(b);if(d==null||w==null)return null;const o=base||[0,0];return{p:pol(rel||base?o:[0,0],d,w*D2R)}}
+ if(t.includes(';')){const[a,b]=t.split(';'),x=ev(a.replace(/,/g,'.')),y=ev((b||'').replace(/,/g,'.'));if(x==null||y==null)return null;if(rel){if(!base)return null;return{p:add(base,[x,y])}}return{p:[x,y]}}
+ /* wird eine einzelne Zahl erwartet, ist „12,5“ eine Kommazahl (Punkte dann mit Strichpunkt: 12;5) */
+ if(!rel&&REQ&&REQ.num&&/^[+-]?\d+,\d+$/.test(t)){const n=parseFloat(t.replace(',','.'));log(`„${t}“ als ${fmtDE(n)} gelesen – einen Punkt gibst du mit Strichpunkt ein, z. B. 12;5`);return{n}}
  if(/[,;]/.test(t)){const[a,b]=t.split(/[,;]/),x=ev(a),y=ev(b);if(x==null||y==null)return null;if(rel){if(!base)return null;return{p:add(base,[x,y])}}return{p:[x,y]}}
  const n=ev(t);if(n!=null&&!rel)return{n};return null}
 function onEnter(){inp.dataset.raw=inp.value.trim();const t=inp.value.trim();inp.value='';
@@ -671,7 +705,7 @@ $('gstep').addEventListener('change',e=>{const v=ev(e.target.value.replace(',','
 let fileName='Zeichnung.json';
 function save(){try{localStorage.setItem('origincad.v1',snapS())}catch(e){}}
 function saveUI(){try{localStorage.setItem('origincad.ui',JSON.stringify({tg,gstep,pstep}))}catch(e){}}
-function afterChange(){updUndo();geoVer++;save();updDefs();updProps();updLayers();computeSnap();render()}
+function afterChange(){updUndo();geoVer++;updDefs();updProps();updLayers();computeSnap();render();save()}
 $('copyB').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('saveT').value);$('copyB').textContent='Kopiert ✓'}catch(e){$('saveT').select();$('copyB').textContent='Mit Strg+C kopieren'}setTimeout(()=>$('copyB').textContent='Kopieren',2000)});
 $('newB').addEventListener('click',()=>{pushUndo();S={ents:[],layers:DEF_LAYERS(),cur:'Kontur',nid:1,def:{...S.def}};fileName='Zeichnung.json';sel.clear();$('dNew').classList.remove('open');afterChange();zoomAll();log('Neue Zeichnung.','ok')});
 
@@ -755,6 +789,7 @@ function buildDXF(es){const L=[],w=(...a)=>{for(let i=0;i<a.length;i+=2)L.push(a
  const ly=e=>(e.ly||'0').replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/Ä/g,'AE').replace(/Ö/g,'OE').replace(/Ü/g,'UE').replace(/ß/g,'ss').replace(/[^A-Za-z0-9_-]/g,'_')||'0';
  const line=(a,b,l)=>w(0,'LINE',8,l,10,n(a[0]),20,n(a[1]),11,n(b[0]),21,n(b[1]));
  const pl=(pts,bl,closed,l)=>{w(0,'POLYLINE',8,l,66,1,70,closed?1:0);pts.forEach((p,i)=>{w(0,'VERTEX',8,l,10,n(p[0]),20,n(p[1]));if(bl&&hasB(bl[i]))w(42,n(bl[i]))});w(0,'SEQEND',8,l)};
+ w(0,'SECTION',2,'HEADER',9,'$ACADVER',1,'AC1015',9,'$INSUNITS',70,4,9,'$MEASUREMENT',70,1,0,'ENDSEC');
  w(0,'SECTION',2,'ENTITIES');
  for(const e of es){const l=ly(e);switch(e.t){
   case'line':line(e.a,e.b,l);break;
@@ -837,12 +872,13 @@ function importSVG(text){const doc=new DOMParser().parseFromString(text,'image/s
  let y1=-Infinity;if(docH!=null)y1=docH;else for(const e of out)for(const p of e.pts)y1=Math.max(y1,p[1]);
  const ents=[];for(const e of out){e.pts=e.pts.map(p=>[p[0],y1-p[1]]);ents.push(tidyImported(e))}
  return{ents,note:[note,skipped?skipped+' Element(e) übersprungen (Schrift, Bilder, Verweise – in Pfade umwandeln, dann klappt es).':''].filter(Boolean).join(' ')}}
-function segPtsTol(a,b,bu,tol){if(!hasB(bu))return[b];const q=bulgeArc(a,b,bu),sw=4*Math.atan(bu),st=2*Math.acos(clamp(1-tol/Math.max(q.r,tol),-1,1)),n=Math.max(2,Math.ceil(Math.abs(sw)/st)),t0=ang(sub(a,q.c)),o=[];for(let i=1;i<n;i++)o.push(pol(q.c,q.r,t0+sw*i/n));o.push(b);return o}
+function segPtsTol(a,b,bu,tol){if(!hasB(bu))return[b];const q=bulgeArc(a,b,bu),sw=4*Math.atan(bu),st=2*Math.acos(clamp(1-tol/Math.max(q.r,tol),-1,1)),n=Math.min(4000,Math.max(2,Math.ceil(Math.abs(sw)/st)||2)),t0=ang(sub(a,q.c)),o=[];for(let i=1;i<n;i++)o.push(pol(q.c,q.r,t0+sw*i/n));o.push(b);return o}
 /* importierte Punktfolge in das passende Objekt umwandeln (ohne id/Ebene) */
 function tidyImported(e){const keep=o=>{for(const k of['ct','cd','tool'])if(e[k]!=null)o[k]=e[k];return o};let{pts,bl,closed}=e;
  if(closed&&pts.length===2&&bl&&Math.abs(Math.abs(bl[0])-1)<1e-6&&Math.abs(bl[0]-bl[1])<1e-6)return keep({t:'circle',c:mid(pts[0],pts[1]),r:dist(pts[0],pts[1])/2});
  if(!bl&&pts.length>6){const f=fitArcs(pts,closed,{tol:0.006,rel:0.0006,sag:0.06});if(f.circle)return keep({t:'circle',...f.circle});pts=f.pts;bl=f.bl}
  if(!closed&&pts.length===2){if(bl&&hasB(bl[0])){const q=bulgeArc(pts[0],pts[1],bl[0]);return keep({t:'arc',c:q.c,r:q.r,a0:q.a0,a1:q.a1})}return keep({t:'line',a:pts[0],b:pts[1]})}
+ if(closed&&pts.length===2&&bl){const f=fix2({pts:[...pts],bl:[...bl],closed:true});pts=f.pts;bl=f.bl}
  const o={t:'pline',pts,closed:!!closed&&pts.length>2};if(bl&&bl.some(hasB))o.bl=bl;return keep(o)}
 
 /* ---------- DXF lesen ---------- */
@@ -887,10 +923,10 @@ function importDXF(text){const ln=text.split(/\r\n|\r|\n/),pairs=[];for(let i=0;
    const o=rec();tgt.push(...conv(o));continue}
   i++}
  for(let k=0;k<pairs.length-1;k++)if(pairs[k][0]===9&&pairs[k][1]==='$INSUNITS'){unit=U[parseInt(pairs[k+1][1],10)]||1;break}
- const flat=[],expand=(items,depth,tf)=>{for(const it of items){if(it.ins){const b=blocks[it.ins.name];if(!b||depth>6){skipped.INSERT=(skipped.INSERT||0)+1;continue}
+ const flat=[],MAXE=200000,expand=(items,depth,tf,insLy)=>{for(const it of items){if(flat.length>=MAXE){skipped['Objekte über 200 000']=(skipped['Objekte über 200 000']||0)+1;return}if(it.ins){const b=blocks[it.ins.name];if(!b||depth>6){skipped.INSERT=(skipped.INSERT||0)+1;continue}
     if(Math.abs(Math.abs(it.ins.sx)-Math.abs(it.ins.sy))>1e-9||it.ins.sx<0||it.ins.sy<0){skipped['INSERT (verzerrt)']=(skipped['INSERT (verzerrt)']||0)+1;continue}
-    const ins=it.ins;expand(b.items,depth+1,e=>tf(xf(scaleEnt(xf(e,mvF(mul(b.base,-1))),[0,0],ins.sx),p=>add(rotP(p,[0,0],ins.rot),ins.p),'rot')))}
-   else flat.push({ly:it.ly,e:tf(it.e)})}};
+    const ins=it.ins;expand(b.items,depth+1,e=>tf(xf(scaleEnt(xf(e,mvF(mul(b.base,-1))),[0,0],ins.sx),p=>add(rotP(p,[0,0],ins.rot),ins.p),'rot')),it.ly==='0'&&insLy?insLy:it.ly)}
+   else flat.push({ly:it.ly==='0'&&insLy?insLy:it.ly,e:tf(it.e)})}};
  expand(top,0,e=>e);
  const ents=flat.map(({ly,e})=>{const n=unit===1?e:scaleEnt(e,[0,0],unit);n.ly=ly;return n}).filter(e=>!(e.t==='circle'&&!(e.r>0))&&!(e.t==='line'&&dist(e.a,e.b)<1e-9));
  const sk=Object.entries(skipped).filter(([k])=>!['POINT','VIEWPORT','ATTDEF','ATTRIB','SEQEND','VERTEX'].includes(k)).map(([k,n])=>n+' × '+k).join(', ');
@@ -899,13 +935,14 @@ function importDXF(text){const ln=text.split(/\r\n|\r|\n/),pairs=[];for(let i=0;
 /* ---------- Öffnen / Importieren ---------- */
 const LYCOLS=['#ff9f43','#ff6b9a','#b388ff','#7bd88f','#ffd166','#5ad1e8'];
 function ensureLayer(n){if(!lyr(n))S.layers.push({n,c:LYCOLS[S.layers.length%LYCOLS.length],v:true})}
-function addEnts(list,defLy){const made=[];for(const e of list){const n=clone(e);n.ly=n.ly||defLy||S.cur;ensureLayer(n.ly);n.id=S.nid++;S.ents.push(n);made.push(n)}return made}
+function addEnts(list,defLy){const made=[];for(const e0 of list){const n=cleanEnt({...e0,ly:e0.ly||defLy||S.cur});if(!n)continue;n.ly=n.ly||defLy||S.cur;ensureLayer(n.ly);n.id=S.nid++;S.ents.push(n);made.push(n)}return made}
 let fileMode='open';
 async function loadFile(f,mode){const name=f.name||'Datei',ext=(name.split('.').pop()||'').toLowerCase();let text;try{text=await f.text()}catch(err){log('Datei konnte nicht gelesen werden.','e');return}
  try{
   if(ext==='json'||(/^\s*\{/.test(text)&&ext!=='svg'&&ext!=='dxf')){const o=JSON.parse(text);if(!Array.isArray(o.ents))throw new Error('Das ist keine Origin-CAD-Zeichnung.');
-   if(mode==='import'){pushUndo();(o.layers||[]).forEach(l=>{if(!lyr(l.n))S.layers.push({...l})});sel.clear();addEnts(o.ents.map(({id,...r})=>r)).forEach(e=>sel.add(e.id));afterChange();zoomAll();log(`Dazugeladen: ${name} (${o.ents.length} Objekte, sind gewählt – mit V verschieben).`,'ok');return}
-   pushUndo();S={ents:o.ents,layers:o.layers&&o.layers.length?o.layers:DEF_LAYERS(),cur:o.cur||'0',nid:Math.max(o.nid||1,...o.ents.map(x=>x.id+1),1),def:Object.assign(DEF_CUT(),o.def||{})};if(o.korpus&&Array.isArray(o.korpus.cabs)&&o.korpus.cabs.length)S.korpus=o.korpus;if(o.raum&&Array.isArray(o.raum.bodies))S.raum=o.raum;if(!lyr(S.cur))S.cur=S.layers[0].n;
+   const cd=cleanDoc(o),drop=o.ents.length-cd.ents.length;if(drop)log(`${drop} fehlerhafte Objekt(e) in der Datei übersprungen.`,'e');
+   if(mode==='import'){pushUndo();cd.layers.forEach(l=>{if(!lyr(l.n))S.layers.push({...l})});sel.clear();addEnts(cd.ents.map(({id,...r})=>r)).forEach(e=>sel.add(e.id));afterChange();zoomAll();log(`Dazugeladen: ${name} (${cd.ents.length} Objekte, sind gewählt – mit V verschieben).`,'ok');return}
+   pushUndo();S=cd;
    sel.clear();afterChange();updDefs();zoomAll();fileName=name;$('fname').textContent=name+' · Maße in mm';log('Geöffnet: '+name,'ok');return}
   const isSvg=ext==='svg'||/<svg[\s>]/i.test(text.slice(0,2000)),r=isSvg?importSVG(text):importDXF(text);
   if(!r.ents.length){log(`In ${name} wurde nichts Zeichenbares gefunden. ${r.note}`,'e');return}
@@ -1010,7 +1047,7 @@ function sample0(){const K='Kontur',B='Bemaßung';S.nid=1;S.ents=[
  mk('slot',{a:[360,250],b:[360,350],r:10},K),
  mk('dim',{a:[0,0],b:[400,0],p:[200,-45],m:'h'},B),mk('dim',{a:[0,0],b:[0,600],p:[-45,300],m:'v'},B),
  mk('dim',{a:[400,0],b:[360,250],p:[440,125],m:'v'},B)]}
-let restored=false;try{const o=JSON.parse(localStorage.getItem('origincad.v1')||'null');if(o&&Array.isArray(o.ents)){S=o;S.def=Object.assign(DEF_CUT(),o.def||{});restored=true}const u=JSON.parse(localStorage.getItem('origincad.ui')||'null');if(u){Object.assign(tg,u.tg||{});gstep=u.gstep||10;$('gstep').value=gstep;if([90,45,30,15].includes(u.pstep))pstep=u.pstep;$('pstep').value=pstep}}catch(e){}
+let restored=false;try{const o=JSON.parse(localStorage.getItem('origincad.v1')||'null');if(o&&Array.isArray(o.ents)){S=cleanDoc(o);restored=true}const u=JSON.parse(localStorage.getItem('origincad.ui')||'null');if(u){Object.assign(tg,u.tg||{});gstep=u.gstep||10;$('gstep').value=gstep;if([90,45,30,15].includes(u.pstep))pstep=u.pstep;$('pstep').value=pstep}}catch(e){}
 if(!restored){sample0();log('Beispiel: Front 400 × 600 mit zwei Topfbändern Ø35 und Griffloch. Datei › Neu leert die Zeichnung.')}
 else log('Letzte Zeichnung wiederhergestellt.');
 log('Tipp: L + Enter für Linie, R für Rechteck, K für Kreis. F1 zeigt alle Befehle.');

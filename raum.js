@@ -4,6 +4,17 @@
    Raum: X = Breite, Y = Tiefe (vorn = 0), Z = Höhe. Daten liegen in der Zeichnung unter S.raum. */
 window.RAUM=(()=>{
 const A=window.__cad.kp,$=id=>document.getElementById(id),S=()=>window.__cad.S;
+/* Geladenes 3D-Modell prüfen */
+const AXV=v=>Array.isArray(v)&&v.length===3&&v.every(x=>x===0||x===1||x===-1)&&Math.abs(v[0])+Math.abs(v[1])+Math.abs(v[2])===1;
+function clean(o){if(!o||typeof o!=='object'||!Array.isArray(o.bodies))return null;const fin=(v,lo=-1e6,hi=1e6)=>typeof v==='number'&&Number.isFinite(v)&&v>=lo&&v<=hi,P2=p=>Array.isArray(p)&&p.length===2&&fin(p[0])&&fin(p[1]);
+ const KND=['box','sph','cyl','cone','tor','plane','ext'],MATS=window.KORPUS?window.KORPUS.MATS:[['']],out=[];let id=1;
+ for(const b of o.bodies.slice(0,5000)){if(!b||typeof b!=='object'||!KND.includes(b.kind))continue;if(![b.L,b.B,b.H].every(v=>fin(v,0,1e5)))continue;if(!(Array.isArray(b.o)&&b.o.length===3&&b.o.every(v=>fin(v))))continue;
+  const u=AXV(b.u)?[...b.u]:[1,0,0],v=AXV(b.v)&&Math.abs(u[0]*b.v[0]+u[1]*b.v[1]+u[2]*b.v[2])<0.5?[...b.v]:(u[2]?[1,0,0]:[0,0,1]);
+  const n={id:id++,name:typeof b.name==='string'&&b.name.trim()?b.name.slice(0,60):'Körper',kind:b.kind,L:b.L,B:b.B,H:b.H,o:[...b.o],u,v,mat:MATS.some(m=>m[0]===b.mat)?b.mat:''};
+  if(fin(b.D2,0,1e5))n.D2=b.D2;if(b.rod)n.rod=1;if(Array.isArray(b.tint)&&b.tint.length===3&&b.tint.every(x=>fin(x,0,2)))n.tint=[...b.tint];
+  if(b.kind==='ext'){const pl=b.poly;if(!pl||!Array.isArray(pl.outer)||pl.outer.length<3||pl.outer.length>200000||!pl.outer.every(P2))continue;n.poly={outer:pl.outer.map(p=>[...p]),holes:(Array.isArray(pl.holes)?pl.holes:[]).filter(h=>Array.isArray(h)&&h.length>2&&h.every(P2)).map(h=>h.map(p=>[...p]))}}
+  out.push(n)}
+ return{bodies:out,nid:id}}
 const R=()=>{const s=S();if(!s.raum)s.raum={bodies:[],nid:1};return s.raum};
 const num=v=>Math.round(v*100)/100,de=v=>String(num(v)).replace('.',',');
 const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],mul=(a,k)=>[a[0]*k,a[1]*k,a[2]*k],dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
@@ -149,17 +160,17 @@ function commitMove(e){const o=op;op=null;lock=null;const b=body(o.id);if(!b)ret
  refresh(true);status()}
 /* Drücken/Ziehen */
 function pushTo(d){const b=body(op.id);if(!b)return;for(const k of Object.keys(b))delete b[k];Object.assign(b,JSON.parse(op.orig));const err=resize(b,op.face,d);if(err){status(err);return}op.d=d;setVcb(de(d));show();fillSel()}
-function commitPush(){const o=op;op=null;const b=body(o.id);if(!b)return;const neu=JSON.stringify(b);for(const k of Object.keys(b))delete b[k];Object.assign(b,JSON.parse(o.orig));if(neu!==o.orig){A.commit(()=>{for(const k of Object.keys(b))delete b[k];Object.assign(b,JSON.parse(neu))});lastPush={id:o.id,face:o.face,orig:o.orig}}hover=null;refresh(true);status()}
+function commitPush(){const o=op;op=null;const b=body(o.id);if(!b)return;const neu=JSON.stringify(b);for(const k of Object.keys(b))delete b[k];Object.assign(b,JSON.parse(o.orig));if(neu!==o.orig){A.commit(()=>{for(const k of Object.keys(b))delete b[k];Object.assign(b,JSON.parse(neu))});lastPush={id:o.id,face:o.face,orig:o.orig,neu}}hover=null;refresh(true);status()}
 /* Rechteck / Kreis fertigstellen */
 function finishRect(){const q=rectOf(op.p0,op.p1,op.n);if(q.L<1||q.B<1){status('Das Rechteck ist zu klein – gegenüberliegende Ecke weiter weg setzen.');return}const f=op.face;op=null;infer=null;let b;A.commit(()=>{b=newBody({name:'Fläche',kind:'plane',L:q.L,B:q.B,H:0,o:q.o,u:q.u,v:q.v})});selId=b.id;refresh();status('Rechteck gezeichnet. Mit Drücken/Ziehen (P) hochziehen.')}
 function finishCirc(){if(!(op.r>=1)){status('Der Kreis ist zu klein.');return}const[u,v]=UV[op.face.i+','+op.face.sign],r=op.r,o=sub(sub(op.c,mul(u,r)),mul(v,r)).map(num);op=null;infer=null;let b;A.commit(()=>{b=newBody({name:'Kreisfläche',kind:'cyl',L:num(2*r),B:num(2*r),H:0,o,u,v})});selId=b.id;refresh();status('Kreis gezeichnet. Mit Drücken/Ziehen (P) hochziehen.')}
 /* Eingabe im Feld „Maße“ */
-function vcbEnter(){const raw=$('rmvcb').value.trim();if(!raw)return;const nums=raw.replace(/,/g,'.').split(/[;x×\s]+/).map(parseFloat).filter(v=>isFinite(v));if(!nums.length){status('Bitte eine Zahl eingeben.');return}const v=nums[0];
+function vcbEnter(){const raw=$('rmvcb').value.trim();if(!raw)return;const list=/[;x×\s]/.test(raw)||!(op&&op.t==='rect'&&/^\d+,\d{3,}$/.test(raw))?raw.split(/[;x×\s]+/):raw.split(','),nums=list.map(q=>parseFloat(q.replace(/,/g,'.'))).filter(v=>isFinite(v));if(!nums.length){status('Bitte eine Zahl eingeben.');return}const v=nums[0];
  if(op&&op.t==='rect'){const q=op.p1?rectOf(op.p0,op.p1,op.n):{sa:1,sb:1},[u,vv]=UV[op.face.i+','+op.face.sign],L=Math.abs(v),B=Math.abs(nums[1]!=null?nums[1]:v);op.p1=add(add(op.p0,mul(u,L*q.sa)),mul(vv,B*q.sb));finishRect();return}
  if(op&&op.t==='circ'){op.r=Math.abs(v);finishCirc();return}
  if(op&&op.t==='push'){pushTo(v);commitPush();return}
  if(op&&op.t==='move'){const b=body(op.id),dir=op.lock!=null?(()=>{const a=[0,0,0];a[op.lock]=op.dir?Math.sign(op.dir[op.lock])||1:1;return a})():op.dir||[1,0,0];b.o=add(op.o0,mul(dir,v)).map(num);commitMove();return}
- if(!op&&tool==='push'&&lastPush&&body(lastPush.id)){const b=body(lastPush.id);A.commit(()=>{for(const k of Object.keys(b))delete b[k];Object.assign(b,JSON.parse(lastPush.orig));resize(b,lastPush.face,v)});refresh(true);setVcb(de(v));return}
+ if(!op&&tool==='push'&&lastPush&&body(lastPush.id)&&JSON.stringify(body(lastPush.id))===lastPush.neu){const b=body(lastPush.id);A.commit(()=>{for(const k of Object.keys(b))delete b[k];Object.assign(b,JSON.parse(lastPush.orig));resize(b,lastPush.face,v)});refresh(true);setVcb(de(v));return}
  if(!op&&tool==='sel'&&selId!=null){status('Zum Ändern der Maße rechts unter „Objektinfo“ eintragen.');return}
  status('Erst einen Punkt setzen bzw. eine Fläche anklicken, dann das Maß eintippen.')}
 function hitBody(px,py){const ry=V.ray(px,py);let best=null,bt=Infinity,bf=null;for(const b of R().bodies){const m=box(b);let t0=-Infinity,t1=Infinity,ok=true,face=null;
@@ -264,13 +275,13 @@ function open(){A.cancel();R();if(window.KORPUS&&window.KORPUS.isOpen())window.K
   $('rmdims').addEventListener('change',e=>{showDims=e.target.checked;drawOver()});
   $('dRml').addEventListener('click',e=>{if(e.target.closest('[data-rml="print"]'))printAll()});
   new ResizeObserver(()=>drawOver()).observe($('rm3d'))}
- if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();selId=null;op=null;tapeRes=null;side();setTool('sel');V.setModel(model(),false);refresh(true);if(!V.ok)msg('Dieser Browser kann leider kein 3D anzeigen.')}
+ if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();selId=null;op=null;lastPush=null;tapeRes=null;side();setTool('sel');V.setModel(model(),false);refresh(true);if(!V.ok)msg('Dieser Browser kann leider kein 3D anzeigen.')}
 function close(){cancelOp();$('rm').classList.remove('open');$('dRml').classList.remove('open')}
 function key(e){const t=e.target,inField=t&&t.closest&&t.closest('#rm,#dRml')&&(t.tagName==='INPUT'||t.tagName==='SELECT'||t.tagName==='TEXTAREA');
  if(e.key==='Escape'){e.preventDefault();if($('dRml').classList.contains('open'))$('dRml').classList.remove('open');else if(op){cancelOp()}else if(tapeRes){tapeRes=null;drawOver()}else if(tool!=='sel')setTool('sel');else if(selId!=null){selId=null;refresh(true)}else close();return}
  if(inField)return;
  if(e.ctrlKey||e.metaKey){const k=e.key.toLowerCase();if(k==='z'){e.preventDefault();cancelOp();e.shiftKey?A.redo():A.undo();refresh()}else if(k==='y'){e.preventDefault();A.redo();refresh()}else if(k==='d'&&selId!=null){e.preventDefault();copySel()}
-  else if(e.key==='Control'||e.key==='Meta'){if(op&&op.t==='move'){op.copy=!op.copy;status()}}return}
+  else if((e.key==='Control'||e.key==='Meta')&&!e.repeat){if(op&&op.t==='move'){op.copy=!op.copy;status()}}return}
  /* Zahlen gehen direkt ins Feld „Maße“ (wie in SketchUp) */
  if(/^[0-9.,;+\-]$/.test(e.key)&&(op||TOOLS[tool].vl||(tool==='push'&&lastPush))){e.preventDefault();const el=$('rmvcb');el.value=document.activeElement===el?el.value+e.key:e.key;el.focus();el.setSelectionRange(el.value.length,el.value.length);return}
  if(e.key==='Enter'&&$('rmvcb').value){e.preventDefault();vcbEnter();return}
@@ -280,4 +291,6 @@ function key(e){const t=e.target,inField=t&&t.closest&&t.closest('#rm,#dRml')&&(
  const b=body(selId);if(!b)return;
  if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();removeSel();return}
  const st=e.shiftKey?10:1,mv={ArrowLeft:[-st,0,0],ArrowRight:[st,0,0],ArrowUp:[0,st,0],ArrowDown:[0,-st,0],PageUp:[0,0,st],PageDown:[0,0,-st]}[e.key];if(mv&&tool==='sel'){e.preventDefault();A.commit(()=>moveBy(b,mv));refresh(true)}}
-return{addPrim,setTool,resize,vcbEnter,get tool(){return tool},get op(){return op},get tapeRes(){return tapeRes},pickPoint,open,close,isOpen,key,refresh,list,nest,box,get state(){return R()},get sel(){return selId},select:id=>{selId=id;refresh(true)},addBox,addFromDrawing,addFromKorpus,rotate:(id,ax)=>{A.commit(()=>rotate(body(id),ax));refresh(true)},get viewer(){return V},hooks}})();
+return{clean,addPrim,setTool,resize,vcbEnter,get tool(){return tool},get op(){return op},get tapeRes(){return tapeRes},pickPoint,open,close,isOpen,key,refresh,list,nest,box,get state(){return R()},get sel(){return selId},select:id=>{selId=id;refresh(true)},addBox,addFromDrawing,addFromKorpus,rotate:(id,ax)=>{A.commit(()=>rotate(body(id),ax));refresh(true)},get viewer(){return V},hooks}})();
+/* wiederhergestelltes 3D-Modell aus dem Browserspeicher prüfen */
+{const s=window.__cad.S;if(s.raum)s.raum=window.RAUM.clean(s.raum)||undefined}
