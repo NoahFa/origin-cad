@@ -603,10 +603,11 @@ function toggleGuide(){if(S.cur==='Hilfslinien'){S.cur=lyr(prevLy)&&prevLy!=='Hi
  geoVer++;save();updLayers();log(S.cur==='Hilfslinien'?'Ab jetzt wird auf „Hilfslinien“ gezeichnet (blau, wird nicht gefräst). Shift+H schaltet zurück.':'Ab jetzt wird wieder auf „'+S.cur+'“ gezeichnet.','ok')}
 function selectMode(){inp.value='';const was=!!G;cancel(true);mouse.in&&computeSnap();log(was?'Auswahlmodus: Befehl beendet – jetzt Objekte anklicken oder Rahmen aufziehen.':'Auswahlmodus: Objekte anklicken oder Rahmen aufziehen. Shift+Klick nimmt wieder heraus.');updTools();render()}
 function act(a){const T={osnap:1,polar:1,ortho:1,grid:1,gsnap:1,cam:1};if(T[a]){tg[a]=!tg[a];log(({osnap:'Objektfang',polar:'Winkelfang',ortho:'Ortho',grid:'Raster',gsnap:'Rasterfang',cam:'Fräsvorschau'})[a]+(tg[a]?' an':' aus')+(a==='cam'&&tg[a]?' – gestrichelt: Weg der Fräsermitte · rot: hier bleibt Material stehen':''));updTools();computeSnap();render();saveUI();return}
- ({view3d:open3D,guide:toggleGuide,select:selectMode,enter:onEnter,esc:()=>{inp.value='';cancel(false)},neu:()=>$('dNew').classList.add('open'),oeffnen:()=>{fileMode='open';$('file').click()},importieren:()=>{fileMode='import';$('file').click()},
+ ({korpus:()=>window.KORPUS&&window.KORPUS.open(),view3d:open3D,guide:toggleGuide,select:selectMode,enter:onEnter,esc:()=>{inp.value='';cancel(false)},neu:()=>$('dNew').classList.add('open'),oeffnen:()=>{fileMode='open';$('file').click()},importieren:()=>{fileMode='import';$('file').click()},
   exportSvg:openExport,exportDxf:exportDXF,tpl:openTpls,tplSave:openSaveTpl,speichern:saveFile,undo,redo,zoomAll,help:()=>$('dHelp').classList.add('open'),
   alle:()=>{S.ents.filter(vis).forEach(e=>sel.add(e.id));updProps();render()}})[a]?.()}
-window.addEventListener('keydown',e=>{const t=e.target,inProp=t!==inp&&(t.tagName==='INPUT'||t.tagName==='SELECT'||t.tagName==='TEXTAREA');
+window.addEventListener('keydown',e=>{if(window.KORPUS&&window.KORPUS.isOpen()){window.KORPUS.key(e);return}
+ const t=e.target,inProp=t!==inp&&(t.tagName==='INPUT'||t.tagName==='SELECT'||t.tagName==='TEXTAREA');
  if(document.querySelector('.dlg.open')){if(e.key==='Escape')document.querySelectorAll('.dlg.open').forEach(d=>d.classList.remove('open'));return}
  const F={F4:'view3d',F2:'guide',F1:'help',F3:'osnap',F6:'cam',F7:'grid',F8:'ortho',F9:'gsnap',F10:'polar'};if(F[e.key]){e.preventDefault();act(F[e.key]);return}
  if(inProp)return;
@@ -874,7 +875,7 @@ async function loadFile(f,mode){const name=f.name||'Datei',ext=(name.split('.').
  try{
   if(ext==='json'||(/^\s*\{/.test(text)&&ext!=='svg'&&ext!=='dxf')){const o=JSON.parse(text);if(!Array.isArray(o.ents))throw new Error('Das ist keine Origin-CAD-Zeichnung.');
    if(mode==='import'){pushUndo();(o.layers||[]).forEach(l=>{if(!lyr(l.n))S.layers.push({...l})});sel.clear();addEnts(o.ents.map(({id,...r})=>r)).forEach(e=>sel.add(e.id));afterChange();zoomAll();log(`Dazugeladen: ${name} (${o.ents.length} Objekte, sind gewählt – mit V verschieben).`,'ok');return}
-   pushUndo();S={ents:o.ents,layers:o.layers&&o.layers.length?o.layers:DEF_LAYERS(),cur:o.cur||'0',nid:Math.max(o.nid||1,...o.ents.map(x=>x.id+1),1),def:Object.assign(DEF_CUT(),o.def||{})};if(!lyr(S.cur))S.cur=S.layers[0].n;
+   pushUndo();S={ents:o.ents,layers:o.layers&&o.layers.length?o.layers:DEF_LAYERS(),cur:o.cur||'0',nid:Math.max(o.nid||1,...o.ents.map(x=>x.id+1),1),def:Object.assign(DEF_CUT(),o.def||{})};if(o.korpus&&Array.isArray(o.korpus.cabs)&&o.korpus.cabs.length)S.korpus=o.korpus;if(!lyr(S.cur))S.cur=S.layers[0].n;
    sel.clear();afterChange();updDefs();zoomAll();fileName=name;$('fname').textContent=name+' · Maße in mm';log('Geöffnet: '+name,'ok');return}
   const isSvg=ext==='svg'||/<svg[\s>]/i.test(text.slice(0,2000)),r=isSvg?importSVG(text):importDXF(text);
   if(!r.ents.length){log(`In ${name} wurde nichts Zeichenbares gefunden. ${r.note}`,'e');return}
@@ -921,6 +922,12 @@ $('tplSaveF').addEventListener('submit',e=>{e.preventDefault();const n=$('tplNam
 function clEx(type,subj,clip){const c=new CL.Clipper();c.AddPaths(subj.map(toCl),CL.PolyType.ptSubject,true);if(clip&&clip.length)c.AddPaths(clip.map(toCl),CL.PolyType.ptClip,true);const t=new CL.PolyTree();
  c.Execute(CL.ClipType[type],t,CL.PolyFillType.pftNonZero,CL.PolyFillType.pftNonZero);const cl=q=>fromCl(CL.Clipper.CleanPolygon(q,SC*0.004));
  return CL.JS.PolyTreeToExPolygons(t).map(x=>({outer:cl(x.outer),holes:x.holes.map(cl).filter(h=>h.length>2)})).filter(x=>x.outer.length>2)}
+/* Platte in Schichten: base = Umriss(e), cuts = [{d: Tiefe, polys}] */
+function sectionsOf(base,cuts,T){const lv=[...new Set(cuts.map(c=>+Math.min(c.d,T).toFixed(4)))].filter(d=>d<T-1e-6&&d>1e-6).sort((a,b)=>a-b),zs=[0,...lv,T],sections=[];let vol=0;
+ const baseU=clBool('ctUnion',base,[]);
+ for(let i=0;i<zs.length-1;i++){const z0=zs[i],z1=zs[i+1],rem=cuts.filter(c=>c.d>=z1-1e-6).flatMap(c=>c.polys),polys=clEx('ctDifference',baseU,rem);
+  if(polys.length){sections.push({z0,z1,polys});for(const pg of polys)vol+=(Math.abs(area(pg.outer))-pg.holes.reduce((s,h)=>s+Math.abs(area(h)),0))*(z1-z0)}}
+ return{sections,vol,baseU}}
 function build3D(T){T=T||S.def.thick||19;const es=exportList(false),notes=[];if(!es.length)return null;
  const P=e=>ccw(pathsOf(e)[0].pts);let base=[];const cuts=[];let deeper=0,partOut=0,partIn=0;
  for(const e of es){const c=cutOf(e);if(c.eff==='guide')continue;
@@ -934,10 +941,7 @@ function build3D(T){T=T||S.def.thick||19;const es=exportList(false),notes=[];if(
  if(partOut)notes.push(`${partOut} Außenkontur(en) sind nicht ganz durchgefräst (Tiefe kleiner als die Plattenstärke) – in 3D trotzdem als fertiges Teil gezeigt.`);
  if(partIn)notes.push(`${partIn} Innen-Ausschnitt(e) sind nicht ganz durchgefräst – zu sehen ist nur die Nut in Fräserbreite. Für ein Loch die Tiefe auf die Plattenstärke stellen.`);
  if(deeper)notes.push(`${deeper} Fräsung(en) sind tiefer als die Platte – sie gehen in 3D ganz durch.`);
- const lv=[...new Set(cuts.map(c=>+c.d.toFixed(4)))].filter(d=>d<T-1e-6).sort((a,b)=>a-b),zs=[0,...lv,T],sections=[];let vol=0;
- const baseU=clBool('ctUnion',base,[]);
- for(let i=0;i<zs.length-1;i++){const z0=zs[i],z1=zs[i+1],rem=cuts.filter(c=>c.d>=z1-1e-6).flatMap(c=>c.polys),polys=clEx('ctDifference',baseU,rem);
-  if(polys.length){sections.push({z0,z1,polys});for(const pg of polys)vol+=(Math.abs(area(pg.outer))-pg.holes.reduce((s,h)=>s+Math.abs(area(h)),0))*(z1-z0)}}
+ const{sections,vol,baseU}=sectionsOf(base,cuts,T);
  if(!sections.length)return null;
  const ob=[Infinity,Infinity,-Infinity,-Infinity];for(const q of baseU)for(const p of q){ob[0]=Math.min(ob[0],p[0]);ob[1]=Math.min(ob[1],p[1]);ob[2]=Math.max(ob[2],p[0]);ob[3]=Math.max(ob[3],p[1])}
  const w=ob[2]-ob[0],h=ob[3]-ob[1];
@@ -959,6 +963,6 @@ log('Tipp: L + Enter für Linie, R für Rechteck, K für Kreis. F1 zeigt alle Be
 buildTools();updTools();updUndo();updDefs();updProps();updLayers();updPrompt();
 new ResizeObserver(()=>{const first=!W;resize();if(first)zoomAll()}).observe($('cvw'));
 if(matchMedia('(pointer:fine)').matches)inp.focus();
-window.__cad={build3D,open3D,get curP(){return curP},setMouse:sp=>{mouse.sp=sp;mouse.in=true;computeSnap();render()},buildSVG,buildDXF,importSVG,importDXF,loadFile,exportList,fitArcs,userTpls,w2s,get S(){return S},run,onEnter,inp,adv,get REQ(){return REQ},sel,zoomAll,cutOf,camOf,act,tg,updProps,bbox,
+window.__cad={kp:{sectionsOf,commit:doCommit,undo,redo,addEnts,saveBlob,baseName,log,fmtDE,bbox,esc,cancel:()=>cancel(true),after:()=>{sel.clear();afterChange();zoomAll()},select:es=>{sel.clear();es.forEach(e=>sel.add(e.id));updProps();render()}},build3D,open3D,get curP(){return curP},setMouse:sp=>{mouse.sp=sp;mouse.in=true;computeSnap();render()},buildSVG,buildDXF,importSVG,importDXF,loadFile,exportList,fitArcs,userTpls,w2s,get S(){return S},run,onEnter,inp,adv,get REQ(){return REQ},sel,zoomAll,cutOf,camOf,act,tg,updProps,bbox,
  areaOf:(id,off)=>{const P=[ccw(toPaths(byId(id))[0].pts)];return(off?clOffset(P,off):P).reduce((s,q)=>s+area(q),0)}};
 }

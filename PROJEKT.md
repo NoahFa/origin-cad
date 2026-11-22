@@ -8,7 +8,8 @@ Live: https://noahfa.github.io/origin-cad/ (installierbar auf iPad/PC, läuft da
 - `index.html` – Oberfläche und Gestaltung
 - `cad.js` – das ganze Programm
 - `font.js` – Einstrich-Schrift (Hershey Sans 1-stroke, Hinweis zur Herkunft steht in der Datei)
-- `view3d.js`, `vendor/earcut.min.js` (ISC) – 3D-Ansicht
+- `view3d.js`, `vendor/earcut.min.js` (ISC) – 3D-Ansicht (mehrere Betrachter möglich: `CAD3D.create(canvas)`)
+- `korpus.js` – Korpusplaner
 - `vendor/clipper.js` – Clipper 6.4.2 (Boost-Lizenz): Versatz und Formen kombinieren
 - `sw.js`, `manifest.webmanifest`, Symbole – App-Installation und Offline-Betrieb
 - `tests/check.cjs` – Prüfung im echten Browser: `node tests/check.cjs [Foto-Ordner]`
@@ -69,6 +70,16 @@ Live: https://noahfa.github.io/origin-cad/ (installierbar auf iPad/PC, läuft da
 - **Hilfslinien**: Shift+H / F2 / Knopf „HILFSLINIE“ schaltet die aktuelle Ebene zwischen „Hilfslinien“ und der vorigen um. `HL` = unendliche Hilfslinie (Typ `xline {p,d}`, d = Richtung, Länge 1); fangbar, Versatz geht, nicht in SVG, in DXF als XLINE.
 
 - **3D-Ansicht** (F4, Knopf „3D“, `DD`): `build3D()` in cad.js zerlegt die Platte in Schichten je Frästiefe (Außenkonturen minus alle Fräsungen, die mindestens so tief sind), `view3d.js` zeigt sie mit eigenem kleinen WebGL-Betrachter (Dreiecke über `vendor/earcut.min.js`). Plattenstärke `def.thick` (Standard 19). Innen-Ausschnitt mit Tiefe < Stärke = nur Nut in Fräserbreite.
+
+## Korpusplaner (22.11.2026)
+Eigener Bereich (Knopf „Korpusplaner“ in der Menüleiste), Datei `korpus.js`. Daten in der Zeichnung unter `S.korpus` (wird mitgespeichert, Rückgängig läuft über das normale Undo).
+- **Aufbau:** links Maße, Mitte Vorderansicht (Böden/Mittelwände anklicken, ziehen, löschen, per Knopf dazusetzen), rechts 3D, das mitläuft.
+- **Konstruktion (Noahs Vorgaben):** Seiten durchgehend, Boden/Deckel dazwischen · 19 mm · Rückwand 8 mm in Nut 10 tief, 20 von hinten · Türen aufschlagend, 3 mm Fuge rundum · Dübel Ø8, 32 vom Rand, 32er-Raster, 12 tief in der Fläche · Lochreihe Ø5, 37 von vorn/hinten, 13 tief · Topf Ø35 Blum 21,5/100 mit Dübellöchern 45/9,5 und Montageplatten-Löchern · Sockel 100 hoch, 50 zurück.
+- **Annahmen von Claude (noch nicht von Noah bestätigt):** Einlegeboden 2 mm schmaler und 10 mm kürzer · Rückwand 1 mm Luft in der Nut · Schubkasten: 16 mm Zarge, 13 mm Luft je Seite, Höhe = Front − 40, Tiefe auf 50er-Maß, Boden untergeschraubt · Sockel: 2 Längsblenden + Querstücke.
+- **Daten:** `{t,rw,nt,na,fuge,sockel,sh,sr,lr,dub,topf,nut,cabs:[{b,h,d,mw:[x],fb:[{x,y}],eb:[{x,y}],front:'n|l|r|2|s',sn,nm,nf,ne}]}` – x/y ab linker unterer Außenecke des Korpus, y = Unterkante des Bodens.
+- **Teile:** `parts()` liefert je Platte Maße, Lage im Raum (o,u,v) und Bohrungen/Nuten in Zeichnungs-Koordinaten der Bohrseite (Innenseite). Bohrungen von der anderen Seite (Mittelwand) haben `back:true` und landen auf der Ebene „Rückseite“ (wird nicht gefräst). Stirnkanten-Dübel sind nur als Hilfsstriche angezeichnet.
+- **Ausgabe:** Stückliste (Drucken, CSV, CSV für CutList Optimizer – Spalten noch nicht am echten Programm geprüft), SVG je Teil, alle Teile ins Zeichenprogramm.
+- **Offen:** Fronten mischen (Tür + Schubkasten in einem Korpus), Griffe, Schubkasten-Bohrbilder für Auszüge, Kantenband-Zugabe, 3D in eigenem Browserfenster (zweiter Bildschirm).
 
 ## Ideen / offen
 - An der echten Origin prüfen: Wird die SVG mit Frästyp, Tiefe und Fräser-Ø richtig erkannt? (Format nach Shaper-Vorgabe gebaut, aber noch nicht an der Maschine getestet.)
