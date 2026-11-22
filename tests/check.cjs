@@ -408,6 +408,23 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  await p.keyboard.press('p');await p.keyboard.type('25');await p.keyboard.press('Enter');r=await p.evaluate(()=>{const b=RAUM.state.bodies[0];return{x:RAUM.box(b)[0],H:b.H}});ok(r.x===150&&r.H===19,'Nach dem Verschieben setzt eine getippte Zahl keinen alten Zug zurück',JSON.stringify(r));
  await p.click('[data-rm="close"]');await fresh();
 
+ console.log('Bedienung und Darstellung (Prüfung)');
+ await fresh();await C('BB');r=await p.evaluate(()=>[...document.querySelectorAll('#optbar [data-opt]')].map(b=>b.textContent).join());ok(r==='Lochreihe,Topfband,Dübelbild,Lochkreis','Bohrbild: Wahlmöglichkeiten als Knöpfe neben Enter',r);
+ await p.click('#optbar [data-opt="T"]');ok((await p.evaluate(()=>__cad.REQ&&__cad.REQ.prompt)).startsWith('Topf-Ø'),'Knopf „Topfband“ angetippt → weiter mit Topf-Ø');
+ await C('','');await C('L');r=await p.evaluate(()=>({req:__cad.REQ&&__cad.REQ.prompt,last:document.getElementById('hist').lastChild.textContent}));ok(/Dübellöcher|Beschlag/.test(r.req)&&/passt hier nicht/.test(r.last),'Mitten im Befehl startet ein getipptes „L“ nicht die Linie, sondern gibt einen Hinweis',JSON.stringify(r));await p.keyboard.press('Escape');
+ await C('R','0,0','100,50');await p.keyboard.press('Escape');await p.evaluate(()=>{__cad.act('alle')});await p.evaluate(()=>{document.getElementById('inp').blur()});await p.keyboard.press('Backspace');ok((await p.evaluate(()=>__cad.S.ents.length))===0,'Rücktaste löscht das Gewählte');await p.keyboard.press('Control+z');
+ await p.click('.mbtn[data-a="korpus"]');await p.keyboard.press('Escape');await p.keyboard.press('Escape');ok(await p.evaluate(()=>KORPUS.isOpen()),'Esc schließt den Korpusplaner nicht aus Versehen');await p.click('[data-kp="close"]');
+ await p.evaluate(()=>__cad.act('neu'));r=await p.evaluate(()=>document.getElementById('newInfo').textContent);ok(/1 Objekt in der Zeichnung/.test(r)&&/Korpus im Korpusplaner/.test(r)&&/Vorher speichern/.test(r),'„Neu“ nennt alles, was ersetzt wird',r);await p.keyboard.press('Escape');
+ await p.evaluate(()=>{__cad.sel.clear();__cad.sel.add(__cad.S.ents[0].id)});await C('R','200,0','@100,50');await p.keyboard.press('Escape');await p.evaluate(()=>{__cad.sel.clear();__cad.sel.add(__cad.S.ents[0].id)});await p.evaluate(()=>__cad.act('exportSvg'));
+ r=await p.evaluate(()=>({sel:document.getElementById('expSel').checked,t:document.getElementById('expT').textContent,w:document.getElementById('expW').textContent}));ok(!r.sel&&/Tiefe mm/.test(r.t)&&/nur 6 mm tief/.test(r.w),'SVG-Export: „nur Gewählte“ ist aus, Tiefe und Fräser stehen in der Tabelle, Warnung bei zu flacher Außenkontur',JSON.stringify(r));
+ await p.check('#expSel');ok(/nur 1 von 2 Objekten/.test(await p.evaluate(()=>document.getElementById('expT').textContent)),'Mit Haken: „nur 1 von 2 Objekten“');await p.keyboard.press('Escape');
+ for(const[w,h]of[[768,1024],[1024,768]]){const q=await b.newPage({viewport:{width:w,height:h}});await q.goto(url);await q.waitForFunction(()=>window.__cad);
+  r=await q.evaluate(()=>{const ov=sel=>{const els=[...document.querySelectorAll(sel)].filter(e=>e.offsetParent&&e.getBoundingClientRect().width>0),rs=els.map(e=>e.getBoundingClientRect());let n=0;for(let i=0;i<rs.length;i++)for(let j=i+1;j<rs.length;j++){const a=rs[i],c=rs[j];if(a.left<c.right-1&&c.left<a.right-1&&a.top<c.bottom-1&&c.top<a.bottom-1)n++}return n};return{menu:ov('.menu>*'),stat:ov('.stat>*'),sw:document.documentElement.scrollWidth-innerWidth}});
+  ok(r.menu===0&&r.stat===0&&r.sw<=0,`${w} px: Menü- und Statusleiste ohne Überlappung`,JSON.stringify(r));await q.close()}
+ {const q=await b.newPage({viewport:{width:390,height:844}});await q.goto(url);await q.waitForFunction(()=>window.__cad);await q.evaluate(()=>{__cad.inp.value='BB';__cad.onEnter()});r=await q.evaluate(()=>document.getElementById('inp').getBoundingClientRect().width);ok(r>=100,'Handy: Eingabefeld bleibt bei langer Rückfrage benutzbar ('+Math.round(r)+' px)');
+  await q.setViewportSize({width:844,height:390});await q.waitForTimeout(200);const t1=Date.now();await q.evaluate(()=>{__cad.zoomAll();return 1});ok(Date.now()-t1<2000,'Handy quer (844 × 390): kein Einfrieren');await q.close()}
+ await fresh();
+
  console.log('Sicherheit');
  r=await p.evaluate(async()=>{await document.fonts.ready;return{sans:document.fonts.check('500 14px "IBM Plex Sans"'),mono:document.fonts.check('14px "IBM Plex Mono"'),csp:!!document.querySelector('meta[http-equiv="Content-Security-Policy"]'),ext:[...document.querySelectorAll('link[href^="http"],script[src^="http"]')].length}});
  ok(r.sans&&r.mono&&r.csp&&r.ext===0,'Schrift aus dem Projekt geladen, nichts von fremden Servern, Sicherheitsregel gesetzt',JSON.stringify(r));

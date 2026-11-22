@@ -114,7 +114,7 @@ function drawOver(){const c=$('rmov'),cv=$('rm3d');if(!c||!V)return;const dpr=wi
 /* Rechteck aus zwei Punkten auf einer Ebene */
 function rectOf(p0,p1,n){const fi=n.findIndex(v=>Math.abs(v)>0.5),[u,v]=UV[fi+','+Math.sign(n[fi])],d=sub(p1,p0),a=dot(d,u),c=dot(d,v);return{o:add(add(p0,mul(u,Math.min(a,0))),mul(v,Math.min(c,0))).map(num),u,v,L:num(Math.abs(a)),B:num(Math.abs(c)),sa:Math.sign(a)||1,sb:Math.sign(c)||1}}
 /* ----- Werkzeuge ----- */
-function setTool(t){if(TOOLS[t]&&TOOLS[t].now){if(t==='zall'&&V)V.fit();return}cancelOp();tool=t;tapeRes=null;document.querySelectorAll('#rmtools [data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
+function setTool(t){if(TOOLS[t]&&TOOLS[t].now){if(t==='zall'&&V)V.fit();return}cancelOp();tool=t;tapeRes=null;$('rmvcb').value='';document.querySelectorAll('#rmtools [data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
  $('rm3d').style.cursor=t==='orbit'||t==='sel'?'default':t==='pan'?'grab':'crosshair';status();drawOver()}
 function cancelOp(){if(op&&op.orig){const b=body(op.id);if(b){for(const k of Object.keys(b))delete b[k];Object.assign(b,JSON.parse(op.orig))}show()}op=null;lock=null;infer=null;status();drawOver()}
 function status(txt){const T=TOOLS[tool];let s=txt||T.st;if(!txt){if(op&&op.t==='rect')s='Gegenüberliegende Ecke setzen – oder Maße eintippen, z. B. 600;400 und Enter';else if(op&&op.t==='circ')s='Radius ziehen – oder eintippen und Enter';else if(op&&op.t==='push')s='Maus bewegen und klicken – oder Abstand eintippen und Enter';else if(op&&op.t==='move')s='Ziel anklicken · Pfeiltasten sperren die Richtung (→ rot · ← grün · ↑ blau) · Strg = Kopie · Abstand eintippen und Enter';else if(op&&op.t==='tape')s='Zweiten Punkt anklicken';else if(tool==='rot')s=`Körper anklicken = 90° um die ${AXN[rotAx]} drehen · Achse wechseln mit → ← ↑`;else if(tool==='push'&&lastPush)s+=' · oder jetzt einen neuen Abstand eintippen, um den letzten Zug zu ändern'}
@@ -130,8 +130,8 @@ function hooksDown(e){const[x,y]=pos(e);
  if(tool==='paint'){const h=hitBody(x,y);if(h){A.commit(()=>{h.b.mat=curMat});selId=h.b.id;refresh(true)}return true}
  if(tool==='rot'){const h=hitBody(x,y);if(h){A.commit(()=>rotate(h.b,rotAx));selId=h.b.id;refresh(true)}return true}
  if(tool==='push'){const h=hitBody(x,y);if(!h)return true;const b=h.b,n=[0,0,0];n[h.face.i]=h.face.sign;selId=b.id;
-  op={t:'push',id:b.id,face:h.face,n,p0:h.p,t0:lineT(V.ray(x,y),h.p,n),orig:JSON.stringify(b),d:0,sx:x,sy:y,down:true};setVcb('0');refresh(true);return true}
- if(tool==='move'){const h=hitBody(x,y);if(!h)return true;selId=h.b.id;op={t:'move',id:h.b.id,p0:h.p,o0:[...h.b.o],orig:JSON.stringify(h.b),copy:e.ctrlKey||e.metaKey,sx:x,sy:y,down:true};refresh(true);return true}
+  op={t:'push',id:b.id,face:h.face,n,p0:h.p,t0:lineT(V.ray(x,y),h.p,n),orig:JSON.stringify(b),d:0,sx:x,sy:y,down:true};setVcb('0');refresh(true);status();return true}
+ if(tool==='move'){const h=hitBody(x,y);if(!h)return true;selId=h.b.id;op={t:'move',id:h.b.id,p0:h.p,o0:[...h.b.o],orig:JSON.stringify(h.b),copy:e.ctrlKey||e.metaKey,sx:x,sy:y,down:true};refresh(true);status();return true}
  if(tool==='rect'||tool==='circ'){const pk=pickPoint(x,y,op&&op.plane);if(!pk)return true;
   if(!op){const plane={p:pk.p,n:pk.n,face:pk.face};op=tool==='rect'?{t:'rect',p0:pk.p,n:pk.n,plane,face:pk.face}:{t:'circ',c:pk.p,n:pk.n,plane,face:pk.face,r:0};status();setVcb('');return true}
   if(op.t==='rect'){op.p1=pk.p;finishRect();return true}
@@ -278,7 +278,10 @@ function open(){A.cancel();R();if(window.KORPUS&&window.KORPUS.isOpen())window.K
  if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();selId=null;op=null;lastPush=null;tapeRes=null;side();setTool('sel');V.setModel(model(),false);refresh(true);if(!V.ok)msg('Dieser Browser kann leider kein 3D anzeigen.')}
 function close(){cancelOp();$('rm').classList.remove('open');$('dRml').classList.remove('open')}
 function key(e){const t=e.target,inField=t&&t.closest&&t.closest('#rm,#dRml')&&(t.tagName==='INPUT'||t.tagName==='SELECT'||t.tagName==='TEXTAREA');
- if(e.key==='Escape'){e.preventDefault();if($('dRml').classList.contains('open'))$('dRml').classList.remove('open');else if(op){cancelOp()}else if(tapeRes){tapeRes=null;drawOver()}else if(tool!=='sel')setTool('sel');else if(selId!=null){selId=null;refresh(true)}else close();return}
+ if(document.querySelector('#dHelp.open')){if(e.key==='Escape')$('dHelp').classList.remove('open');return}
+ if(e.key==='F1'){e.preventDefault();A.help('r');return}
+ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();A.save();return}
+ if(e.key==='Escape'){e.preventDefault();if($('dRml').classList.contains('open'))$('dRml').classList.remove('open');else if(op){cancelOp()}else if(tapeRes){tapeRes=null;drawOver()}else if(tool!=='sel')setTool('sel');else if(selId!=null){selId=null;refresh(true)}return}
  if(inField)return;
  if(e.ctrlKey||e.metaKey){const k=e.key.toLowerCase();if(k==='z'){e.preventDefault();cancelOp();e.shiftKey?A.redo():A.undo();refresh()}else if(k==='y'){e.preventDefault();A.redo();refresh()}else if(k==='d'&&selId!=null){e.preventDefault();copySel()}
   else if((e.key==='Control'||e.key==='Meta')&&!e.repeat){if(op&&op.t==='move'){op.copy=!op.copy;status()}}return}
@@ -288,6 +291,7 @@ function key(e){const t=e.target,inField=t&&t.closest&&t.closest('#rm,#dRml')&&(
  if(op&&op.t==='move'&&['ArrowRight','ArrowLeft','ArrowUp'].includes(e.key)){e.preventDefault();const k={ArrowRight:0,ArrowLeft:1,ArrowUp:2}[e.key];op.lock=op.lock===k?null:k;status(op.lock!=null?'Richtung gesperrt auf '+AXN[op.lock]+' – nochmal dieselbe Pfeiltaste hebt die Sperre auf':'');drawOver();return}
  if(tool==='rot'&&['ArrowRight','ArrowLeft','ArrowUp'].includes(e.key)){e.preventDefault();rotAx={ArrowRight:0,ArrowLeft:1,ArrowUp:2}[e.key];status();return}
  if(!e.altKey){const k=e.key===' '?' ':e.key;const hit=Object.keys(TOOLS).find(n=>TOOLS[n].k===k||(TOOLS[n].k===k.toLowerCase()&&k.length===1&&!e.shiftKey&&TOOLS[n].k!=='Z'));if(hit&&!(hit==='zall'&&!e.shiftKey)){e.preventDefault();if(hit==='zall')V.fit();else setTool(hit);return}}
+ if(!e.altKey&&/^[lafsz]$/.test(e.key)){status({l:'Eine Linie gibt es hier nicht – Rechteck (R) oder Kreis (C) zeichnen, freie Formen im Zeichenprogramm und dann „Kontur hochziehen“.',a:'Bogen gibt es hier nicht – Kreis (C) oder Kontur aus dem Zeichenprogramm hochziehen.',f:'Versatz gibt es hier nicht – Maße unter „Objektinfo“ ändern.',s:'Skalieren gibt es hier nicht – Maße unter „Objektinfo“ oder mit Drücken/Ziehen (P) ändern.',z:'Zoomen mit dem Mausrad, alles zeigen mit Shift+Z.'}[e.key]);return}
  const b=body(selId);if(!b)return;
  if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();removeSel();return}
  const st=e.shiftKey?10:1,mv={ArrowLeft:[-st,0,0],ArrowRight:[st,0,0],ArrowUp:[0,st,0],ArrowDown:[0,-st,0],PageUp:[0,0,st],PageDown:[0,0,-st]}[e.key];if(mv&&tool==='sel'){e.preventDefault();A.commit(()=>moveBy(b,mv));refresh(true)}}

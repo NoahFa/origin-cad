@@ -318,8 +318,8 @@ const CMDS={
  SK:{n:'Skalieren',g:'A',i:'M4 20h7v-7H4zM4 20L20 4M13 4h7v7',*run(){const es=yield* needSel();if(!es.length)return;const b=(yield P('Basispunkt (bleibt stehen)')).p;if(!b)return;
   const k=yield N('Faktor (2 = doppelt, 0.5 = halb, 25.4 = Zoll → mm)',mem.sk);if(!k||k<=0)return;mem.sk=k;doCommit(()=>es.forEach(e=>{Object.assign(e,scaleEnt(e,b,k))}));es.forEach(e=>sel.add(e.id));updProps();render()}},
  AN:{n:'Anlegen an Kante',g:'A',i:'M3 21L21 3M6 12l6-6 4 4-6 6zM14 14l2 2',*run(){
-  const r1=yield PK('Gerade Kante des Teils anklicken, das bewegt werden soll');if(!r1.e)return;const e=r1.e,s=edgeAt(e,r1.p);if(!s){log('Bitte eine gerade Kante anklicken (nicht einen Bogen).','e');return}hlE=e;
-  const r2=yield PK('Zielkante anklicken, an die es angelegt werden soll');hlE=null;if(!r2.e)return;if(r2.e===e){log('Bitte eine Kante eines anderen Objekts anklicken.','e');return}const t=edgeAt(r2.e,r2.p);if(!t){log('Die Zielkante muss gerade sein.','e');return}
+  let r1,e,s;for(;;){r1=yield PK('Gerade Kante des Teils anklicken, das bewegt werden soll');if(!r1.e)return;e=r1.e;s=edgeAt(e,r1.p);if(s)break;log('Das war ein Bogen – bitte eine gerade Kante anklicken.','e')}hlE=e;
+  let t;for(;;){const r2=yield PK('Zielkante anklicken, an die es angelegt werden soll');if(!r2.e){hlE=null;return}if(r2.e===e){log('Bitte eine Kante eines anderen Objekts anklicken.','e');continue}t=edgeAt(r2.e,r2.p);if(t)break;log('Die Zielkante muss gerade sein – bitte nochmal.','e')}hlE=null;
   const gap=yield N('Abstand zur Zielkante (0 = bündig)',mem.gap||0);if(gap==null)return;mem.gap=gap;
   const es=sel.has(e.id)?[...sel].map(byId).filter(x=>x&&x.t!=='dim'||x===e):[e];
   const res=alignTo(es,s,t,gap);doCommit(()=>es.forEach((x,i)=>setAll(x,res[i])));log(`Angelegt: um ${fmtDE(deg(res.rot))}° gedreht${gap?`, ${fmtDE(gap)} mm Abstand`:', bündig'}.`,'ok')}},
@@ -432,8 +432,9 @@ function doFillet(A,B,r,ch){const ok=e=>e.t==='line'||e.t==='pline';if(!ok(A.e)|
 let G=null,REQ=null,lastCmd=null,curCmd=null;
 /* Zeichenbefehle bleiben aktiv: nach dem Fertigstellen geht es gleich mit dem nächsten Objekt weiter, bis Esc */
 const REPEAT=new Set(['L','PL','R','K','B','PG','LL','BM','BA','BR','MS']);let gotPt=false,again=false;
-function run(key,rep){const c=CMDS[key];if(!c)return;if(c.now){c.now();return}if(!rep)cancel(true);lastCmd=curCmd=key;again=!!rep;gotPt=false;if(!rep)log('» '+c.n,'ok');G=c.run();adv(undefined)}
-function adv(v){if(!G)return;if(v&&(v.p||v.e))gotPt=true;let r;try{r=G.next(v)}catch(err){console.error(err);log('Fehler: '+err.message,'e');r={done:true}}
+let steps=0;
+function run(key,rep){const c=CMDS[key];if(!c)return;if(c.now){c.now();return}if(!rep)cancel(true);lastCmd=curCmd=key;again=!!rep;gotPt=false;steps=0;if(!rep)log('» '+c.n,'ok');G=c.run();adv(undefined)}
+function adv(v){if(!G)return;if(v!==undefined)steps++;if(v&&(v.p||v.e))gotPt=true;let r;try{r=G.next(v)}catch(err){console.error(err);log('Fehler: '+err.message,'e');r={done:true}}
  if(r.done){const k=curCmd;G=null;REQ=null;curCmd=null;hlE=null;hlSet.clear();if(k&&REPEAT.has(k)&&gotPt){run(k,true);return}}else{REQ=r.value;if(['num','opt','str'].includes(REQ.k))inp.focus()}updPrompt();updTools();computeSnap();render()}
 function cancel(silent){hlSet.clear();if(G){try{G.return()}catch(e){}G=null;REQ=null;curCmd=null;hlE=null;if(!silent)log('*Abbruch*')}else if(!silent){sel.clear();updProps()}updPrompt();updTools();render()}
 
@@ -441,14 +442,17 @@ function cancel(silent){hlSet.clear();if(G){try{G.return()}catch(e){}G=null;REQ=
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d'),inp=$('inp'),hist=$('hist');
 function log(t,c=''){const d=document.createElement('div');d.textContent=t;if(c)d.className=c;hist.appendChild(d);while(hist.children.length>80)hist.firstChild.remove();hist.scrollTop=hist.scrollHeight}
-function updPrompt(){$('prompt').textContent=REQ?REQ.prompt+(again&&!gotPt?' · Esc = Befehl beenden':'')+':':'Befehl:'}
+function updPrompt(){$('prompt').textContent=REQ?REQ.prompt+(again&&!gotPt?' · Esc = Befehl beenden':'')+':':'Befehl:';
+ /* Wahlmöglichkeiten wie [L]ochreihe als Knöpfe (für das iPad ohne Tastatur) */
+ const ob=$('optbar'),opts=REQ&&REQ.opts||[];if(!opts.length){ob.innerHTML='';return}const lab={};for(const m of REQ.prompt.matchAll(/\[([A-ZÄÖÜ0-9])\]([A-Za-zÄÖÜäöüß0-9\-]*)(?:\s+([A-Za-zÄÖÜäöüß\-]+))?/g))lab[m[1]]=m[2]?m[1]+m[2]:(m[3]||m[1]);
+ ob.innerHTML=opts.map(o=>`<button type="button" data-opt="${esc(o)}">${esc(lab[o]||o)}</button>`).join('')}
 const ICON=d=>`<svg viewBox="0 0 24 24"><path d="${d}"/></svg>`;
 function buildTools(){const grp={Z:'Zeichnen',A:'Ändern',M:'Maße',F:'Fräsen'};let h='',last='';const mZ=[],mA=[],mF=[];
  for(const[k,c]of Object.entries(CMDS)){if(!c.g)continue;if(c.g!==last){h+=`<div class="grp">${grp[c.g]}</div>`;last=c.g}
   if(!c.less)h+=`<button class="tb" data-r="${k}" data-tip="${esc(c.n)}  (${CTRL_OF[k]?'Strg+'+CTRL_OF[k]+' · ':''}${k})" aria-label="${esc(c.n)}">${ICON(c.i)}</button>`;
   (c.g==='Z'?mZ:c.g==='F'?mF:mA).push(`<li><button data-r="${k}">${esc(c.n)}<kbd>${keyLabel(k)}</kbd></button></li>`)}
  $('tools').innerHTML=`<button class="tb" data-a="select" id="bSel" data-tip="Auswählen  (Shift+A · Esc)" aria-label="Auswählen"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6.5 1.5L16 20l-2.5 1-3.5-7.5L5 18z"/></svg></button>`+h;$('mZ').innerHTML=mZ.join('');$('mA').innerHTML=mA.join('');$('mF').innerHTML=mF.join('')+'<hr><li><button data-a="cam">Fräsvorschau<kbd>F6</kbd></button></li>';
- $('helpT').innerHTML='<tr><th>Tasten</th><th>Befehl</th><th>Tasten</th><th>Befehl</th></tr>'+(()=>{const l=Object.entries(CMDS).map(([k,c])=>`<td>${CTRL_OF[k]?`<code>Strg+${CTRL_OF[k]}</code> `:''}<code>${k}</code></td><td>${esc(c.n)}</td>`);let o='';for(let i=0;i<l.length;i+=2)o+=`<tr>${l[i]}${l[i+1]||'<td></td><td></td>'}</tr>`;return o})()}
+ $('helpT').innerHTML='<tr><th>Tasten</th><th>Befehl</th></tr>'+Object.entries(CMDS).map(([k,c])=>`<tr><td>${CTRL_OF[k]?`<code>Strg+${CTRL_OF[k]}</code> `:''}<code>${k}</code></td><td>${esc(c.n)}</td></tr>`).join('')}
 function updTools(){document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('on',b.id==='bSel'?!curCmd:b.dataset.r===curCmd));for(const k in tg)$('t_'+k).classList.toggle('on',tg[k]);$('a_cam').classList.toggle('on',tg.cam);$('legend').hidden=!tg.cam}
 
 /* Eigenschaften */
@@ -519,7 +523,7 @@ $('addly').addEventListener('submit',e=>{e.preventDefault();const n=$('lyname').
 
 /* ---------- Ansicht ---------- */
 const w2s=p=>[p[0]*view.s+view.ox,-p[1]*view.s+view.oy],s2w=s=>[(s[0]-view.ox)/view.s,(view.oy-s[1])/view.s];
-function zoomAll(){const W=cv.clientWidth,H=cv.clientHeight,b=bbox(S.ents.filter(vis));if(!b){view.s=1.2;view.ox=W*.2;view.oy=H*.8;render();return}
+function zoomAll(){const W=cv.clientWidth,H=cv.clientHeight,b=bbox(S.ents.filter(vis));if(W<2||H<2)return;if(!b){view.s=1.2;view.ox=W*.2;view.oy=H*.8;render();return}
  const w=Math.max(b[2]-b[0],10),h=Math.max(b[3]-b[1],10);view.s=Math.min(W/(w*1.25),H/(h*1.25));view.ox=W/2-(b[0]+w/2)*view.s;view.oy=H/2+(b[1]+h/2)*view.s;render()}
 function hit(p){const tol=7/view.s;let best=null,bd=tol;for(const e of S.ents){if(!vis(e))continue;const d=dEnt(p,e);if(d<bd){bd=d;best=e}}return best}
 function orthoP(p){const b=REQ&&REQ.base;if(!tg.ortho||!b)return p;const d=sub(p,b);return Math.abs(d[0])>=Math.abs(d[1])?[p[0],b[1]]:[b[0],p[1]]}
@@ -553,7 +557,7 @@ let dimTexts=[];
 function drawDimText(e,col){const g=dimGeom(e);let th=-g.th;if(th>Math.PI/2+1e-6)th-=Math.PI;if(th<-Math.PI/2-1e-6)th+=Math.PI;if(th>Math.PI/2+1e-6)th-=Math.PI;
  const s=w2s(g.m);ctx.save();ctx.translate(s[0],s[1]);ctx.rotate(th);ctx.font='500 12.5px "IBM Plex Sans",sans-serif';ctx.textAlign='center';ctx.textBaseline='bottom';
  const t=(g.pre||'')+fmtDE(g.val),w=ctx.measureText(t).width;ctx.fillStyle='#16191dcc';ctx.fillRect(-w/2-3,-17,w+6,15);ctx.fillStyle=col;ctx.fillText(t,0,-3);ctx.restore()}
-function drawGrid(){if(!tg.grid)return;let g=gstep;let k=0;while(g*view.s<9&&k++<12)g*=(String(g/gstep).startsWith('1')||String(g/gstep).startsWith('5'))?2:2.5;const maj=g*5;
+function drawGrid(){if(!tg.grid||!(view.s>1e-6)||!Number.isFinite(view.s))return;let g=gstep;let k=0;while(g*view.s<9&&k++<12)g*=(String(g/gstep).startsWith('1')||String(g/gstep).startsWith('5'))?2:2.5;const maj=g*5;
  const [x0,y1]=s2w([0,0]),[x1,y0]=s2w([W,H]);
  for(const[step,a]of[[g,.05],[maj,.11]]){ctx.strokeStyle=`rgba(200,215,230,${a})`;ctx.lineWidth=1;ctx.beginPath();
   for(let x=Math.ceil(x0/step)*step;x<=x1;x+=step){const s=Math.round(w2s([x,0])[0])+.5;ctx.moveTo(s,0);ctx.lineTo(s,H)}
@@ -651,7 +655,7 @@ function parsePt(t){const base=(REQ&&REQ.base)||lastPt;let rel=false;if(t[0]==='
 function onEnter(){inp.dataset.raw=inp.value.trim();const t=inp.value.trim();inp.value='';
  if(!REQ){if(!t){if(lastCmd)run(lastCmd);return}const k=alias(t);if(k)run(k);else log('Unbekannter Befehl: '+t+'  (F1 = Hilfe)','e');return}
  if(REQ.k==='str'){adv(inp.dataset.raw||null);return}
- if(t&&REQ.k!=='num'&&!(REQ.opts||[]).includes(t.toUpperCase())&&alias(t)&&!/^[\d@.\-(]/.test(t)){run(alias(t));return}
+ if(t&&REQ.k!=='num'&&!(REQ.opts||[]).includes(t.toUpperCase())&&alias(t)&&!/^[\d@.\-(]/.test(t)){if(steps===0){run(alias(t));return}log(`„${t}“ passt hier nicht – erst den Befehl mit Esc beenden, dann ${CMDS[alias(t)].n} starten.`,'e');return}
  if(REQ.k==='sel'){const es=[...sel].map(byId).filter(Boolean);if(!es.length){log('Noch nichts gewählt.','e');return}adv(es);return}
  if(REQ.k==='num'){if(!t){adv(REQ.def!=null?REQ.def:null);return}const n=ev(t.replace(/,/g,'.'));if(n==null){log('Bitte eine Zahl eingeben.','e');return}adv(n);return}
  if(REQ.k==='opt'){const o=t?t.toUpperCase():REQ.def;if(REQ.opts.includes(o))adv(o);else log('Bitte '+REQ.opts.join(' oder ')+'.','e');return}
@@ -666,9 +670,9 @@ let prevLy='Kontur';
 function toggleGuide(){if(S.cur==='Hilfslinien'){S.cur=lyr(prevLy)&&prevLy!=='Hilfslinien'?prevLy:lyr('Kontur')?'Kontur':S.layers[0].n}else{prevLy=S.cur;if(!lyr('Hilfslinien'))S.layers.push({n:'Hilfslinien',c:'#6f9cff',v:true});S.cur='Hilfslinien'}
  geoVer++;save();updLayers();log(S.cur==='Hilfslinien'?'Ab jetzt wird auf „Hilfslinien“ gezeichnet (blau, wird nicht gefräst). Shift+H schaltet zurück.':'Ab jetzt wird wieder auf „'+S.cur+'“ gezeichnet.','ok')}
 function selectMode(){inp.value='';const was=!!G;cancel(true);mouse.in&&computeSnap();log(was?'Auswahlmodus: Befehl beendet – jetzt Objekte anklicken oder Rahmen aufziehen.':'Auswahlmodus: Objekte anklicken oder Rahmen aufziehen. Shift+Klick nimmt wieder heraus.');updTools();render()}
-function act(a){const T={osnap:1,polar:1,ortho:1,grid:1,gsnap:1,cam:1};if(T[a]){tg[a]=!tg[a];log(({osnap:'Objektfang',polar:'Winkelfang',ortho:'Ortho',grid:'Raster',gsnap:'Rasterfang',cam:'Fräsvorschau'})[a]+(tg[a]?' an':' aus')+(a==='cam'&&tg[a]?' – gestrichelt: Weg der Fräsermitte · rot: hier bleibt Material stehen':''));updTools();computeSnap();render();saveUI();return}
- ({raum:()=>window.RAUM&&window.RAUM.open(),drucken:printDrawing,korpus:()=>window.KORPUS&&window.KORPUS.open(),view3d:open3D,guide:toggleGuide,select:selectMode,enter:onEnter,esc:()=>{inp.value='';cancel(false)},neu:()=>$('dNew').classList.add('open'),oeffnen:()=>{fileMode='open';$('file').click()},importieren:()=>{fileMode='import';$('file').click()},
-  exportSvg:openExport,exportDxf:exportDXF,tpl:openTpls,tplSave:openSaveTpl,speichern:saveFile,undo,redo,zoomAll,help:()=>$('dHelp').classList.add('open'),
+function act(a){const T={osnap:1,polar:1,ortho:1,grid:1,gsnap:1,cam:1};if(T[a]){tg[a]=!tg[a];log(({osnap:'Objektfang',polar:'Winkelfang',ortho:'Nur gerade',grid:'Raster',gsnap:'Rasterfang',cam:'Fräsvorschau'})[a]+(tg[a]?' an':' aus')+(a==='cam'&&tg[a]?' – gestrichelt: Weg der Fräsermitte · rot: hier bleibt Material stehen':''));updTools();computeSnap();render();saveUI();return}
+ ({raum:()=>window.RAUM&&window.RAUM.open(),drucken:printDrawing,korpus:()=>window.KORPUS&&window.KORPUS.open(),view3d:open3D,guide:toggleGuide,select:selectMode,enter:onEnter,esc:()=>{inp.value='';cancel(false)},neu:()=>askReplace('neu'),oeffnen:()=>askReplace('open'),importieren:()=>{fileMode='import';$('file').click()},
+  exportSvg:openExport,exportDxf:exportDXF,tpl:openTpls,tplSave:openSaveTpl,speichern:saveFile,undo,redo,zoomAll,help:()=>openHelp(),
   alle:()=>{S.ents.filter(vis).forEach(e=>sel.add(e.id));updProps();render()}})[a]?.()}
 window.addEventListener('keydown',e=>{if(window.RAUM&&window.RAUM.isOpen()){window.RAUM.key(e);return}if(window.KORPUS&&window.KORPUS.isOpen()){window.KORPUS.key(e);return}
  const t=e.target,inProp=t!==inp&&(t.tagName==='INPUT'||t.tagName==='SELECT'||t.tagName==='TEXTAREA');
@@ -686,7 +690,7 @@ window.addEventListener('keydown',e=>{if(window.RAUM&&window.RAUM.isOpen()){wind
  if(e.shiftKey&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&(e.code==='KeyH'||e.key==='H')&&!inp.value&&!(REQ&&REQ.k==='str')){e.preventDefault();toggleGuide();return}
  if(e.key==='Enter'){e.preventDefault();onEnter();return}
  if(e.key===' '&&!inp.value){e.preventDefault();if(!e.repeat){spaceDown=true;spaceUsed=false}return}
- if((e.key==='Delete')&&!inp.value&&!REQ&&sel.size){e.preventDefault();run('E');return}
+ if((e.key==='Delete'||e.key==='Backspace')&&!inp.value&&!REQ&&sel.size){e.preventDefault();run('E');return}
  if(e.key.length===1&&t!==inp)inp.focus()});
 window.addEventListener('keyup',e=>{if(e.key===' '&&spaceDown){spaceDown=false;if(!spaceUsed&&!inp.value)onEnter()}});
 
@@ -707,7 +711,18 @@ function save(){try{localStorage.setItem('origincad.v1',snapS())}catch(e){}}
 function saveUI(){try{localStorage.setItem('origincad.ui',JSON.stringify({tg,gstep,pstep}))}catch(e){}}
 function afterChange(){updUndo();geoVer++;updDefs();updProps();updLayers();computeSnap();render();save()}
 $('copyB').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('saveT').value);$('copyB').textContent='Kopiert ✓'}catch(e){$('saveT').select();$('copyB').textContent='Mit Strg+C kopieren'}setTimeout(()=>$('copyB').textContent='Kopieren',2000)});
-$('newB').addEventListener('click',()=>{pushUndo();S={ents:[],layers:DEF_LAYERS(),cur:'Kontur',nid:1,def:{...S.def}};fileName='Zeichnung.json';sel.clear();$('dNew').classList.remove('open');afterChange();zoomAll();log('Neue Zeichnung.','ok')});
+/* Rückfrage vor „Neu“ und „Öffnen“: nennt, was alles ersetzt wird (Zeichnung, Korpusplaner, 3D-Modus) */
+let replaceMode='neu';
+function docSummary(){const o=[];if(S.ents.length)o.push(S.ents.length+' Objekt'+(S.ents.length>1?'e':'')+' in der Zeichnung');if(S.korpus&&S.korpus.cabs&&S.korpus.cabs.length)o.push(S.korpus.cabs.length+(S.korpus.cabs.length>1?' Korpusse':' Korpus')+' im Korpusplaner');if(S.raum&&S.raum.bodies&&S.raum.bodies.length)o.push(S.raum.bodies.length+' Körper im 3D-Modus');return o}
+function askReplace(mode){replaceMode=mode;const o=docSummary();if(!o.length){if(mode==='open'){fileMode='open';$('file').click()}else $('newB').click();return}
+ $('newT').textContent=mode==='open'?'Andere Datei öffnen?':'Neue Zeichnung?';$('newInfo').textContent=`Ersetzt wird: ${o.join(', ')}. Rückgängig (Strg+Z) holt es zurück, solange das Fenster offen bleibt – sicherer ist „Vorher speichern“.`;
+ $('newB').textContent=mode==='open'?'Datei wählen':'Leeren';$('dNew').classList.add('open')}
+$('newSave').addEventListener('click',()=>saveFile());
+function openHelp(tab){$('dHelp').classList.add('open');if(tab)showHelpTab(tab)}
+function showHelpTab(t){document.querySelectorAll('[data-htab]').forEach(b=>b.classList.toggle('on',b.dataset.htab===t));document.querySelectorAll('[data-hsec]').forEach(s=>s.hidden=s.dataset.hsec!==t)}
+$('dHelp').addEventListener('click',e=>{const b=e.target.closest('[data-htab]');if(b)showHelpTab(b.dataset.htab)});
+$('optbar').addEventListener('click',e=>{const b=e.target.closest('[data-opt]');if(!b)return;inp.value=b.dataset.opt;onEnter();focusInp()});
+$('newB').addEventListener('click',()=>{if(replaceMode==='open'&&$('dNew').classList.contains('open')){$('dNew').classList.remove('open');fileMode='open';replaceMode='neu';$('file').click();return}replaceMode='neu';pushUndo();S={ents:[],layers:DEF_LAYERS(),cur:'Kontur',nid:1,def:{...S.def}};fileName='Zeichnung.json';sel.clear();$('dNew').classList.remove('open');afterChange();zoomAll();log('Neue Zeichnung.','ok')});
 
 /* ---------- Bögen wiedererkennen (nach Formen kombinieren, Versatz, Import) ---------- */
 /* pts: Punktfolge; liefert {circle:{c,r}} oder {pts,bl}. Erkannt wird nur, was wirklich fein angenähert ist (Pfeilhöhe ≤ sag). */
@@ -774,11 +789,13 @@ function exportInfo(es){const cnt={},warn=[];let open=0,fail=0,left=0,deep=0;
  if(fail)warn.push(`Bei ${fail} Kontur(en) passt der Fräser gar nicht hinein.`);
  if(left)warn.push(`Bei ${left} Kontur(en) bleibt in Ecken Material stehen (rot in der Fräsvorschau).`);
  if(deep)warn.push(`${deep} Objekt(e) tiefer als 43 mm – so tief kommt die Origin nicht.`);
+ const T=S.def.thick||19,flat=es.filter(e=>cutOf(e).eff==='outside'&&cutOf(e).d<T).length;if(flat)warn.push(`${flat} Außenkontur(en) nur ${[...new Set(es.filter(e=>cutOf(e).eff==='outside'&&cutOf(e).d<T).map(e=>fmtDE(cutOf(e).d)))].join(' / ')} mm tief – die Platte ist ${fmtDE(T)} mm (Plattenstärke in der 3D-Vorschau). Zum Heraustrennen die Tiefe auf ${fmtDE(T)} oder etwas mehr stellen.`);
  const loose=es.filter(e=>(e.t==='line'||e.t==='arc')&&cutOf(e).eff==='online').length;if(loose>=3)warn.push(`${loose} einzelne Linien/Bögen – gehören sie zu einer Kontur, vorher „Verbinden“ (VB).`);
  return{cnt,warn}}
-function openExport(){const hasSel=[...sel].some(id=>{const e=byId(id);return e&&e.t!=='dim'});$('expSelRow').style.display=hasSel?'':'none';$('expSel').checked=hasSel;updExport();$('dExp').classList.add('open')}
-function updExport(){const es=exportList($('expSel').checked&&$('expSelRow').style.display!=='none'),b=bbox(es),{cnt,warn}=exportInfo(es);
- $('expT').innerHTML=es.length?'<tr><th>Frästyp</th><th>Anzahl</th></tr>'+Object.keys(CUTS).filter(k=>cnt[k]).map(k=>`<tr><td>${CUTS[k]}</td><td>${cnt[k]}</td></tr>`).join('')+`<tr><td>Größe</td><td>${fmtDE(b[2]-b[0])} × ${fmtDE(b[3]-b[1])} mm</td></tr>`:'<tr><td>Nichts zum Ausgeben – die Zeichnung ist leer.</td></tr>';
+function openExport(){const hasSel=[...sel].some(id=>{const e=byId(id);return e&&e.t!=='dim'});$('expSelRow').style.display=hasSel?'':'none';$('expSel').checked=false;updExport();$('dExp').classList.add('open')}
+function updExport(){const only=$('expSel').checked&&$('expSelRow').style.display!=='none',es=exportList(only),all=exportList(false),b=bbox(es),{cnt,warn}=exportInfo(es);
+ const lst=(t,k)=>[...new Set(es.filter(e=>cutOf(e).eff===t).map(e=>cutOf(e)[k]))].sort((x,y)=>x-y).map(fmtDE).join(' / ');
+ $('expT').innerHTML=es.length?'<tr><th>Frästyp</th><th>Anzahl</th><th>Tiefe mm</th><th>Fräser Ø</th></tr>'+Object.keys(CUTS).filter(k=>cnt[k]).map(k=>`<tr><td>${CUTS[k]}</td><td>${cnt[k]}</td><td>${k==='guide'?'–':lst(k,'d')}</td><td>${k==='guide'?'–':lst(k,'tool')}</td></tr>`).join('')+`<tr><td>Größe</td><td colspan="3">${fmtDE(b[2]-b[0])} × ${fmtDE(b[3]-b[1])} mm${only?` · <b>nur ${es.length} von ${all.length} Objekten</b>`:''}</td></tr>`:'<tr><td>Nichts zum Ausgeben – die Zeichnung ist leer.</td></tr>';
  $('expW').innerHTML=warn.map(esc).join('<br>');$('expW').style.display=warn.length?'':'none';$('expB').disabled=!es.length}
 $('expSel').addEventListener('change',updExport);
 $('expB').addEventListener('click',async()=>{const es=exportList($('expSel').checked&&$('expSelRow').style.display!=='none'),svg=buildSVG(es);if(!svg)return;
@@ -929,7 +946,7 @@ function importDXF(text){const ln=text.split(/\r\n|\r|\n/),pairs=[];for(let i=0;
    else flat.push({ly:it.ly==='0'&&insLy?insLy:it.ly,e:tf(it.e)})}};
  expand(top,0,e=>e);
  const ents=flat.map(({ly,e})=>{const n=unit===1?e:scaleEnt(e,[0,0],unit);n.ly=ly;return n}).filter(e=>!(e.t==='circle'&&!(e.r>0))&&!(e.t==='line'&&dist(e.a,e.b)<1e-9));
- const sk=Object.entries(skipped).filter(([k])=>!['POINT','VIEWPORT','ATTDEF','ATTRIB','SEQEND','VERTEX'].includes(k)).map(([k,n])=>n+' × '+k).join(', ');
+ const DN={HATCH:'Schraffur (HATCH)',DIMENSION:'Bemaßung (DIMENSION)',SOLID:'Füllfläche (SOLID)',IMAGE:'Bild (IMAGE)',MTEXT:'Text',INSERT:'Block (INSERT)',LEADER:'Hinweispfeil (LEADER)',POINT:'Punkt'},sk=Object.entries(skipped).filter(([k])=>!['POINT','VIEWPORT','ATTDEF','ATTRIB','SEQEND','VERTEX'].includes(k)).map(([k,n])=>n+' × '+(DN[k]||k)).join(', ');
  return{ents,note:(unit!==1?`Einheit der Datei umgerechnet (× ${unit}). `:'')+(sk?'Übersprungen: '+sk+'.':'')}}
 
 /* ---------- Öffnen / Importieren ---------- */
@@ -944,7 +961,7 @@ async function loadFile(f,mode){const name=f.name||'Datei',ext=(name.split('.').
    if(mode==='import'){pushUndo();cd.layers.forEach(l=>{if(!lyr(l.n))S.layers.push({...l})});sel.clear();addEnts(cd.ents.map(({id,...r})=>r)).forEach(e=>sel.add(e.id));afterChange();zoomAll();log(`Dazugeladen: ${name} (${cd.ents.length} Objekte, sind gewählt – mit V verschieben).`,'ok');return}
    pushUndo();S=cd;
    sel.clear();afterChange();updDefs();zoomAll();fileName=name;$('fname').textContent=name+' · Maße in mm';log('Geöffnet: '+name,'ok');return}
-  const isSvg=ext==='svg'||/<svg[\s>]/i.test(text.slice(0,2000)),r=isSvg?importSVG(text):importDXF(text);
+  const isSvg=ext==='svg'||/<svg[\s>]/i.test(text.slice(0,2000));if(!isSvg&&ext!=='dxf'&&!/^\s*0\s*[\r\n]+\s*SECTION/i.test(text.slice(0,200))){log(`${name}: Diese Art Datei kann ich nicht öffnen – nur Zeichnungen (.json), SVG und DXF.`,'e');return}const r=isSvg?importSVG(text):importDXF(text);
   if(!r.ents.length){log(`In ${name} wurde nichts Zeichenbares gefunden. ${r.note}`,'e');return}
   pushUndo();if(mode!=='import'){S={ents:[],layers:DEF_LAYERS(),cur:'Kontur',nid:1,def:{...S.def}};fileName=name.replace(/\.[^.]+$/,'')+'.json';$('fname').textContent=name+' · Maße in mm'}
   sel.clear();const made=addEnts(r.ents,isSvg?'Kontur':'0');if(mode==='import')made.forEach(e=>sel.add(e.id));afterChange();zoomAll();const b=bbox(made);
@@ -1054,6 +1071,6 @@ log('Tipp: L + Enter für Linie, R für Rechteck, K für Kreis. F1 zeigt alle Be
 buildTools();updTools();updUndo();updDefs();updProps();updLayers();updPrompt();
 new ResizeObserver(()=>{const first=!W;resize();if(first)zoomAll()}).observe($('cvw'));
 if(matchMedia('(pointer:fine)').matches)inp.focus();
-window.__cad={buildPrintSVG,kp:{contours,sectionsOf,commit:doCommit,undo,redo,addEnts,saveBlob,baseName,log,fmtDE,bbox,esc,cancel:()=>cancel(true),after:()=>{sel.clear();afterChange();zoomAll()},select:es=>{sel.clear();es.forEach(e=>sel.add(e.id));updProps();render()}},build3D,open3D,get curP(){return curP},setMouse:sp=>{mouse.sp=sp;mouse.in=true;computeSnap();render()},buildSVG,buildDXF,importSVG,importDXF,loadFile,exportList,fitArcs,userTpls,w2s,get S(){return S},run,onEnter,inp,adv,get REQ(){return REQ},sel,zoomAll,cutOf,camOf,act,tg,updProps,bbox,
+window.__cad={buildPrintSVG,kp:{save:()=>saveFile(),help:t=>openHelp(t),contours,sectionsOf,commit:doCommit,undo,redo,addEnts,saveBlob,baseName,log,fmtDE,bbox,esc,cancel:()=>cancel(true),after:()=>{sel.clear();afterChange();zoomAll()},select:es=>{sel.clear();es.forEach(e=>sel.add(e.id));updProps();render()}},build3D,open3D,get curP(){return curP},setMouse:sp=>{mouse.sp=sp;mouse.in=true;computeSnap();render()},buildSVG,buildDXF,importSVG,importDXF,loadFile,exportList,fitArcs,userTpls,w2s,get S(){return S},run,onEnter,inp,adv,get REQ(){return REQ},sel,zoomAll,cutOf,camOf,act,tg,updProps,bbox,
  areaOf:(id,off)=>{const P=[ccw(toPaths(byId(id))[0].pts)];return(off?clOffset(P,off):P).reduce((s,q)=>s+area(q),0)}};
 }

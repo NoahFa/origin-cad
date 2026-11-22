@@ -162,7 +162,7 @@ function upd3(){clearTimeout(timer);timer=setTimeout(()=>{if(!isOpen())return;if
 const cv=()=>$('kpcv');
 function rowW(k){return k.cabs.reduce((s,c)=>s+c.b,0)}
 function cabX(k,i){let x=0;for(let j=0;j<i;j++)x+=k.cabs[j].b;return x}
-function fitView(){const c=cv(),k=K(),W=rowW(k),H=Math.max(...k.cabs.map(c=>c.h+cz(k,c))),w=c.clientWidth,h=c.clientHeight,ml=Math.min(110,w*0.16),mb=Math.min(105,h*0.16),mt=Math.min(95,h*0.14);view.s=Math.min((w-2*ml)/W,(h-mb-mt)/H);view.ox=(w-W*view.s)/2;view.oy=h-mb-((h-mb-mt)-H*view.s)/2}
+function fitView(){const c=cv(),k=K(),W=rowW(k),H=Math.max(...k.cabs.map(c=>c.h+cz(k,c))),w=c.clientWidth,h=c.clientHeight,ml=Math.min(110,w*0.16),mb=Math.min(105,h*0.16),mt=Math.max(Math.min(95,h*0.14),(document.querySelector('.kptools')?document.querySelector('.kptools').offsetHeight:0)+42);view.s=Math.min((w-2*ml)/W,(h-mb-mt)/H);view.ox=(w-W*view.s)/2;view.oy=h-mb-((h-mb-mt)-H*view.s)/2}
 const sx=x=>view.ox+x*view.s,sy=z=>view.oy-z*view.s;
 function items(k){/* anklickbare Dinge: {type:'fb'|'eb'|'mw', ci, i, rect:[x,z,w,h] in mm (Zeile)} */const o=[];
  k.cabs.forEach((c,ci)=>{const X=cabX(k,ci),z0=cz(k,c);c.mw.forEach((x,i)=>o.push({type:'mw',ci,i,rect:[X+x,z0+k.t,k.t,c.h-2*k.t]}));
@@ -180,7 +180,7 @@ function draw(){const c=cv(),k=K();if(!c.clientWidth)return;const dpr=window.dev
   for(const f of fronts(c,k)){if(f.typ==='s'){R(X+f.x,z0+f.z,f.w,f.h,'rgba(201,168,119,.28)','#e8d5b0',1.2);const zc=z0+f.z+f.h/2;g.strokeStyle='#e8d5b0';g.lineWidth=2;g.beginPath();g.moveTo(sx(X+c.b/2-40),sy(zc));g.lineTo(sx(X+c.b/2+40),sy(zc));g.stroke()}
    else if(showFront){R(X+f.x,z0+f.z,f.w,f.h,null,'#e8d5b0',1.2,[7,5]);g.strokeStyle='rgba(232,213,176,.5)';g.lineWidth=1;g.setLineDash([3,5]);g.beginPath();const xh=X+(f.side==='l'?f.x:f.x+f.w),xo=X+(f.side==='l'?f.x+f.w:f.x);g.moveTo(sx(xh),sy(z0+f.z));g.lineTo(sx(xo),sy(z0+f.z+f.h/2));g.lineTo(sx(xh),sy(z0+f.z+f.h));g.stroke();g.setLineDash([])}}
   if(act){g.strokeStyle='#e5482d';g.lineWidth=2;g.strokeRect(sx(X)-3,sy(z0+c.h)-3,c.b*view.s+6,c.h*view.s+6)}
-  T('Korpus '+(ci+1)+' · Tiefe '+de(c.d),sx(X+c.b/2),sy(z0+c.h)-16,act?'#ff8a70':'#9aa3ad')});
+  {const room=c.b*view.s-6;g.font='12.5px "IBM Plex Sans",system-ui,sans-serif';const tt=['Korpus '+(ci+1)+' · Tiefe '+de(c.d),(ci+1)+' · T '+de(c.d),String(ci+1)].find(x=>g.measureText(x).width<=room)||String(ci+1);T(tt,sx(X+c.b/2),sy(z0+c.h)-16,act?'#ff8a70':'#9aa3ad')}});
  for(const it of items(k)){const sel=pick&&pick.type===it.type&&pick.ci===it.ci&&pick.i===it.i,[x,z,w,h]=it.rect;
   if(it.type==='ks'){R(x,z,w,h,'#b9c2cc',sel?'#e5482d':'#7d8792',sel?2:1);R(x,z-6,8,h+12,'#7d8792',null);R(x+w-8,z-6,8,h+12,'#7d8792',null)}
   else R(x,z,w,h,it.type==='eb'?'rgba(201,168,119,.55)':wood,sel?'#e5482d':woodD,sel?2:1,it.type==='eb'?[5,3]:null);
@@ -206,7 +206,7 @@ function dims(g,k,T){const de=v=>String(Math.round(v*10)/10).replace('.',',');co
     const px=sx(X+f.x0)+13;for(let i=0;i<lv.length-1;i++){const lo=lv[i].b,hi=lv[i+1].a;if(hi-lo>1)dV(z0+lo,z0+hi,px,de(hi-lo),null,1)}
     dH(X+f.x0,X+f.x1,sy(z0+c.h-t)+16,de(f.x1-f.x0));
     for(const s of inF(c.ks||[]))T('Stange '+de(s.y),sx(X+xm),sy(z0+s.y)+k.ksD/2*view.s+11,col)}
-  for(const f of fronts(c,k))if(f.typ==='s')T(de(f.w)+' × '+de(f.h),sx(X+c.b/2),sy(z0+f.z+f.h/2)+16,'#e8d5b0');
+  for(const f of fronts(c,k))if(f.typ==='s'&&f.h*view.s>40){const tx=de(f.w)+' × '+de(f.h),px=sx(X+c.b/2),py=sy(z0+f.z+f.h/2)+15;g.font='12.5px "IBM Plex Sans",system-ui,sans-serif';const tw=g.measureText(tx).width;if(tw>c.b*view.s-8)continue;g.fillStyle='#16191dcc';g.fillRect(px-tw/2-3,py-8,tw+6,16);T(tx,px,py,'#e8d5b0')}
   X+=c.b})}
 function hitAt(px,py){const k=K(),x=(px-view.ox)/view.s,z=(view.oy-py)/view.s,tol=6/view.s;
  const it=items(k).find(i=>x>=i.rect[0]-tol&&x<=i.rect[0]+i.rect[2]+tol&&z>=i.rect[1]-tol&&z<=i.rect[1]+i.rect[3]+tol);let ci=-1;k.cabs.forEach((c,i)=>{const X=cabX(k,i);if(x>=X&&x<=X+c.b&&z>=cz(k,c)&&z<=cz(k,c)+c.h)ci=i});
@@ -226,7 +226,7 @@ function bindCanvas(){const c=cv();
 
 /* ----- Formular ----- */
 /* Vorbelegungen für gängige Schränke: [Name, Maße, optional Innenausstattung] */
-const TYPEN=[['Unterschrank 720 hoch, 560 tief',{h:720,d:560,zo:0}],['Hochschrank 2000 hoch, 560 tief',{h:2000,d:560,zo:0}],['Hängeschrank 720 hoch, 320 tief, 1400 über Boden',{h:720,d:320,zo:1400}],
+const TYPEN=[['Unterschrank 720 hoch, 560 tief',{h:720,d:560,zo:0}],['Hochschrank 2000 hoch, 560 tief',{h:2000,d:560,zo:0}],['Hängeschrank 720 hoch, 320 tief, 1400 über Boden',{h:720,d:320,zo:1400,front:'2'}],
  ['Kleiderschrank 2200 hoch, 600 tief, mit Stange',{h:2200,d:600,zo:0,b:1000,front:'2'},(c,k)=>{c.mw=[];c.nm=0;c.fb=[{x:c.b/2,y:1850}];c.eb=[];c.ks=[{x:c.b/2,y:1780}]}]];
 const F_ROW=[['t','Plattenstärke',5,60],['rw','Rückwandstärke',3,25],['fuge','Fuge der Fronten',0,20]];
 const F_CAB=[['b','Breite'],['h','Höhe'],['d','Tiefe']];
@@ -284,7 +284,7 @@ function fillPick(){const el=$('kppick');if(!el)return;const k=K();if(!pick||!k.
  const c=k.cabs[pick.ci],isW=pick.type==='mw',v=isW?c.mw[pick.i]:c[pick.type][pick.i].y,nm={mw:'Mittelwand',fb:'Fester Boden',eb:'Einlegeboden',ks:'Kleiderstange'}[pick.type];
  if(document.activeElement&&document.activeElement.id==='kp_pos')return;
  el.innerHTML=`<div class="kpsel"><b>${nm} gewählt</b><div class="pr"><label for="kp_pos">${isW?'Abstand von links':pick.type==='ks'?'Höhe Stangenmitte':'Höhe ab Unterkante'}</label><input id="kp_pos" type="text" inputmode="decimal" value="${de(v)}"></div><button class="btn" id="kp_rm">Löschen (Entf)</button></div>`;
- const p=$('kp_pos');p.addEventListener('keydown',e=>{if(e.key==='Enter')p.blur()});p.addEventListener('change',()=>{const n=parseFloat(p.value.replace(',','.'));if(!isFinite(n))return;A.commit(()=>{if(isW)c.mw[pick.i]=n;else c[pick.type][pick.i].y=n;tidy(k)});refresh()});$('kp_rm').onclick=removePick}
+ const p=$('kp_pos');{const box=el.querySelector('.kpsel');if(box&&box.scrollIntoView)box.scrollIntoView({block:'nearest'})}p.addEventListener('keydown',e=>{if(e.key==='Enter')p.blur()});p.addEventListener('change',()=>{const n=parseFloat(p.value.replace(',','.'));if(!isFinite(n))return;A.commit(()=>{if(isW)c.mw[pick.i]=n;else c[pick.type][pick.i].y=n;tidy(k)});refresh()});$('kp_rm').onclick=removePick}
 function removePick(){if(!pick)return;const k=K(),c=k.cabs[pick.ci];A.commit(()=>{if(pick.type==='mw')c.mw.splice(pick.i,1);else c[pick.type].splice(pick.i,1);tidy(k)});pick=null;refresh()}
 function setMode(m){mode=m;document.querySelectorAll('[data-kpm]').forEach(b=>b.classList.toggle('on',b.dataset.kpm===m));draw()}
 function msg(t){$('kpmsg').textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()=>$('kpmsg').textContent='',5000)}
@@ -324,8 +324,8 @@ function nestOf(pieces,k){k=k||K();const groups=new Map(),uw=k.plL-2*k.rand,uh=k
   const used=pcs.reduce((s,q)=>s+q.w*q.h,0);if(sheets.length)out.push({matId:g.matId,T:g.T,kind:g.kind,sheets,used,waste:1-used/(sheets.length*k.plL*k.plB)})}
  return{groups:out,misfit,plL:k.plL,plB:k.plB,rand:k.rand}}
 function nestSVG(n,sh){const s=v=>Math.round(v*100)/100;let b=`<rect x="0" y="0" width="${n.plL}" height="${n.plB}" fill="#f4efe6" stroke="#333" stroke-width="3"/>`;
- for(const q of sh.parts){const x=n.rand+q.x,y=n.rand+q.y,fs=Math.max(22,Math.min(46,q.h*0.32,q.w*0.11));b+=`<rect x="${s(x)}" y="${s(y)}" width="${s(q.w)}" height="${s(q.h)}" fill="#d9c29a" stroke="#222" stroke-width="2.5"/>`+
-   (q.w>150&&q.h>44?`<text x="${s(x+q.w/2)}" y="${s(y+q.h/2+fs*0.35)}" font-size="${s(fs)}" text-anchor="middle" font-family="Arial,sans-serif" fill="#111">${q.nr} · ${de(q.w)} × ${de(q.h)}</text>`:`<text x="${s(x+q.w/2)}" y="${s(y+q.h/2+8)}" font-size="22" text-anchor="middle" font-family="Arial,sans-serif" fill="#111">${q.nr}</text>`)}
+ for(const q of sh.parts){const x=n.rand+q.x,y=n.rand+q.y,fs=Math.max(n.plL/70,Math.min(46,q.h*0.32,q.w*0.11)),full=q.w*0.11>=n.plL/70&&q.h*0.32>=n.plL/70;b+=`<rect x="${s(x)}" y="${s(y)}" width="${s(q.w)}" height="${s(q.h)}" fill="#d9c29a" stroke="#222" stroke-width="2.5"/>`+
+   (full&&q.w>150&&q.h>44?`<text x="${s(x+q.w/2)}" y="${s(y+q.h/2+fs*0.35)}" font-size="${s(fs)}" text-anchor="middle" font-family="Arial,sans-serif" fill="#111">${q.nr} · ${de(q.w)} × ${de(q.h)}</text>`:`<text x="${s(x+q.w/2)}" y="${s(y+q.h/2+Math.min(n.plL/50,q.h*0.8)*0.35)}" font-size="${s(Math.min(n.plL/50,q.h*0.8))}" text-anchor="middle" font-family="Arial,sans-serif" fill="#111">${q.nr}</text>`)}
  return`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 ${n.plL+8} ${n.plB+8}" style="width:100%;height:auto;display:block">${b}</svg>`}
 function nestHTML(){return nestHTMLOf(nest(K()))}
 function nestHTMLOf(n){let h='';
@@ -351,7 +351,10 @@ function open(){A.cancel();K();$('kp').classList.add('open');if(!bound){bound=tr
  pick=null;setMode('sel');refresh()}
 function close(){$('kp').classList.remove('open');$('dKpl').classList.remove('open');$('dKpn').classList.remove('open')}
 function key(e){const t=e.target,inField=t&&(t.tagName==='INPUT'||t.tagName==='SELECT'||t.tagName==='TEXTAREA');
- if(e.key==='Escape'){e.preventDefault();if($('dKpn').classList.contains('open'))$('dKpn').classList.remove('open');else if($('dKpl').classList.contains('open'))$('dKpl').classList.remove('open');else if(mode!=='sel')setMode('sel');else if(pick){pick=null;refresh(true)}else close();return}
+ if(document.querySelector('#dHelp.open')){if(e.key==='Escape')$('dHelp').classList.remove('open');return}
+ if(e.key==='F1'){e.preventDefault();A.help('k');return}
+ if(e.key==='Escape'){e.preventDefault();if($('dKpn').classList.contains('open'))$('dKpn').classList.remove('open');else if($('dKpl').classList.contains('open'))$('dKpl').classList.remove('open');else if(mode!=='sel')setMode('sel');else if(pick){pick=null;refresh(true)}return}
+ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();A.save();return}
  if((e.ctrlKey||e.metaKey)&&!inField){const k=e.key.toLowerCase();if(k==='z'){e.preventDefault();e.shiftKey?A.redo():A.undo();refresh()}else if(k==='y'){e.preventDefault();A.redo();refresh()}return}
  if((e.key==='Delete'||e.key==='Backspace')&&!inField&&pick){e.preventDefault();removePick()}}
 return{nestOf,nestHTMLOf,matName,mat,openAll:()=>{['cab','in','mat','verb','besch','sock'].forEach(x=>openSec.add(x));refresh()},clean,select:i=>{cur=i;pick=null;refresh()},fronts,nest,MATS,open,close,isOpen,key,parts,list,partEnts,model3,get state(){return K()},refresh,get view(){return view},hitAt,csv,DEF}})();
