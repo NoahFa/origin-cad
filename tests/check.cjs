@@ -178,6 +178,13 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  await p.evaluate(()=>__cad.inp.focus());await p.keyboard.type('12,5');await p.keyboard.press('Control+c');ok((await p.evaluate(()=>!__cad.REQ&&__cad.inp.value==='12,5')),'Strg+C mit Text in der Befehlszeile kopiert normal');await p.evaluate(()=>__cad.inp.value='');
  r=await p.evaluate(()=>document.querySelector('#mZ').textContent);ok(/LinieStrg\+L/.test(r)&&/RechteckStrg\+R/.test(r),'Menü zeigt die Strg-Tasten');
 
+ console.log('Befehl bleibt aktiv');
+ await fresh();await C('L','0,0','100,0','');r=await p.evaluate(()=>__cad.REQ&&__cad.REQ.prompt);ok(r==='Startpunkt','Nach Linie + Enter: gleich neuer Startpunkt',r);
+ await C('0,50','100,50','');E=await ents();ok(E.length===2,'Zweite Linie ohne neuen Befehl gezeichnet');
+ await C('');ok(!(await p.evaluate(()=>__cad.REQ)),'Enter ohne Punkt beendet den Befehl');
+ await C('R','0,0','10,10','20,20','30,30');E=await ents();ok(E.length===4&&E[3].t==='pline','Rechteck: zweites Rechteck direkt hinterher');
+ await p.keyboard.press('Escape');ok(!(await p.evaluate(()=>__cad.REQ)),'Esc beendet den Befehl');
+
  console.log('Darstellung');
  for(const[n,vp]of[['tablet',{width:1024,height:768}],['handy',{width:390,height:844}]]){const q=await open(vp);await q.evaluate(()=>__cad.act('cam'));
   const o=await q.evaluate(()=>({sw:document.documentElement.scrollWidth,w:innerWidth,cv:document.getElementById('cv').clientHeight}));ok(o.sw<=o.w&&o.cv>150,`${n}: nichts läuft seitlich über, Zeichenfläche sichtbar`,JSON.stringify(o));

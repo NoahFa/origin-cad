@@ -60,6 +60,8 @@ Live: https://noahfa.github.io/origin-cad/ (installierbar auf iPad/PC, läuft da
 - **Strg + Buchstabe** (Mac/iPad ⌘): L Linie, P Polylinie, R Rechteck, K Kreis, B Bogen, G Text/Gravur, H Bohrbild, V Verschieben, C Kopieren, D Drehen, I Spiegeln, U Abrunden, F Fasen, X Stutzen, M Bemaßung, J Verbinden, E SVG-Export, O Öffnen, S Speichern, 0 Zoom alles. Tabelle `CTRL` in cad.js. Strg+T/N/W/Q sind vom Browser belegt. Getippte Kürzel gehen weiter.
 - **Knöpfe Rückgängig/Wiederholen** in der Menüleiste.
 
+- **Zeichenbefehle bleiben aktiv** (L, PL, R, K, B, PG, LL, BM, BA, MS): nach dem Fertigstellen startet derselbe Befehl neu, Esc oder Enter ohne Punkt beendet. Liste `REPEAT` in cad.js.
+
 ## Ideen / offen
 - An der echten Origin prüfen: Wird die SVG mit Frästyp, Tiefe und Fräser-Ø richtig erkannt? (Format nach Shaper-Vorgabe gebaut, aber noch nicht an der Maschine getestet.)
 - Stutzen zerlegt Polylinien noch in Einzelstücke (danach `VB`)

@@ -10,9 +10,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Origin CAD">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.webmanifest?v=5">
-<link rel="icon" href="icon.svg?v=5" type="image/svg+xml">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=5">
+<link rel="manifest" href="manifest.webmanifest?v=6">
+<link rel="icon" href="icon.svg?v=6" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=6">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -200,6 +200,7 @@ button,input,select{font:inherit;color:inherit}
 
 <div class="dlg" id="dHelp"><div class="box">
  <h3>Befehle &amp; Eingabe</h3>
+ <p class="muted">Zeichenbefehle (Linie, Rechteck, Kreis, Bemaßung …) bleiben aktiv: nach dem Fertigstellen gleich den nächsten Startpunkt setzen. <b>Esc</b> beendet den Befehl.</p>
  <p class="muted">Am schnellsten mit <b>Strg + Buchstabe</b> (Mac/iPad: ⌘). Oder das Kürzel in die Befehlszeile tippen und Enter drücken – oder links aufs Werkzeug klicken. Enter (oder Leertaste, Rechtsklick) auf leerer Zeile wiederholt den letzten Befehl. Esc bricht ab.</p>
  <table id="helpT"></table>
  <table><tr><th>Eingabe</th><th>Bedeutung</th></tr>
@@ -254,9 +255,9 @@ button,input,select{font:inherit;color:inherit}
  <div class="row"><button class="btn" data-close>Abbrechen</button><button class="btn pri" id="newB">Leeren</button></div>
 </div></div>
 
-<script src="vendor/clipper.js?v=5"></script>
-<script src="font.js?v=5"></script>
-<script src="cad.js?v=5"></script>
+<script src="vendor/clipper.js?v=6"></script>
+<script src="font.js?v=6"></script>
+<script src="cad.js?v=6"></script>
 <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>

@@ -362,16 +362,18 @@ function doFillet(A,B,r,ch){const ok=e=>e.t==='line'||e.t==='pline';if(!ok(A.e)|
 
 /* ---------- Ablauf ---------- */
 let G=null,REQ=null,lastCmd=null,curCmd=null;
-function run(key){const c=CMDS[key];if(!c)return;if(c.now){c.now();return}cancel(true);lastCmd=curCmd=key;log('» '+c.n,'ok');G=c.run();adv(undefined)}
-function adv(v){if(!G)return;let r;try{r=G.next(v)}catch(err){console.error(err);log('Fehler: '+err.message,'e');r={done:true}}
- if(r.done){G=null;REQ=null;curCmd=null;hlE=null;hlSet.clear()}else{REQ=r.value;if(['num','opt','str'].includes(REQ.k))inp.focus()}updPrompt();updTools();computeSnap();render()}
+/* Zeichenbefehle bleiben aktiv: nach dem Fertigstellen geht es gleich mit dem nächsten Objekt weiter, bis Esc */
+const REPEAT=new Set(['L','PL','R','K','B','PG','LL','BM','BA','MS']);let gotPt=false,again=false;
+function run(key,rep){const c=CMDS[key];if(!c)return;if(c.now){c.now();return}if(!rep)cancel(true);lastCmd=curCmd=key;again=!!rep;gotPt=false;if(!rep)log('» '+c.n,'ok');G=c.run();adv(undefined)}
+function adv(v){if(!G)return;if(v&&(v.p||v.e))gotPt=true;let r;try{r=G.next(v)}catch(err){console.error(err);log('Fehler: '+err.message,'e');r={done:true}}
+ if(r.done){const k=curCmd;G=null;REQ=null;curCmd=null;hlE=null;hlSet.clear();if(k&&REPEAT.has(k)&&gotPt){run(k,true);return}}else{REQ=r.value;if(['num','opt','str'].includes(REQ.k))inp.focus()}updPrompt();updTools();computeSnap();render()}
 function cancel(silent){hlSet.clear();if(G){try{G.return()}catch(e){}G=null;REQ=null;curCmd=null;hlE=null;if(!silent)log('*Abbruch*')}else if(!silent){sel.clear();updProps()}updPrompt();updTools();render()}
 
 /* ---------- UI-Elemente ---------- */
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d'),inp=$('inp'),hist=$('hist');
 function log(t,c=''){const d=document.createElement('div');d.textContent=t;if(c)d.className=c;hist.appendChild(d);while(hist.children.length>80)hist.firstChild.remove();hist.scrollTop=hist.scrollHeight}
-function updPrompt(){$('prompt').textContent=REQ?REQ.prompt+':':'Befehl:'}
+function updPrompt(){$('prompt').textContent=REQ?REQ.prompt+(again&&!gotPt?' · Esc = Befehl beenden':'')+':':'Befehl:'}
 const ICON=d=>`<svg viewBox="0 0 24 24"><path d="${d}"/></svg>`;
 function buildTools(){const grp={Z:'Zeichnen',A:'Ändern',M:'Maße',F:'Fräsen'};let h='',last='';const mZ=[],mA=[],mF=[];
  for(const[k,c]of Object.entries(CMDS)){if(!c.g)continue;if(c.g!==last){h+=`<div class="grp">${grp[c.g]}</div>`;last=c.g}
