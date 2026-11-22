@@ -22,7 +22,7 @@ function mesh(m){const P=[],Nn=[],C=[],L=[];
       const A1=X(a[0],a[1],za),A2=X(a[0],a[1],zb),B1=X(b[0],b[1],za),B2=X(b[0],b[1],zb);tri(A1,A2,B2,nn,cW);tri(A1,B2,B1,nn,cW);
       const key=a[0].toFixed(3)+','+a[1].toFixed(3)+','+b[0].toFixed(3)+','+b[1].toFixed(3);cur.add(key);
       if(!prev.has(key))L.push(...A1,...B1);if(last)L.push(...A2,...B2)}}}prev=cur}}
- return{P:new Float32Array(P),N:new Float32Array(Nn),C:new Float32Array(C),L:new Float32Array(L)}}
+ return{P:new Float32Array(P),N:new Float32Array(Nn),C:new Float32Array(C),L:new Float32Array(L),G:m.grid?new Float32Array(m.grid):null}}
 /* Matrizen (spaltenweise) */
 const mul4=(a,b)=>{const o=new Float32Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++){let s=0;for(let k=0;k<4;k++)s+=a[k*4+r]*b[c*4+k];o[c*4+r]=s}return o};
 function persp(fov,asp,n,f){const t=1/Math.tan(fov/2),o=new Float32Array(16);o[0]=t/asp;o[5]=t;o[10]=(f+n)/(n-f);o[11]=-1;o[14]=2*f*n/(n-f);return o}
@@ -36,7 +36,7 @@ function create(cv,hooks={}){let gl=null,prog,loc,bufs=null,model=null,raf=0,M=n
   if(!gl.getProgramParameter(prog,gl.LINK_STATUS)){gl=null;return false}gl.useProgram(prog);
   loc={p:gl.getAttribLocation(prog,'p'),n:gl.getAttribLocation(prog,'n'),c:gl.getAttribLocation(prog,'c'),m:gl.getUniformLocation(prog,'m'),l:gl.getUniformLocation(prog,'l'),l2:gl.getUniformLocation(prog,'l2'),uf:gl.getUniformLocation(prog,'uf'),fc:gl.getUniformLocation(prog,'fc')};return true}
  function upload(g){const mk=d=>{const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,d,gl.STATIC_DRAW);return b};
-  if(bufs)for(const k of['P','N','C','L'])gl.deleteBuffer(bufs[k]);bufs={P:mk(g.P),N:mk(g.N),C:mk(g.C),L:mk(g.L),nt:g.P.length/3,nl:g.L.length/3}}
+  if(bufs)for(const k of['P','N','C','L','G'])if(bufs[k])gl.deleteBuffer(bufs[k]);bufs={P:mk(g.P),N:mk(g.N),C:mk(g.C),L:mk(g.L),nt:g.P.length/3,nl:g.L.length/3,G:g.G&&g.G.length?mk(g.G):null,ng:g.G?g.G.length/3:0}}
  function eye(){const ce=Math.cos(cam.el);return[cam.tx+cam.dist*ce*Math.sin(cam.az),cam.ty-cam.dist*ce*Math.cos(cam.az),cam.tz+cam.dist*Math.sin(cam.el)]}
  function draw(){raf=0;if(!gl||!bufs||!model)return;const dpr=Math.min(window.devicePixelRatio||1,2),w=Math.round(cv.clientWidth*dpr),h=Math.round(cv.clientHeight*dpr);if(!w||!h)return;if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}
   gl.viewport(0,0,w,h);gl.clearColor(0.09,0.10,0.115,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);
@@ -45,7 +45,7 @@ function create(cv,hooks={}){let gl=null,prog,loc,bufs=null,model=null,raf=0,M=n
   const ld=norm(sub(e,t));gl.uniform3fv(loc.l,norm([ld[0]*0.5+0.3,ld[1]*0.5-0.35,ld[2]*0.5+0.75]));gl.uniform3fv(loc.l2,norm([-0.5,0.6,-0.6]));
   const at=(l,b,n)=>{if(l<0)return;gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.enableVertexAttribArray(l);gl.vertexAttribPointer(l,n,gl.FLOAT,false,0,0)};
   gl.uniform1f(loc.uf,0);at(loc.p,bufs.P,3);at(loc.n,bufs.N,3);at(loc.c,bufs.C,3);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);gl.drawArrays(gl.TRIANGLES,0,bufs.nt);gl.disable(gl.POLYGON_OFFSET_FILL);
-  if(loc.n>=0)gl.disableVertexAttribArray(loc.n);if(loc.c>=0)gl.disableVertexAttribArray(loc.c);gl.uniform1f(loc.uf,1);gl.uniform3fv(loc.fc,model.edge||EDGE);at(loc.p,bufs.L,3);gl.drawArrays(gl.LINES,0,bufs.nl);if(hooks.draw)hooks.draw()}
+  if(loc.n>=0)gl.disableVertexAttribArray(loc.n);if(loc.c>=0)gl.disableVertexAttribArray(loc.c);gl.uniform1f(loc.uf,1);gl.uniform3fv(loc.fc,model.edge||EDGE);at(loc.p,bufs.L,3);gl.drawArrays(gl.LINES,0,bufs.nl);if(bufs.G){gl.uniform3fv(loc.fc,[0.2,0.23,0.27]);at(loc.p,bufs.G,3);gl.drawArrays(gl.LINES,0,bufs.ng)}if(hooks.draw)hooks.draw()}
  /* Raumpunkt → Bildpunkt (CSS-Pixel) bzw. Bildpunkt → Sehstrahl */
  function project(p){if(raf){cancelAnimationFrame(raf);draw()}if(!M)return null;const x=M[0]*p[0]+M[4]*p[1]+M[8]*p[2]+M[12],y=M[1]*p[0]+M[5]*p[1]+M[9]*p[2]+M[13],w=M[3]*p[0]+M[7]*p[1]+M[11]*p[2]+M[15];if(w<=1e-6)return null;return[(x/w+1)/2*cv.clientWidth,(1-y/w)/2*cv.clientHeight]}
  function ray(px,py){if(raf){cancelAnimationFrame(raf);draw()}const e=eye(),t=[cam.tx,cam.ty,cam.tz],f=norm(sub(t,e)),up=Math.abs(Math.cos(cam.el))<1e-3?[Math.sin(cam.az)*-Math.sign(cam.el),Math.cos(cam.az)*Math.sign(cam.el),0]:[0,0,1],r=norm(cross(f,up)),u=cross(r,f),tn=Math.tan(0.3),asp=cv.clientWidth/cv.clientHeight,nx=(px/cv.clientWidth*2-1)*tn*asp,ny=(1-py/cv.clientHeight*2)*tn;

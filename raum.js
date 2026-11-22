@@ -7,7 +7,7 @@ const A=window.__cad.kp,$=id=>document.getElementById(id),S=()=>window.__cad.S;
 const R=()=>{const s=S();if(!s.raum)s.raum={bodies:[],nid:1};return s.raum};
 const num=v=>Math.round(v*100)/100,de=v=>String(num(v)).replace('.',',');
 const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],mul=(a,k)=>[a[0]*k,a[1]*k,a[2]*k],dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
-let V=null,selId=null,showDims=true,drag=null,bound=false,mode='move',pull=null;const meshCache=new Map();
+let V=null,selId=null,showDims=true,drag=null,bound=false,pull=null,handles=[],srcOpen=false,listOpen=true;const meshCache=new Map();
 const body=id=>R().bodies.find(b=>b.id===id);
 const wOf=b=>cross(b.u,b.v);
 /* umschließender Quader im Raum: [x0,y0,z0,x1,y1,z1] */
@@ -30,11 +30,13 @@ function trisOf(b){const key=[b.kind,b.L,b.B,b.H,b.D2||0].join('|');if(meshCache
  else if(b.kind==='tor'){const r=b.H/2,Rm=Math.max(b.L/2-r,r),nu=40,nv=18,pt=(i,j)=>{const t=i/nu*TAU,ph=j/nv*TAU,n=[Math.cos(ph)*Math.cos(t),Math.cos(ph)*Math.sin(t),Math.sin(ph)];return[[cx+(Rm+r*Math.cos(ph))*Math.cos(t),cy+(Rm+r*Math.cos(ph))*Math.sin(t),r+r*Math.sin(ph)],n]};
   for(let i=0;i<nu;i++)for(let j=0;j<nv;j++)quad(pt(i,j),pt(i+1,j),pt(i+1,j+1),pt(i,j+1))}
  const out=new Float32Array(T);meshCache.set(key,out);return out}
-function model(){const r=R(),parts=r.bodies.map(b=>{const m=window.KORPUS.mat(b.mat||''),base={o:b.o,u:b.u,v:b.v,color:b.mat?m[2]:null,tint:b.id===selId?[1.12,0.86,0.8]:b.tint||[1,1,1]};
+function model(){const r=R(),parts=r.bodies.map(b=>{const m=window.KORPUS.mat(b.mat||''),base={o:b.o,u:b.u,v:b.v,color:b.mat?m[2]:null,tint:b.id===selId?[1.08,0.94,0.9]:b.tint||[1,1,1]};
   if(b.kind==='sph'||b.kind==='cone'||b.kind==='tor')return{...base,T:b.H,sections:[],tris:trisOf(b)};
   const poly=b.kind==='ext'?b.poly:b.kind==='cyl'?{outer:circle(b.L/2,b.B/2,b.L/2),holes:[]}:{outer:[[0,0],[b.L,0],[b.L,b.B],[0,b.B]],holes:[]},T=Math.max(b.H,0.3);
   return{...base,T,sections:[{z0:0,z1:T,polys:[poly]}]}}),bb=boxAll(r.bodies);
- return{parts,box:bb,size:Math.max(bb[3]-bb[0],bb[4]-bb[1],bb[5]-bb[2],100),T:0}}
+ const size=Math.max(bb[3]-bb[0],bb[4]-bb[1],bb[5]-bb[2],100),st=[10,50,100,250,500,1000].find(v=>(size*1.6)/v<=40)||1000,g=[],x0=Math.floor((bb[0]-size*0.3)/st)*st,x1=Math.ceil((bb[3]+size*0.3)/st)*st,y0=Math.floor((bb[1]-size*0.3)/st)*st,y1=Math.ceil((bb[4]+size*0.3)/st)*st;
+ for(let x=x0;x<=x1;x+=st)g.push(x,y0,-0.4,x,y1,-0.4);for(let y=y0;y<=y1;y+=st)g.push(x0,y,-0.4,x1,y,-0.4);
+ return{parts,grid:r.bodies.length?g:null,box:bb,size,T:0}}
 function show(keep){if(!V)return;V.setModel(model(),keep!==false);drawOver()}
 /* ----- Maße und Auswahlrahmen über dem 3D-Bild ----- */
 function drawOver(){const c=$('rmov'),cv=$('rm3d');if(!c||!V)return;const dpr=window.devicePixelRatio||1,w=cv.clientWidth,h=cv.clientHeight;if(c.width!==Math.round(w*dpr)||c.height!==Math.round(h*dpr)){c.width=Math.round(w*dpr);c.height=Math.round(h*dpr)}
@@ -51,7 +53,18 @@ function drawOver(){const c=$('rmov'),cv=$('rm3d');if(!c||!V)return;const dpr=wi
   for(const[a,c2]of[[[0,0,0],[1,0,0]],[[0,1,0],[1,1,0]],[[0,0,1],[1,0,1]],[[0,1,1],[1,1,1]],[[0,0,0],[0,1,0]],[[1,0,0],[1,1,0]],[[0,0,1],[0,1,1]],[[1,0,1],[1,1,1]],[[0,0,0],[0,0,1]],[[1,0,0],[1,0,1]],[[0,1,0],[0,1,1]],[[1,1,0],[1,1,1]]])seg(P(...a),P(...c2));g.setLineDash([])}
  if(pull&&body(pull.id)){const m=box(body(pull.id)),i=pull.i,c=pull.sign>0?m[i+3]:m[i],a1=(i+1)%3,a2=(i+2)%3,P=(s,t)=>{const q=[0,0,0];q[i]=c;q[a1]=s?m[a1+3]:m[a1];q[a2]=t?m[a2+3]:m[a2];return V.project(q)},qs=[P(0,0),P(1,0),P(1,1),P(0,1)];
   if(qs.every(Boolean)){g.beginPath();qs.forEach((q,k)=>k?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.closePath();g.fillStyle='rgba(229,72,45,.32)';g.fill();g.strokeStyle='#e5482d';g.lineWidth=2;g.stroke()}}
- if(showDims){dimBox(all,'#5ad1e8',sz*0.07);if(b&&r.bodies.length>1)dimBox(box(b),'#ffb020',sz*0.025)}}
+ if(showDims){dimBox(all,'#5ad1e8',sz*0.07);if(b&&r.bodies.length>1)dimBox(box(b),'#ffb020',sz*0.025)}
+ /* Ziehpfeile an den Flächen des gewählten Körpers */
+ handles=[];if(b){const m=box(b),f=V.ray(w/2,h/2).f;
+  for(let i=0;i<3;i++)for(const sg of[1,-1]){if(i===2&&sg<0&&(b.kind==='plane'||m[2]<=0.5))continue;/* Unterseite auf dem Boden: kein Pfeil nach unten */if(b.kind==='ext'&&i!==2)continue;const n=[0,0,0];n[i]=sg;if(dot(n,f)>0.35)continue;
+   const c=[(m[0]+m[3])/2,(m[1]+m[4])/2,(m[2]+m[5])/2];c[i]=sg>0?m[i+3]:m[i];const p0=V.project(c),p1=V.project(add(c,mul(n,sz*0.05)));if(!p0||!p1)continue;
+   let dx=p1[0]-p0[0],dy=p1[1]-p0[1];const l=Math.hypot(dx,dy);if(l<1)continue;dx/=l;dy/=l;const tip=[p0[0]+dx*38,p0[1]+dy*38],act=pull&&pull.i===i&&pull.sign===sg;
+   g.strokeStyle=act?'#ff8a70':'#e5482d';g.lineWidth=2.4;g.beginPath();g.moveTo(p0[0],p0[1]);g.lineTo(tip[0],tip[1]);g.stroke();
+   g.beginPath();g.arc(tip[0],tip[1],9,0,Math.PI*2);g.fillStyle=act?'#e5482d':'#fff';g.fill();g.lineWidth=2;g.strokeStyle='#e5482d';g.stroke();
+   g.beginPath();g.moveTo(tip[0]+dx*4.5,tip[1]+dy*4.5);g.lineTo(tip[0]-dx*2.5-dy*4,tip[1]-dy*2.5+dx*4);g.lineTo(tip[0]-dx*2.5+dy*4,tip[1]-dy*2.5-dx*4);g.closePath();g.fillStyle=act?'#fff':'#e5482d';g.fill();
+   handles.push({i,sign:sg,c,tip})}}
+ /* Maßfeld an der gezogenen Fläche */
+ const fl=$('rmfloat');if(fl){const hd=pull&&handles.find(q=>q.i===pull.i&&q.sign===pull.sign);if(hd){fl.hidden=false;const W=fl.offsetWidth,H=fl.offsetHeight;fl.style.left=Math.max(4,Math.min(w-W-4,hd.tip[0]+16))+'px';fl.style.top=Math.max(4,Math.min(h-H-4,hd.tip[1]-H/2))+'px'}else fl.hidden=true}}
 /* ----- Auswählen und Ziehen ----- */
 function hitBody(px,py){const ry=V.ray(px,py);let best=null,bt=Infinity,bf=null;for(const b of R().bodies){const m=box(b);let t0=-Infinity,t1=Infinity,ok=true,face=null;
   for(let i=0;i<3;i++){const lo=m[i]-(m[i+3]-m[i]<0.5?0.5:0),hi=m[i+3]+(m[i+3]-m[i]<0.5?0.5:0);if(Math.abs(ry.d[i])<1e-9){if(ry.o[i]<lo||ry.o[i]>hi){ok=false;break}}else{let a=(lo-ry.o[i])/ry.d[i],c=(hi-ry.o[i])/ry.d[i],sg=-1;if(a>c){[a,c]=[c,a];sg=1}if(a>t0){t0=a;face={i,sign:sg}}t1=Math.min(t1,c)}}
@@ -68,37 +81,48 @@ function resize(b,face,d){const ax=axisOf(b,face.i),grow=(k,a,dd,minEnd)=>{const
  const nd=Math.max(2,num(b.L+2*d)),real=nd-b.L;b.L=b.B=nd;b.o=sub(sub(b.o,mul(b.u,real/2)),mul(b.v,real/2)).map(num);if(b.kind==='sph'){b.H=nd;b.o=sub(b.o,mul(w,real/2)).map(num)}if(b.kind==='tor')b.H=Math.min(b.H,num(nd/2));if(b.kind==='cone')b.D2=Math.min(b.D2||0,nd)}
 /* Maß des Körpers in Zugrichtung */
 const sizeAlong=(b,i)=>{const m=box(b);return num(m[i+3]-m[i])};
-function setPull(b,face){pull={id:b.id,i:face.i,sign:face.sign};const el=$('rmpv');$('rmpull').hidden=false;el.value=de(sizeAlong(b,face.i));if(matchMedia('(pointer:fine)').matches){el.focus();el.select()}drawOver()}
-function clearPull(){pull=null;if($('rmpull'))$('rmpull').hidden=true}
-function applyPull(txt){const b=pull&&body(pull.id);if(!b)return;const t=txt.trim().replace(',','.'),rel=/^[+-]/.test(t),v=parseFloat(t);if(!isFinite(v)){msg('Bitte eine Zahl eingeben, z. B. 120 (neues Maß) oder +50 (um 50 weiter ziehen).');return}
- const cur=sizeAlong(b,pull.i),round=['sph','cyl','cone','tor'].includes(b.kind)&&axisOf(b,pull.i).k!=='H'||b.kind==='sph'||(b.kind==='tor'&&axisOf(b,pull.i).k==='H'),d=rel?v:(v-cur)/(round?2:1);let err;A.commit(()=>{err=resize(b,pull,d)});if(err)msg(err);refresh(true);$('rmpv').value=de(sizeAlong(b,pull.i));$('rmpv').select()}
+const isRound=(b,i)=>b.kind==='sph'||(['cyl','cone'].includes(b.kind)&&axisOf(b,i).k!=='H')||b.kind==='tor';
+function setPull(b,face){pull={id:b.id,i:face.i,sign:face.sign};$('rmflab').textContent=isRound(b,face.i)?(b.kind==='tor'&&axisOf(b,face.i).k==='H'?'Rohr-Ø':'Ø'):['Breite','Tiefe','Höhe'][face.i];$('rmfv').value=de(sizeAlong(b,face.i));drawOver()}
+function focusPull(){const el=$('rmfv');if(pull&&matchMedia('(pointer:fine)').matches){el.focus();el.select()}}
+function clearPull(){pull=null;const f=$('rmfloat');if(f)f.hidden=true}
+function applyPull(txt){const b=pull&&body(pull.id);if(!b)return;const t=txt.trim().replace(',','.'),rel=/^[+-]/.test(t),v=parseFloat(t);if(!isFinite(v)){msg('Bitte eine Zahl eingeben, z. B. 120 (neues Maß) oder +50 (um 50 weiter).');return}
+ const cur=sizeAlong(b,pull.i),half=isRound(b,pull.i),d=rel?v:(v-cur)/(half?2:1);let err;A.commit(()=>{err=resize(b,pull,d)});if(err)msg(err);refresh(true);$('rmfv').value=de(sizeAlong(b,pull.i));focusPull()}
 const planeHit=(ry,p0,n)=>{const dn=dot(ry.d,n);if(Math.abs(dn)<1e-6)return null;const t=dot(sub(p0,ry.o),n)/dn;return t>0?add(ry.o,mul(ry.d,t)):null};
 /* Einrasten: Flächen an Flächen anderer Körper (bündig oder anstoßend) und an den Boden */
-function snap(b,axes){const m=box(b),tol=V.cam.dist*0.012,d=[0,0,0];for(const i of axes){let best=null;const cand=[];for(const o of R().bodies){if(o===b)continue;const q=box(o);cand.push(q[i],q[i+3])}if(i===2)cand.push(0);
+/* Einrast-Abstand: etwa 10 Bildpunkte, egal wie weit gezoomt ist */
+const tolPx=px=>px*2*V.cam.dist*Math.tan(0.3)/Math.max(200,$('rm3d').clientHeight);
+/* nur Körper in der Nähe zählen: in den beiden anderen Richtungen überlappend oder höchstens gap entfernt */
+const near=(m,q,i,gap)=>[0,1,2].every(j=>j===i||(q[j]<=m[j+3]+gap&&q[j+3]>=m[j]-gap));
+function snap(b,axes){const m=box(b),tol=tolPx(10),d=[0,0,0];for(const i of axes){let best=null;const cand=[];for(const o of R().bodies){if(o===b)continue;const q=box(o);if(near(m,q,i,tolPx(40)))cand.push(q[i],q[i+3])}if(i===2)cand.push(0);
   for(const c of cand)for(const mine of[m[i],m[i+3]]){const dd=c-mine;if(Math.abs(dd)<tol&&(best===null||Math.abs(dd)<Math.abs(best)))best=dd}if(best!==null)d[i]=best}return d}
 function pos(e){const r=$('rm3d').getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
+function hitHandle(x,y){const r=matchMedia('(pointer:coarse)').matches?22:14;return handles.find(q=>Math.hypot(q.tip[0]-x,q.tip[1]-y)<=r)||null}
 const hooks={
- down(e){const[x,y]=pos(e),h=hitBody(x,y);if(!h){if(selId!=null||pull){selId=null;clearPull();refresh(true)}return false}
-  if(mode==='pull'){selId=h.b.id;setPull(h.b,h.face);refresh(true);const n=[0,0,0];n[h.face.i]=h.face.sign;drag={pull:true,b:h.b,n,p0:h.p,t0:lineT(h.ry,h.p,n),orig:JSON.stringify(h.b),moved:false,sx:x,sy:y};return true}
-  const was=selId===h.b.id;selId=h.b.id;refresh(true);if(!was)return true;/* erster Klick wählt, zweites Greifen zieht */
+ down(e){const[x,y]=pos(e),hd=hitHandle(x,y);
+  if(hd){const b=body(selId);setPull(b,hd);const n=[0,0,0];n[hd.i]=hd.sign;drag={pull:true,b,n,p0:hd.c,t0:lineT(V.ray(x,y),hd.c,n),orig:JSON.stringify(b),moved:false,sx:x,sy:y};return true}
+  const h=hitBody(x,y);if(!h){if(selId!=null||pull){selId=null;clearPull();refresh(true)}return false}
+  if(selId!==h.b.id){selId=h.b.id;clearPull();refresh(true)}else if(pull){clearPull();drawOver()}
   drag={b:h.b,p0:h.p,o0:[...h.b.o],orig:JSON.stringify(h.b),moved:false,sx:x,sy:y};return true},
  move(e){if(!drag)return;const[x,y]=pos(e);if(!drag.moved&&Math.hypot(x-drag.sx,y-drag.sy)<4)return;drag.moved=true;const ry=V.ray(x,y),b=drag.b;
   if(drag.pull){const t=lineT(ry,drag.p0,drag.n);if(t==null)return;let d=Math.round(t-drag.t0);Object.assign(b,JSON.parse(drag.orig));
-   /* an Flächen anderer Körper einrasten */const m=box(b),i=pull.i,c0=pull.sign>0?m[i+3]:m[i],tol=V.cam.dist*0.012;let best=null;for(const o of R().bodies){if(o.id===b.id)continue;const q=box(o);for(const c of[q[i],q[i+3]]){const dd=(c-c0)*pull.sign-d;if(Math.abs(dd)<tol&&(best===null||Math.abs(dd)<Math.abs(best)))best=dd}}if(best!==null)d+=best;
-   const err=resize(b,pull,d);if(err){msg(err);return}show();fillSel();$('rmpv').value=de(sizeAlong(b,i));return}
-  let d;
+   const m=box(b),i=pull.i,c0=pull.sign>0?m[i+3]:m[i],tol=tolPx(10);let best=null;for(const o of R().bodies){if(o.id===b.id)continue;const q=box(o);if(!near(m,q,i,tolPx(40)))continue;for(const c of[q[i],q[i+3]]){const dd=(c-c0)*pull.sign-d;if(Math.abs(dd)<tol&&(best===null||Math.abs(dd)<Math.abs(best)))best=dd}}if(best!==null)d+=best;
+   const err=resize(b,pull,d);if(err){msg(err);return}show();fillSel();$('rmfv').value=de(sizeAlong(b,i));return}
+  $('rm3d').style.cursor='grabbing';let d;
   if(e.shiftKey){const n=[ry.f[0],ry.f[1],0],p=planeHit(ry,drag.p0,Math.hypot(n[0],n[1])<1e-6?[0,1,0]:n);if(!p)return;d=[0,0,p[2]-drag.p0[2]]}
   else{const p=planeHit(ry,drag.p0,[0,0,1]);if(!p)return;d=[p[0]-drag.p0[0],p[1]-drag.p0[1],0]}
   b.o=add(drag.o0,d).map(v=>Math.round(v));moveBy(b,snap(b,e.shiftKey?[2]:[0,1]));show();fillSel()},
- up(){if(!drag)return;const d=drag;drag=null;if(d.moved){const neu=JSON.stringify(d.b);for(const k of Object.keys(d.b))delete d.b[k];Object.assign(d.b,JSON.parse(d.orig));A.commit(()=>{for(const k of Object.keys(d.b))delete d.b[k];Object.assign(d.b,JSON.parse(neu))})}refresh(true);if(d.pull&&pull){$('rmpv').value=de(sizeAlong(d.b,pull.i));if(matchMedia('(pointer:fine)').matches)$('rmpv').select()}},
+ up(){if(!drag)return;const d=drag;drag=null;$('rm3d').style.cursor='';if(d.moved){const neu=JSON.stringify(d.b);for(const k of Object.keys(d.b))delete d.b[k];Object.assign(d.b,JSON.parse(d.orig));A.commit(()=>{for(const k of Object.keys(d.b))delete d.b[k];Object.assign(d.b,JSON.parse(neu))})}
+  refresh(true);if(d.pull&&pull){$('rmfv').value=de(sizeAlong(d.b,pull.i));focusPull()}},
  draw(){drawOver()}};
 /* nächster Punkt einer Geraden (p0 + n·t) zum Sehstrahl */
 function lineT(ry,p0,n){const b=dot(ry.d,n),den=1-b*b;if(den<1e-6)return null;const w0=sub(p0,ry.o);return(b*dot(ry.d,w0)-dot(n,w0))/den}
-function setMode(m){mode=m;if(m!=='pull')clearPull();document.querySelectorAll('[data-rmm]').forEach(b=>b.classList.toggle('on',b.dataset.rmm===m));$('rm3d').style.cursor=m==='pull'?'crosshair':'grab';$('rmhint').textContent=m==='pull'?'Fläche anklicken und ziehen = Körper in diese Richtung größer oder kleiner · oben das Maß eintippen und Enter (120 = neues Maß, +50 = um 50 weiter) · neben die Körper ziehen = Ansicht drehen':'Körper anklicken = wählen · gewählten Körper ziehen = verschieben (rastet ein) · Shift + ziehen = hoch/runter · neben die Körper ziehen = Ansicht drehen · Mausrad = Zoom';drawOver()}
+function hint(){const b=body(selId);$('rmhint').textContent=!R().bodies.length?'':b?'Körper ziehen = verschieben (rastet ein) · Shift + ziehen = anheben · Pfeil ziehen oder anklicken = Größe ändern und Maß eintippen · Entf = löschen · Esc = abwählen':'Körper anklicken = wählen · leere Fläche ziehen = Ansicht drehen · rechte Maustaste ziehen = Ansicht schieben · Mausrad = Zoom';
+ const ctx=$('rmctx');ctx.hidden=!b;if(b)$('rmctxn').textContent=b.name;$('rmempty').hidden=R().bodies.length>0}
 /* ----- Körper anlegen ----- */
 function place(b){/* neben das Vorhandene stellen */const others=R().bodies.filter(x=>x!==b);if(others.length){const m=boxAll(others),q=box(b);moveBy(b,[m[3]+50-q[0],m[1]-q[1],-q[2]])}}
 const PRIM={box:{name:'Quader',L:600,B:400,H:19},sph:{name:'Kugel',L:200,B:200,H:200},cyl:{name:'Zylinder',L:200,B:200,H:300},cone:{name:'Kegel',L:200,B:200,H:300,D2:0},tor:{name:'Torus',L:300,B:300,H:60},plane:{name:'Ebene',L:1000,B:1000,H:0}};
-function addPrim(kind){if(!PRIM[kind])return;A.commit(()=>{const b=newBody({kind,...PRIM[kind]});place(b);selId=b.id});clearPull();refresh();V&&R().bodies.length===1&&V.fit()}
+function addPrim(kind){if(!PRIM[kind])return;let b;A.commit(()=>{b=newBody({kind,...PRIM[kind]});place(b);selId=b.id});clearPull();refresh();ensureVisible(b)}
+function ensureVisible(b){if(!V||!b)return;const m=box(b),cv=$('rm3d'),ok=[[m[0],m[1],m[2]],[m[3],m[4],m[5]]].every(q=>{const p=V.project(q);return p&&p[0]>20&&p[1]>60&&p[0]<cv.clientWidth-20&&p[1]<cv.clientHeight-40});if(R().bodies.length===1||!ok){V.fit();drawOver()}}
 const addBox=()=>addPrim('box');
 function addFromDrawing(){const c=A.contours(),H=val('rn_X')||19;if(!c.list.length){msg('In der Zeichnung ist keine geschlossene Kontur. Erst im Zeichenprogramm eine zeichnen (z. B. Rechteck oder Kreis).');return}
  A.commit(()=>{let last=null;for(const q of c.list){last=newBody({name:'Formteil',kind:'ext',L:q.w,B:q.h,H,poly:{outer:q.outer,holes:q.holes},o:[num(q.at[0]),num(q.at[1]),0]})}
@@ -112,25 +136,25 @@ function msg(t){$('rmmsg').textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()
 function side(){const r=R(),inp=(id,lab,v)=>`<div class="pr"><label for="${id}">${lab}</label><input id="${id}" type="text" inputmode="decimal" value="${de(v)}"></div>`;
  const keep={};for(const id of['rn_X']){const el=$(id);if(el)keep[id]=el.value}
  const ICO={box:'M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8',sph:'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M3 12c0 2 4 3.5 9 3.5s9-1.5 9-3.5',cyl:'M5 6c0-1.7 3.1-3 7-3s7 1.3 7 3-3.1 3-7 3-7-1.3-7-3zM5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6',cone:'M12 3L5 18c0 1.7 3.1 3 7 3s7-1.3 7-3z',tor:'M12 6c5 0 9 2.7 9 6s-4 6-9 6-9-2.7-9-6 4-6 9-6zM12 10.5c1.9 0 3.5.7 3.5 1.5s-1.6 1.5-3.5 1.5-3.5-.7-3.5-1.5 1.6-1.5 3.5-1.5',plane:'M3 16l6-8h12l-6 8z'};
- $('rmside').innerHTML=`<details class="kpsec" open><summary><b>Neuer Körper</b><span></span></summary><div class="kpsecb">
-  <div class="rmprim">${Object.keys(PRIM).map(k=>`<button data-prim="${k}" title="${PRIM[k].name} anlegen"><svg viewBox="0 0 24 24"><path d="${ICO[k]}"/></svg>${PRIM[k].name}</button>`).join('')}</div><p class="muted kpnote">Anklicken legt den Körper an. Maße danach unter „Gewählt“ ändern oder mit „Fläche ziehen“.</p>
-  <div class="rmsep"></div>${inp('rn_X','Höhe beim Hochziehen',19)}<button class="btn" id="rn_ext" style="width:100%">+ Kontur aus der Zeichnung hochziehen</button><p class="muted kpnote">Nimmt die im Zeichenprogramm gewählten geschlossenen Konturen, sonst alle. Löcher bleiben erhalten.</p>
-  <button class="btn" id="rn_kp" style="width:100%">+ Schrank aus dem Korpusplaner holen</button></div></details>
+ $('rmside').innerHTML=`<h2 class="kpall" style="margin-top:2px">Körper hinzufügen</h2>
+  <div class="rmprim">${Object.keys(PRIM).map(k=>`<button data-prim="${k}" title="${PRIM[k].name} anlegen"><svg viewBox="0 0 24 24"><path d="${ICO[k]}"/></svg>${PRIM[k].name}</button>`).join('')}</div>
+  <details class="kpsec" id="rmsrc" style="margin-top:8px" ${srcOpen?'open':''}><summary><b>Aus Zeichnung oder Korpusplaner</b><span>Kontur hochziehen · Schrank holen</span></summary><div class="kpsecb">
+  ${inp('rn_X','Höhe beim Hochziehen',19)}<button class="btn" id="rn_ext" style="width:100%">Kontur aus der Zeichnung hochziehen</button><p class="muted kpnote">Nimmt die im Zeichenprogramm gewählten geschlossenen Konturen, sonst alle. Löcher bleiben erhalten.</p>
+  <button class="btn" id="rn_kp" style="width:100%">Schrank aus dem Korpusplaner holen</button></div></details>
  <div id="rmsel"></div>
- <h2 class="kpall">Körper (${r.bodies.length})</h2><div class="rmlist">${r.bodies.map(b=>`<button class="rmit ${b.id===selId?'on':''}" data-rmid="${b.id}"><b>${A.esc(b.name)}</b><span>${dimTxt(b)}</span></button>`).join('')||'<p class="muted">Noch nichts da. Oben einen Quader anlegen oder eine Kontur hochziehen.</p>'}</div>`;
+ ${r.bodies.length?`<details class="kpsec" id="rmlst" ${listOpen?'open':''}><summary><b>Alle Körper (${r.bodies.length})</b><span>anklicken = wählen</span></summary><div class="kpsecb rmlist">${r.bodies.map(b=>`<button class="rmit ${b.id===selId?'on':''}" data-rmid="${b.id}"><b>${A.esc(b.name)}</b><span>${dimTxt(b)}</span></button>`).join('')}</div></details>`:''}`;
+ $('rmsrc').addEventListener('toggle',e=>{srcOpen=e.target.open});if($('rmlst'))$('rmlst').addEventListener('toggle',e=>{listOpen=e.target.open});
  for(const id in keep)if($(id))$(id).value=keep[id];
  $('rmside').querySelectorAll('[data-prim]').forEach(bt=>bt.onclick=()=>addPrim(bt.dataset.prim));$('rn_ext').onclick=addFromDrawing;$('rn_kp').onclick=addFromKorpus;
  $('rmside').querySelectorAll('[data-rmid]').forEach(bt=>bt.onclick=()=>{selId=+bt.dataset.rmid;refresh(true)});fillSel()}
 const dims3=b=>[b.L,b.B,b.H].slice().sort((x,y)=>y-x),dimTxt=b=>b.kind==='sph'?'Ø '+de(b.L):b.kind==='cyl'||b.kind==='cone'?'Ø '+de(b.L)+' × '+de(b.H):b.kind==='tor'?'Ø '+de(b.L)+' · Rohr Ø '+de(b.H):b.kind==='plane'?de(b.L)+' × '+de(b.B):dims3(b).map(de).join(' × ');
 function fillSel(){const el=$('rmsel'),b=body(selId);if(!el)return;if(!b){el.innerHTML='';return}if(el.contains(document.activeElement)&&document.activeElement.tagName==='INPUT'&&drag)return;
  const m=box(b),inp=(id,lab,v,ro)=>`<div class="pr"><label for="${id}">${lab}</label><input id="${id}" type="text" inputmode="decimal" value="${typeof v==='number'?de(v):A.esc(v)}" ${ro?'readonly':''}></div>`,MATS=window.KORPUS.MATS;
- el.innerHTML=`<div class="kpsel"><b>Gewählt</b>
+ el.innerHTML=`<div class="kpsel"><b>Gewählter Körper</b>
   <div class="pr"><label for="rs_name">Name</label><input id="rs_name" type="text" value="${A.esc(b.name)}" style="text-align:left"></div>
   ${{box:()=>inp('rs_L','Länge',b.L)+inp('rs_B','Breite',b.B)+inp('rs_H','Höhe / Stärke',b.H),plane:()=>inp('rs_L','Länge',b.L)+inp('rs_B','Breite',b.B),sph:()=>inp('rs_D','Durchmesser',b.L),cyl:()=>inp('rs_D','Durchmesser',b.L)+inp('rs_H','Höhe',b.H),cone:()=>inp('rs_D','Durchmesser unten',b.L)+inp('rs_D2','Durchmesser oben',b.D2||0)+inp('rs_H','Höhe',b.H),tor:()=>inp('rs_D','Außendurchmesser',b.L)+inp('rs_H','Rohrdurchmesser',b.H),ext:()=>inp('rs_LB','Grundfläche',de(b.L)+' × '+de(b.B),true)+inp('rs_H','Höhe',b.H)}[b.kind]()}
   <div class="rm3"><label>Lage (linke vordere untere Ecke)</label><input id="rs_x" type="text" inputmode="decimal" value="${de(m[0])}" aria-label="X"><input id="rs_y" type="text" inputmode="decimal" value="${de(m[1])}" aria-label="Y"><input id="rs_z" type="text" inputmode="decimal" value="${de(m[2])}" aria-label="Z"><span>X</span><span>Y nach hinten</span><span>Z Höhe</span></div>
-  <div class="rmrow"><span>Drehen 90°</span><button class="btn" data-rot="2" title="um die senkrechte Achse">liegend</button><button class="btn" data-rot="0" title="nach hinten kippen">kippen</button><button class="btn" data-rot="1" title="seitlich kippen">seitlich</button></div>
-  <div class="pr"><label for="rs_mat">Material</label><select id="rs_mat">${MATS.map(q=>`<option value="${q[0]}" ${(b.mat||'')===q[0]?'selected':''}>${q[0]?q[0]+' '+q[1]:q[1]}</option>`).join('')}</select></div>
-  <div class="rmrow"><button class="btn" id="rs_copy">Kopieren</button><button class="btn" id="rs_floor" title="auf den Boden stellen">Auf den Boden</button><button class="btn" id="rs_del">Löschen</button></div></div>`;
+  <div class="pr"><label for="rs_mat">Material</label><select id="rs_mat">${MATS.map(q=>`<option value="${q[0]}" ${(b.mat||'')===q[0]?'selected':''}>${q[0]?q[0]+' '+q[1]:q[1]}</option>`).join('')}</select></div></div>`;
  const on=(id,fn)=>{const x=$(id);if(!x)return;x.addEventListener('keydown',e=>{if(e.key==='Enter')x.blur()});x.addEventListener('change',()=>{fn(x);refresh(true)})},nv=x=>{const v=parseFloat(x.value.replace(',','.'));return isFinite(v)?v:null};
  on('rs_name',x=>{const t=x.value.trim();if(t)A.commit(()=>{b.name=t.slice(0,60)})});
  for(const[id,f]of[['rs_L','L'],['rs_B','B'],['rs_H','H']])on(id,x=>{const v=nv(x);if(v>0)A.commit(()=>{const c0=box(b);b[f]=num(Math.min(v,10000));const n=box(b);moveBy(b,[c0[0]-n[0],c0[1]-n[1],c0[2]-n[2]])})});
@@ -138,11 +162,14 @@ function fillSel(){const el=$('rmsel'),b=body(selId);if(!el)return;if(!b){el.inn
  on('rs_D',x=>{const v=nv(x);if(v>0)A.commit(()=>{const c0=box(b);b.L=b.B=num(Math.min(v,10000));if(b.kind==='sph')b.H=b.L;if(b.kind==='tor')b.H=Math.min(b.H,num(b.L/2));if(b.kind==='cone')b.D2=Math.min(b.D2||0,b.L);const n=box(b);moveBy(b,[c0[0]-n[0],c0[1]-n[1],c0[2]-n[2]])})});
  on('rs_D2',x=>{const v=nv(x);if(v!=null&&v>=0)A.commit(()=>{b.D2=num(Math.min(v,b.L))})});
  on('rs_mat',x=>A.commit(()=>{b.mat=x.value}));
- el.querySelectorAll('[data-rot]').forEach(bt=>bt.onclick=()=>{A.commit(()=>rotate(b,+bt.dataset.rot));refresh(true)});
- $('rs_copy').onclick=()=>{A.commit(()=>{const n=newBody(JSON.parse(JSON.stringify({...b,id:undefined})));n.id=R().nid-1;const m2=box(b);moveBy(n,[m2[3]-m2[0]+50,0,0]);selId=n.id});refresh()};
- $('rs_floor').onclick=()=>{A.commit(()=>moveBy(b,[0,0,-box(b)[2]]));refresh(true)};$('rs_del').onclick=removeSel}
+}
+/* Aktionen am gewählten Körper (Leiste im 3D-Bild) */
+function ctxAct(a){const b=body(selId);if(!b)return;if(a==='del'){removeSel();return}
+ if(a==='copy'){let n;A.commit(()=>{n=newBody(JSON.parse(JSON.stringify({...b,id:undefined})));n.id=R().nid-1;const m2=box(b);moveBy(n,[m2[3]-m2[0]+50,0,0]);selId=n.id});clearPull();refresh();ensureVisible(n);return}
+ if(a==='floor'){A.commit(()=>moveBy(b,[0,0,-box(b)[2]]));refresh(true);return}
+ const ax={rot2:2,rot0:0,rot1:1}[a];if(ax!=null){clearPull();A.commit(()=>rotate(b,ax));refresh(true)}}
 function removeSel(){const b=body(selId);if(!b)return;clearPull();A.commit(()=>{const r=R();r.bodies=r.bodies.filter(x=>x!==b)});selId=null;refresh()}
-function refresh(light){const r=R();if(selId!=null&&!body(selId))selId=null;if(pull&&(!body(pull.id)||pull.id!==selId))clearPull();if(light){document.querySelectorAll('#rmside [data-rmid]').forEach(bt=>bt.classList.toggle('on',+bt.dataset.rmid===selId));fillSel()}else side();show();
+function refresh(light){const r=R();if(selId!=null&&!body(selId))selId=null;if(pull&&(!body(pull.id)||pull.id!==selId))clearPull();if(light){document.querySelectorAll('#rmside [data-rmid]').forEach(bt=>bt.classList.toggle('on',+bt.dataset.rmid===selId));fillSel()}else side();show();hint();
  const m=boxAll(r.bodies);$('rminfo').textContent=r.bodies.length?`${r.bodies.length} Körper · gesamt ${de(m[3]-m[0])} × ${de(m[4]-m[1])} × ${de(m[5]-m[2])} mm`:'leer'}
 /* ----- Stückliste, Zuschnitt, Bild ----- */
 function list(){const m=new Map();for(const b of R().bodies){const d=dims3(b),key=[b.name,b.kind,d.join('x'),b.D2||0,b.mat||'',b.rod?1:0].join('|');if(!m.has(key))m.set(key,{b,d,n:0});m.get(key).n++}return[...m.values()]}
@@ -158,18 +185,21 @@ const isOpen=()=>$('rm').classList.contains('open');
 function open(){A.cancel();R();if(window.KORPUS&&window.KORPUS.isOpen())window.KORPUS.close();$('rm').classList.add('open');
  if(!bound){bound=true;V=window.CAD3D.create($('rm3d'),hooks);
   $('rm').addEventListener('click',e=>{const b=e.target.closest('[data-rm]');if(!b)return;const a=b.dataset.rm;if(a==='close')close();else if(a==='list')openList();else if(a==='pic')savePic();else if(a==='print')printAll();else if(a==='undo'){A.undo();refresh()}else if(a==='fit')V.fit();else V.view(a)});
-  $('rm').addEventListener('click',e=>{const m=e.target.closest('[data-rmm]');if(m)setMode(m.dataset.rmm)});
-  $('rmpv').addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'){e.preventDefault();applyPull($('rmpv').value)}else if(e.key==='Escape'){clearPull();drawOver();$('rmpv').blur()}});
+  $('rmctx').addEventListener('click',e=>{const b=e.target.closest('[data-ctx]');if(b)ctxAct(b.dataset.ctx)});
+  $('rmfv').addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'){e.preventDefault();applyPull($('rmfv').value)}else if(e.key==='Escape'){clearPull();drawOver();$('rmfv').blur()}});
+  $('rmfok').onclick=()=>applyPull($('rmfv').value);
+  $('rmempty').addEventListener('click',e=>{const b=e.target.closest('[data-prim]');if(b)addPrim(b.dataset.prim)});
+  $('rm3d').addEventListener('pointermove',e=>{if(drag||e.buttons)return;const[x,y]=pos(e);$('rm3d').style.cursor=hitHandle(x,y)?'pointer':(()=>{const h=hitBody(x,y);return h?(h.b.id===selId?'move':'pointer'):'grab'})()});
   $('rmdims').addEventListener('change',e=>{showDims=e.target.checked;drawOver()});
   $('dRml').addEventListener('click',e=>{if(e.target.closest('[data-rml="print"]'))printAll()});
   new ResizeObserver(()=>drawOver()).observe($('rm3d'))}
- selId=null;clearPull();setMode('move');side();V.setModel(model(),false);refresh(true);if(!V.ok)msg('Dieser Browser kann leider kein 3D anzeigen.')}
+ selId=null;clearPull();side();V.setModel(model(),false);refresh(true);if(!V.ok)msg('Dieser Browser kann leider kein 3D anzeigen.')}
 function close(){$('rm').classList.remove('open');$('dRml').classList.remove('open')}
 function key(e){const t=e.target,inField=t&&(t.tagName==='INPUT'||t.tagName==='SELECT'||t.tagName==='TEXTAREA');
- if(e.key==='Escape'){e.preventDefault();if($('dRml').classList.contains('open'))$('dRml').classList.remove('open');else if(pull){clearPull();drawOver()}else if(mode==='pull'){setMode('move')}else if(selId!=null){selId=null;refresh(true)}else close();return}
+ if(e.key==='Escape'){e.preventDefault();if($('dRml').classList.contains('open'))$('dRml').classList.remove('open');else if(pull){clearPull();drawOver()}else if(selId!=null){selId=null;refresh(true)}else close();return}
  if(inField)return;
- if(e.ctrlKey||e.metaKey){const k=e.key.toLowerCase();if(k==='z'){e.preventDefault();e.shiftKey?A.redo():A.undo();refresh()}else if(k==='y'){e.preventDefault();A.redo();refresh()}return}
+ if(e.ctrlKey||e.metaKey){const k=e.key.toLowerCase();if(k==='z'){e.preventDefault();e.shiftKey?A.redo():A.undo();refresh()}else if(k==='y'){e.preventDefault();A.redo();refresh()}else if(k==='d'&&selId!=null){e.preventDefault();ctxAct('copy')}return}
  const b=body(selId);if(!b)return;
  if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();removeSel();return}
  const st=e.shiftKey?10:1,mv={ArrowLeft:[-st,0,0],ArrowRight:[st,0,0],ArrowUp:[0,st,0],ArrowDown:[0,-st,0],PageUp:[0,0,st],PageDown:[0,0,-st]}[e.key];if(mv){e.preventDefault();A.commit(()=>moveBy(b,mv));refresh(true)}}
-return{addPrim,setMode,applyPull,resize,get pull(){return pull},open,close,isOpen,key,refresh,list,nest,box,get state(){return R()},get sel(){return selId},select:id=>{selId=id;refresh(true)},addBox,addFromDrawing,addFromKorpus,rotate:(id,ax)=>{A.commit(()=>rotate(body(id),ax));refresh(true)},get viewer(){return V},hooks}})();
+return{addPrim,applyPull,resize,ctxAct,get handles(){return handles},get pull(){return pull},open,close,isOpen,key,refresh,list,nest,box,get state(){return R()},get sel(){return selId},select:id=>{selId=id;refresh(true)},addBox,addFromDrawing,addFromKorpus,rotate:(id,ax)=>{A.commit(()=>rotate(body(id),ax));refresh(true)},get viewer(){return V},hooks}})();

@@ -10,9 +10,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Origin CAD">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.webmanifest?v=21">
-<link rel="icon" href="icon.svg?v=21" type="image/svg+xml">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=21">
+<link rel="manifest" href="manifest.webmanifest?v=23">
+<link rel="icon" href="icon.svg?v=23" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=23">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -131,8 +131,12 @@ button,input,select{font:inherit;color:inherit}
 /* 3D-Modus */
 .rmprim{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.rmprim button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px 6px;border:1px solid var(--line);background:var(--chrome);border-radius:7px;cursor:pointer;font-size:12.5px}.rmprim button:hover{background:var(--hov);border-color:var(--acc)}
 .rmprim svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
-.kpview .btn.on{background:var(--acc);border-color:var(--acc);color:#fff}.kpview .vsep{width:1px;height:20px;background:#353b44;margin:0 4px}
-#rmpull{background:#e5482d;color:#fff!important;padding:3px 8px;border-radius:6px;font-weight:500}#rmpull input{width:74px;padding:3px 6px;border:0;border-radius:4px;text-align:right;color:#111;background:#fff}
+.rmfloat{position:absolute;z-index:3;display:flex;align-items:center;gap:6px;background:#e5482d;color:#fff;padding:5px 6px 5px 10px;border-radius:8px;box-shadow:0 6px 18px #0006;font-size:13px;font-weight:500}.rmfloat[hidden]{display:none}
+.rmfloat input{width:80px;padding:4px 7px;border:0;border-radius:5px;text-align:right;color:#111;background:#fff;font:600 14px "IBM Plex Sans",system-ui,sans-serif}.rmfloat button{border:0;background:#fff3;color:#fff;border-radius:5px;padding:4px 9px;cursor:pointer;font-weight:600}.rmfloat button:hover{background:#fff5}
+.rmctx{position:absolute;left:50%;transform:translateX(-50%);bottom:40px;z-index:2;display:flex;align-items:center;gap:4px;background:#21252b;border:1px solid #353b44;border-radius:10px;padding:5px;box-shadow:0 6px 20px #0007;max-width:calc(100% - 20px);flex-wrap:wrap;justify-content:center}.rmctx[hidden]{display:none}
+.rmctx b{color:#e4e7eb;font-size:13px;padding:0 8px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rmctx button{border:0;background:none;color:#e4e7eb;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap}.rmctx button:hover{background:#353b44}.rmctx .del{color:#ff8a70}
+.rmempty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#c9ced6;text-align:center;padding:20px}.rmempty[hidden]{display:none}.rmempty b{font-size:18px;color:#e4e7eb}
+.rmempty div{display:flex;gap:8px}.rmempty button{border:1px solid #353b44;background:#21252b;color:#e4e7eb;padding:9px 16px;border-radius:8px;cursor:pointer;font-size:14px}.rmempty button:hover{border-color:var(--acc)}
 .rm{position:fixed;inset:0;z-index:35;background:var(--chrome);display:none;grid-template-rows:auto minmax(0,1fr);grid-template-columns:300px minmax(0,1fr)}.rm.open{display:grid}
 .rmmain{position:relative;min-height:0;background:#16191d;overflow:hidden}.rmmain canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}#rm3d{cursor:grab}#rmov{pointer-events:none}
 .rmsep{height:1px;background:var(--line);margin:12px 0}.rmlist{display:grid;gap:4px}
@@ -351,7 +355,10 @@ button,input,select{font:inherit;color:inherit}
   <button class="btn" data-rm="list">Stückliste und Zuschnitt</button><button class="btn" data-rm="pic">Bild speichern</button><button class="btn" data-rm="print">Drucken</button><button class="btn pri" data-rm="close">Zurück zum Zeichnen</button></div>
  <div class="kpside" id="rmside"></div>
  <div class="rmmain"><canvas id="rm3d"></canvas><canvas id="rmov"></canvas>
-  <div class="kpview"><button class="btn" data-rm="iso">Schräg</button><button class="btn" data-rm="front">Vorn</button><button class="btn" data-rm="top">Oben</button><button class="btn on" data-rmm="move" title="Körper wählen und verschieben">Verschieben</button><button class="btn" data-rmm="pull" title="Eine Fläche anklicken und ziehen – der Körper wird in dieser Richtung größer oder kleiner">Fläche ziehen</button><label id="rmpull" hidden>Maß <input id="rmpv" type="text" inputmode="decimal" aria-label="Maß in Zugrichtung" title="120 = neues Maß · +50 = um 50 weiter ziehen · Enter übernimmt"> mm</label><span class="vsep"></span><button class="btn" data-rm="fit" title="Alles ins Bild holen">Alles zeigen</button><label><input type="checkbox" id="rmdims" checked> Maße zeigen</label></div>
+  <div class="kpview"><button class="btn" data-rm="iso">Schräg</button><button class="btn" data-rm="front">Vorn</button><button class="btn" data-rm="top">Oben</button><button class="btn" data-rm="fit" title="Alles ins Bild holen">Alles zeigen</button><label><input type="checkbox" id="rmdims" checked> Maße zeigen</label></div>
+  <div class="rmfloat" id="rmfloat" hidden><label for="rmfv" id="rmflab">Maß</label><input id="rmfv" type="text" inputmode="decimal" title="Neues Maß eintippen, oder +50 / −20 für um so viel weiter"><span>mm</span><button id="rmfok" title="Übernehmen (Enter)">OK</button></div>
+  <div class="rmctx" id="rmctx" hidden><b id="rmctxn"></b><button data-ctx="rot2" title="um die senkrechte Achse drehen">↻ Drehen</button><button data-ctx="rot0" title="nach hinten kippen">Kippen</button><button data-ctx="rot1" title="zur Seite kippen">Seitlich</button><button data-ctx="floor" title="auf den Boden stellen">Auf den Boden</button><button data-ctx="copy" title="Kopie daneben (Strg+D)">Kopieren</button><button data-ctx="del" class="del" title="Löschen (Entf)">Löschen</button></div>
+  <div class="rmempty" id="rmempty"><b>Leerer Raum</b><span>Wähle einen Körper zum Anfangen:</span><div><button data-prim="box">Quader</button><button data-prim="cyl">Zylinder</button><button data-prim="plane">Ebene</button></div><span class="muted">Mehr Körper und „Kontur hochziehen“ findest du links.</span></div>
   <div class="kphint"><span id="rmhint"></span></div></div>
 </div>
 <div class="dlg" id="dRml" style="z-index:45"><div class="box" style="max-width:980px">
@@ -364,13 +371,13 @@ button,input,select{font:inherit;color:inherit}
  <div class="row"><button class="btn" data-close>Abbrechen</button><button class="btn pri" id="newB">Leeren</button></div>
 </div></div>
 
-<script src="vendor/clipper.js?v=21"></script>
-<script src="font.js?v=21"></script>
-<script src="vendor/earcut.min.js?v=21"></script>
-<script src="view3d.js?v=21"></script>
-<script src="cad.js?v=21"></script>
-<script src="korpus.js?v=21"></script>
-<script src="raum.js?v=21"></script>
+<script src="vendor/clipper.js?v=23"></script>
+<script src="font.js?v=23"></script>
+<script src="vendor/earcut.min.js?v=23"></script>
+<script src="view3d.js?v=23"></script>
+<script src="cad.js?v=23"></script>
+<script src="korpus.js?v=23"></script>
+<script src="raum.js?v=23"></script>
 <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>
