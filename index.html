@@ -10,9 +10,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Origin CAD">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.webmanifest?v=7">
-<link rel="icon" href="icon.svg?v=7" type="image/svg+xml">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=7">
+<link rel="manifest" href="manifest.webmanifest?v=8">
+<link rel="icon" href="icon.svg?v=8" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -191,6 +191,7 @@ button,input,select{font:inherit;color:inherit}
   <button class="tg" data-a="grid" id="t_grid">RASTER</button>
   <button class="tg" data-a="gsnap" id="t_gsnap">RFANG</button>
   <button class="tg" data-a="cam" id="t_cam">FRÄSEN</button>
+  <button class="tg" data-a="guide" id="t_guide" title="Auf der Ebene „Hilfslinien“ zeichnen (Shift+H oder F2)">HILFSLINIE</button>
   <label for="gstep" style="margin-left:6px;color:var(--mut)">Raster</label><input id="gstep" type="number" min="0.1" step="any" value="10"><span style="color:var(--mut)">mm</span>
   <span class="sp"></span><span style="color:var(--mut)" id="cnt"></span>
  </div>
@@ -210,6 +211,8 @@ button,input,select{font:inherit;color:inherit}
   <tr><td><code>250</code></td><td>250 mm in Richtung der Maus (mit ORTHO schön gerade)</td></tr>
   <tr><td><code>720-2*19</code></td><td>Rechnen in jeder Zahl</td></tr>
   <tr><td>Strg+O · S · E · 0</td><td>Öffnen · Speichern · SVG für Origin · Zoom alles</td></tr>
+  <tr><td>Shift+H · F2</td><td>Umschalten: ab jetzt Hilfslinien zeichnen (blau, werden nicht gefräst) – nochmal drücken = zurück zur Kontur. Knopf „HILFSLINIE“ unten.</td></tr>
+  <tr><td><code>HL</code></td><td>Unendliche Hilfslinie: Punkt anklicken, dann zweiten Punkt oder Winkel. <code>W</code> = waagrecht, <code>S</code> = senkrecht. Man kann auf ihren Schnittpunkten fangen; ausgegeben wird sie nicht.</td></tr>
   <tr><td>Shift+A</td><td>Auswahlmodus: laufenden Befehl beenden und Linien, Kreise usw. anklicken oder mit Rahmen wählen (Shift+Klick nimmt heraus). Esc geht auch, oder oben links den Pfeil antippen.</td></tr>
   <tr><td>Strg+Z · Y · A</td><td>Rückgängig · Wiederholen · Alles wählen</td></tr>
   <tr><td>F3 · F6 · F7 · F8 · F9 · F10</td><td>Objektfang · Fräsvorschau · Raster · Ortho · Rasterfang · Winkelfang</td></tr>
@@ -256,9 +259,9 @@ button,input,select{font:inherit;color:inherit}
  <div class="row"><button class="btn" data-close>Abbrechen</button><button class="btn pri" id="newB">Leeren</button></div>
 </div></div>
 
-<script src="vendor/clipper.js?v=7"></script>
-<script src="font.js?v=7"></script>
-<script src="cad.js?v=7"></script>
+<script src="vendor/clipper.js?v=8"></script>
+<script src="font.js?v=8"></script>
+<script src="cad.js?v=8"></script>
 <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>

@@ -38,6 +38,7 @@ Live: https://noahfa.github.io/origin-cad/ (installierbar auf iPad/PC, läuft da
 `{ents:[...], layers:[{n,c,v}], cur, nid, def:{tool,depth}}` – Objekte:
 - `line {a:[x,y], b}` · `pline {pts:[[x,y]...], closed, rect?, bl?}` · `circle {c, r}`
 - `arc {c, r, a0, a1}` (Bogenmaß, gegen Uhrzeigersinn) · `slot {a, b, r}` · `dim {a, b, p, m:'h'|'v'|'al'}`
+- `xline {p:[x,y], d:[dx,dy]}` – unendliche Hilfslinie
 - `text {p:[x,y], s:'…', h, a}` – p = unten links, h = Höhe der Großbuchstaben, a = Winkel (Bogenmaß)
 - `pline.bl`: Wölbung je Segment (wie DXF-„bulge“ = tan(Winkel/4), positiv = gegen Uhrzeigersinn); fehlt = alles gerade
 - Jedes Objekt: `id`, `t` (Typ), `ly` (Ebene). Y zeigt nach oben.
@@ -63,6 +64,8 @@ Live: https://noahfa.github.io/origin-cad/ (installierbar auf iPad/PC, läuft da
 - **Zeichenbefehle bleiben aktiv** (L, PL, R, K, B, PG, LL, BM, BA, MS): nach dem Fertigstellen startet derselbe Befehl neu, Esc oder Enter ohne Punkt beendet. Liste `REPEAT` in cad.js.
 
 - **Auswahlmodus** mit Shift+A (oder Pfeil oben in der Werkzeugleiste): beendet den laufenden Befehl, danach Objekte anklicken/Rahmen.
+
+- **Hilfslinien**: Shift+H / F2 / Knopf „HILFSLINIE“ schaltet die aktuelle Ebene zwischen „Hilfslinien“ und der vorigen um. `HL` = unendliche Hilfslinie (Typ `xline {p,d}`, d = Richtung, Länge 1); fangbar, Versatz geht, nicht in SVG, in DXF als XLINE.
 
 ## Ideen / offen
 - An der echten Origin prüfen: Wird die SVG mit Frästyp, Tiefe und Fräser-Ø richtig erkannt? (Format nach Shaper-Vorgabe gebaut, aber noch nicht an der Maschine getestet.)

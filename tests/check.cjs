@@ -193,6 +193,18 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  ok((await p.evaluate(()=>__cad.sel.size))===1,'Danach Linie anklicken wählt sie aus');
  await C('TX');await p.keyboard.press('Shift+A');ok((await p.evaluate(()=>__cad.inp.value))==='A','Beim Text-Tippen bleibt Shift+A ein großes A');await p.keyboard.press('Escape');
 
+ console.log('Hilfslinien');
+ await fresh();await p.locator('#cv').click({position:{x:5,y:5}});await p.keyboard.press('Shift+H');ok((await p.evaluate(()=>__cad.S.cur))==='Hilfslinien'&&(await p.evaluate(()=>document.getElementById('t_guide').classList.contains('on'))),'Shift+H: zeichnen auf Hilfslinien, Knopf leuchtet');
+ await C('L','0,0','100,0','');await p.keyboard.press('Escape');await p.keyboard.press('Shift+H');E=await ents();
+ ok(E[0].ly==='Hilfslinien'&&(await p.evaluate(()=>__cad.cutOf(__cad.S.ents[0]).t))==='guide'&&(await p.evaluate(()=>__cad.S.cur))==='Kontur','Linie ist Hilfslinie, nochmal Shift+H = zurück zur Kontur');
+ await fresh();await C('HL','W','0,50','','HL','S','30,0','','HL','0,0','45','');E=await ents();
+ ok(E.length===3&&E.every(e=>e.t==='xline'&&e.ly==='Hilfslinien')&&near(E[2].d[0],Math.SQRT1_2),'Drei unendliche Hilfslinien: waagrecht, senkrecht, 45°');
+ await C('L');const sp2=await p.evaluate(()=>__cad.w2s([30.3,50.4]));await p.evaluate(s=>__cad.setMouse(s),sp2);r=await p.evaluate(()=>__cad.curP);ok(near(r[0],30,1e-6)&&near(r[1],50,1e-6),'Fang auf dem Schnittpunkt zweier Hilfslinien',JSON.stringify(r));
+ await p.keyboard.press('Escape');await C('R','0,0','100,100');await p.keyboard.press('Escape');
+ svg=await p.evaluate(()=>__cad.buildSVG(__cad.exportList(false)));ok(!/guide/.test(svg)&&/width="100mm"/.test(svg),'Unendliche Hilfslinien nicht in der SVG, Größe stimmt');
+ r=await p.evaluate(()=>__cad.importDXF(__cad.buildDXF(__cad.S.ents)).ents.map(e=>e.t).join());ok(r==='xline,xline,xline,pline','DXF behält die Hilfslinien',r);
+ await C('VS','10');await p.evaluate(()=>{const e=__cad.S.ents[0];__cad.adv({e,p:[0,50]});__cad.adv({p:[0,80]})});await C('');E=await ents();ok(E.length===5&&near(E[4].p[1],60),'Versatz geht auch mit Hilfslinien');
+
  console.log('Darstellung');
  for(const[n,vp]of[['tablet',{width:1024,height:768}],['handy',{width:390,height:844}]]){const q=await open(vp);await q.evaluate(()=>__cad.act('cam'));
   const o=await q.evaluate(()=>({sw:document.documentElement.scrollWidth,w:innerWidth,cv:document.getElementById('cv').clientHeight}));ok(o.sw<=o.w&&o.cv>150,`${n}: nichts läuft seitlich über, Zeichenfläche sichtbar`,JSON.stringify(o));
