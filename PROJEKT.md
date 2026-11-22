@@ -54,6 +54,9 @@ Live: https://noahfa.github.io/origin-cad/ (installierbar auf iPad/PC, läuft da
 - **Abrunden/Fasen** an Rechteck und Polylinie: die Kontur bleibt eine Kontur (wird nicht mehr zerlegt).
 - **Bögen wiedererkennen**: nach Vereinigen/Abziehen/Schnittmenge, Versatz und Import werden Rundungen wieder echte Bögen bzw. Kreise.
 
+## Danach ergänzt
+- **Winkelfang** (F10, Knopf „WINKEL“ unten, Schritt 90/45/30/15°): Richtung rastet beim Zeichnen ein, grüne Hilfslinie; Länge tippen geht in die gerastete Richtung. Standard an, 45°.
+
 ## Ideen / offen
 - An der echten Origin prüfen: Wird die SVG mit Frästyp, Tiefe und Fräser-Ø richtig erkannt? (Format nach Shaper-Vorgabe gebaut, aber noch nicht an der Maschine getestet.)
 - Stutzen zerlegt Polylinien noch in Einzelstücke (danach `VB`)

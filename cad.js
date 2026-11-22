@@ -30,7 +30,7 @@ const DEF_CUT=()=>({tool:6,depth:6});
 let S={ents:[],layers:DEF_LAYERS(),cur:'Kontur',nid:1,def:DEF_CUT()};
 let sel=new Set(),undoS=[],redoS=[];
 const view={s:1,ox:0,oy:0};
-const tg={osnap:true,ortho:false,grid:true,gsnap:false,cam:false};let gstep=10;
+const tg={osnap:true,polar:true,ortho:false,grid:true,gsnap:false,cam:false};let gstep=10,pstep=45,polarHit=null;
 let mouse={sp:[0,0],in:false},cursorW=[0,0],curP=[0,0],snapHit=null,hoverE=null,drag=null,pan=null,spaceDown=false,spaceUsed=false;
 let lastPt=null,mem={pg:6,off:10,rad:5,cha:5,cols:3,rows:1,dx:100,dy:100,dia:35,sk:2,cupP:'O',cupK:'L',th:20,td:1,bb:'L',
  rowD:5,rowN:5,rowS:32,rowT:13,dwD:8,dwN:2,dwS:32,dwT:12,cupD:35,cupT:13,lkN:6,lkD:5,lkT:10};
@@ -446,7 +446,12 @@ function zoomAll(){const W=cv.clientWidth,H=cv.clientHeight,b=bbox(S.ents.filter
  const w=Math.max(b[2]-b[0],10),h=Math.max(b[3]-b[1],10);view.s=Math.min(W/(w*1.25),H/(h*1.25));view.ox=W/2-(b[0]+w/2)*view.s;view.oy=H/2+(b[1]+h/2)*view.s;render()}
 function hit(p){const tol=7/view.s;let best=null,bd=tol;for(const e of S.ents){if(!vis(e))continue;const d=dEnt(p,e);if(d<bd){bd=d;best=e}}return best}
 function orthoP(p){const b=REQ&&REQ.base;if(!tg.ortho||!b)return p;const d=sub(p,b);return Math.abs(d[0])>=Math.abs(d[1])?[p[0],b[1]]:[b[0],p[1]]}
-function computeSnap(){cursorW=s2w(mouse.sp);snapHit=null;hoverE=null;
+/* Winkelfang: zieht die Richtung auf 0°, 45°, 90° … sobald man nah dran ist */
+function polarP(p){const b=REQ&&REQ.base;if(!tg.polar||tg.ortho||!b)return null;const d=sub(p,b),L=len(d);if(L*view.s<6)return null;
+ const st=pstep*D2R,a=Math.round(ang(d)/st)*st,u=[Math.cos(a),Math.sin(a)],off=Math.abs(crs(u,d)),along=dot(d,u);
+ if(along<=0||(off*view.s>10&&Math.abs(Math.atan2(off,along))>3*D2R))return null;
+ let l=along;if(tg.gsnap)l=Math.max(gstep,Math.round(l/gstep)*gstep);return{p:add(b,mul(u,l)),a:na(a),u}}
+function computeSnap(){cursorW=s2w(mouse.sp);snapHit=null;hoverE=null;polarHit=null;
  if(!REQ||REQ.k!=='pt'){curP=cursorW;if(!drag&&!pan)hoverE=hit(cursorW);return}
  if(tg.osnap){const tol=11/view.s,raw=cursorW;let best=null,bd=tol;const near=[];
   for(const e of geomEnts()){for(const s of snapPts(e)){const d=dist(s.p,raw);if(d<bd){bd=d;best=s}}if(e.t!=='text'&&dEnt(raw,e)<tol*1.5)near.push(e)}
@@ -454,6 +459,7 @@ function computeSnap(){cursorW=s2w(mouse.sp);snapHit=null;hoverE=null;
   if(REQ.base){const d=dist(REQ.base,raw);if(d<bd)best={p:REQ.base,k:'end'}}
   snapHit=best}
  if(snapHit){curP=snapHit.p;return}
+ polarHit=polarP(cursorW);if(polarHit){curP=polarHit.p;return}
  let p=cursorW;if(tg.gsnap)p=[Math.round(p[0]/gstep)*gstep,Math.round(p[1]/gstep)*gstep];curP=orthoP(p)}
 
 /* ---------- Zeichnen ---------- */
@@ -502,6 +508,8 @@ function render(){if(!W)return;dimTexts=[];ctx.setTransform(dpr,0,0,dpr,0,0);ctx
  for(const[e,c]of dimTexts)drawDimText(e,c);
  for(const id of sel){const e=byId(id);if(!e||!vis(e))continue;for(const s of snapPts(e)){if(s.k==='quad')continue;const p=w2s(s.p);ctx.fillStyle='#e5482d';ctx.fillRect(p[0]-3,p[1]-3,6,6)}}
  if(snapHit&&mouse.in)drawSnap(snapHit);
+ if(polarHit&&mouse.in&&REQ&&REQ.base){const a=w2s(REQ.base),e=w2s(add(REQ.base,mul(polarHit.u,(W+H)*2/view.s))),s=w2s(curP);ctx.strokeStyle='rgba(76,195,138,.8)';ctx.lineWidth=1;ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(e[0],e[1]);ctx.stroke();ctx.setLineDash([]);
+  ctx.font='12px "IBM Plex Sans",sans-serif';ctx.fillStyle='#4cc38a';ctx.fillText(fmtDE(deg(polarHit.a))+'°',s[0]+12,s[1]+20)}
  if(drag&&dist(drag.s,drag.c)>4){const cr=drag.c[0]<drag.s[0];ctx.setLineDash(cr?[5,4]:[]);ctx.strokeStyle=cr?'#4cc38a':'#6f9cff';ctx.fillStyle=cr?'rgba(76,195,138,.1)':'rgba(111,156,255,.1)';ctx.lineWidth=1;
   const x=Math.min(drag.s[0],drag.c[0]),y=Math.min(drag.s[1],drag.c[1]),w=Math.abs(drag.c[0]-drag.s[0]),h=Math.abs(drag.c[1]-drag.s[1]);ctx.fillRect(x,y,w,h);ctx.strokeRect(x+.5,y+.5,w,h);ctx.setLineDash([])}
  if(mouse.in&&!pan){const s=REQ&&REQ.k==='pt'?w2s(curP):mouse.sp,x=Math.round(s[0])+.5,y=Math.round(s[1])+.5;ctx.strokeStyle='rgba(235,240,245,.55)';ctx.lineWidth=1;ctx.beginPath();
@@ -566,16 +574,16 @@ function onEnter(){inp.dataset.raw=inp.value.trim();const t=inp.value.trim();inp
  if(!t){adv({enter:true});return}
  const up=t.toUpperCase();if((REQ.opts||[]).includes(up)){adv({opt:up});return}
  const p=parsePt(t);if(p){if(p.n!=null){if(REQ.num){adv({n:p.n});return}if(!REQ.base){log('Erst einen Punkt setzen – oder X,Y eingeben.','e');return}
-   let dir=sub(orthoP(cursorW),REQ.base);if(len(dir)<1e-9)dir=[1,0];const q=add(REQ.base,mul(nrm(dir),p.n));lastPt=q;adv({p:q});return}
+   let dir=polarHit?polarHit.u:sub(orthoP(cursorW),REQ.base);if(len(dir)<1e-9)dir=[1,0];const q=add(REQ.base,mul(nrm(dir),p.n));lastPt=q;adv({p:q});return}
   lastPt=p.p;adv({p:p.p});return}
  log('Eingabe nicht verstanden: '+t,'e')}
-function act(a){const T={osnap:1,ortho:1,grid:1,gsnap:1,cam:1};if(T[a]){tg[a]=!tg[a];log(({osnap:'Objektfang',ortho:'Ortho',grid:'Raster',gsnap:'Rasterfang',cam:'Fräsvorschau'})[a]+(tg[a]?' an':' aus')+(a==='cam'&&tg[a]?' – gestrichelt: Weg der Fräsermitte · rot: hier bleibt Material stehen':''));updTools();computeSnap();render();saveUI();return}
+function act(a){const T={osnap:1,polar:1,ortho:1,grid:1,gsnap:1,cam:1};if(T[a]){tg[a]=!tg[a];log(({osnap:'Objektfang',polar:'Winkelfang',ortho:'Ortho',grid:'Raster',gsnap:'Rasterfang',cam:'Fräsvorschau'})[a]+(tg[a]?' an':' aus')+(a==='cam'&&tg[a]?' – gestrichelt: Weg der Fräsermitte · rot: hier bleibt Material stehen':''));updTools();computeSnap();render();saveUI();return}
  ({enter:onEnter,esc:()=>{inp.value='';cancel(false)},neu:()=>$('dNew').classList.add('open'),oeffnen:()=>{fileMode='open';$('file').click()},importieren:()=>{fileMode='import';$('file').click()},
   exportSvg:openExport,exportDxf:exportDXF,tpl:openTpls,tplSave:openSaveTpl,speichern:saveFile,undo,redo,zoomAll,help:()=>$('dHelp').classList.add('open'),
   alle:()=>{S.ents.filter(vis).forEach(e=>sel.add(e.id));updProps();render()}})[a]?.()}
 window.addEventListener('keydown',e=>{const t=e.target,inProp=t!==inp&&(t.tagName==='INPUT'||t.tagName==='SELECT'||t.tagName==='TEXTAREA');
  if(document.querySelector('.dlg.open')){if(e.key==='Escape')document.querySelectorAll('.dlg.open').forEach(d=>d.classList.remove('open'));return}
- const F={F1:'help',F3:'osnap',F6:'cam',F7:'grid',F8:'ortho',F9:'gsnap'};if(F[e.key]){e.preventDefault();act(F[e.key]);return}
+ const F={F1:'help',F3:'osnap',F6:'cam',F7:'grid',F8:'ortho',F9:'gsnap',F10:'polar'};if(F[e.key]){e.preventDefault();act(F[e.key]);return}
  if(inProp)return;
  if(e.ctrlKey||e.metaKey){const k=e.key.toLowerCase();if(k==='z'){e.preventDefault();e.shiftKey?redo():undo()}else if(k==='y'){e.preventDefault();redo()}else if(k==='s'){e.preventDefault();saveFile()}else if(k==='a'&&!inp.value){e.preventDefault();act('alle')}return}
  if(e.key==='Escape'){e.preventDefault();inp.value='';cancel(false);return}
@@ -593,12 +601,13 @@ document.addEventListener('click',e=>{const dd=e.target.closest('.dd>button');if
  if(!e.target.closest('.dd'))closeMenus()});
 document.querySelectorAll('.menu .dd').forEach(d=>d.addEventListener('mouseenter',()=>{if(document.querySelector('.dd.open')&&!d.classList.contains('open')){closeMenus();d.classList.add('open')}}));
 const tip=$('tip');document.addEventListener('mouseover',e=>{const b=e.target.closest('[data-tip]');if(!b){tip.style.display='none';return}const r=b.getBoundingClientRect();tip.textContent=b.dataset.tip;tip.style.display='block';tip.style.left=(r.right+8)+'px';tip.style.top=(r.top+r.height/2-13)+'px'});
+$('pstep').addEventListener('change',e=>{pstep=+e.target.value||45;saveUI();computeSnap();render()});
 $('gstep').addEventListener('change',e=>{const v=ev(e.target.value.replace(',','.'));if(v>0){gstep=v;saveUI();render()}else e.target.value=gstep});
 
 /* ---------- Dateien ---------- */
 let fileName='Zeichnung.json';
 function save(){try{localStorage.setItem('origincad.v1',snapS())}catch(e){}}
-function saveUI(){try{localStorage.setItem('origincad.ui',JSON.stringify({tg,gstep}))}catch(e){}}
+function saveUI(){try{localStorage.setItem('origincad.ui',JSON.stringify({tg,gstep,pstep}))}catch(e){}}
 function afterChange(){geoVer++;save();updDefs();updProps();updLayers();computeSnap();render()}
 $('copyB').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('saveT').value);$('copyB').textContent='Kopiert ✓'}catch(e){$('saveT').select();$('copyB').textContent='Mit Strg+C kopieren'}setTimeout(()=>$('copyB').textContent='Kopieren',2000)});
 $('newB').addEventListener('click',()=>{pushUndo();S={ents:[],layers:DEF_LAYERS(),cur:'Kontur',nid:1,def:{...S.def}};fileName='Zeichnung.json';sel.clear();$('dNew').classList.remove('open');afterChange();zoomAll();log('Neue Zeichnung.','ok')});
@@ -881,13 +890,13 @@ function sample0(){const K='Kontur',B='Bemaßung';S.nid=1;S.ents=[
  mk('slot',{a:[360,250],b:[360,350],r:10},K),
  mk('dim',{a:[0,0],b:[400,0],p:[200,-45],m:'h'},B),mk('dim',{a:[0,0],b:[0,600],p:[-45,300],m:'v'},B),
  mk('dim',{a:[400,0],b:[360,250],p:[440,125],m:'v'},B)]}
-let restored=false;try{const o=JSON.parse(localStorage.getItem('origincad.v1')||'null');if(o&&Array.isArray(o.ents)){S=o;S.def=Object.assign(DEF_CUT(),o.def||{});restored=true}const u=JSON.parse(localStorage.getItem('origincad.ui')||'null');if(u){Object.assign(tg,u.tg||{});gstep=u.gstep||10;$('gstep').value=gstep}}catch(e){}
+let restored=false;try{const o=JSON.parse(localStorage.getItem('origincad.v1')||'null');if(o&&Array.isArray(o.ents)){S=o;S.def=Object.assign(DEF_CUT(),o.def||{});restored=true}const u=JSON.parse(localStorage.getItem('origincad.ui')||'null');if(u){Object.assign(tg,u.tg||{});gstep=u.gstep||10;$('gstep').value=gstep;if([90,45,30,15].includes(u.pstep))pstep=u.pstep;$('pstep').value=pstep}}catch(e){}
 if(!restored){sample0();log('Beispiel: Front 400 × 600 mit zwei Topfbändern Ø35 und Griffloch. Datei › Neu leert die Zeichnung.')}
 else log('Letzte Zeichnung wiederhergestellt.');
 log('Tipp: L + Enter für Linie, R für Rechteck, K für Kreis. F1 zeigt alle Befehle.');
 buildTools();updTools();updDefs();updProps();updLayers();updPrompt();
 new ResizeObserver(()=>{const first=!W;resize();if(first)zoomAll()}).observe($('cvw'));
 if(matchMedia('(pointer:fine)').matches)inp.focus();
-window.__cad={buildSVG,buildDXF,importSVG,importDXF,loadFile,exportList,fitArcs,userTpls,w2s,get S(){return S},run,onEnter,inp,adv,get REQ(){return REQ},sel,zoomAll,cutOf,camOf,act,tg,updProps,bbox,
+window.__cad={get curP(){return curP},setMouse:sp=>{mouse.sp=sp;mouse.in=true;computeSnap();render()},buildSVG,buildDXF,importSVG,importDXF,loadFile,exportList,fitArcs,userTpls,w2s,get S(){return S},run,onEnter,inp,adv,get REQ(){return REQ},sel,zoomAll,cutOf,camOf,act,tg,updProps,bbox,
  areaOf:(id,off)=>{const P=[ccw(toPaths(byId(id))[0].pts)];return(off?clOffset(P,off):P).reduce((s,q)=>s+area(q),0)}};
 }

@@ -10,9 +10,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Origin CAD">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.webmanifest?v=2">
-<link rel="icon" href="icon.svg?v=2" type="image/svg+xml">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=2">
+<link rel="manifest" href="manifest.webmanifest?v=3">
+<link rel="icon" href="icon.svg?v=3" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=3">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -98,6 +98,7 @@ button,input,select{font:inherit;color:inherit}
 .xy{min-width:230px;color:var(--mut);white-space:nowrap}
 .tg{border:1px solid transparent;background:none;padding:2px 8px;border-radius:4px;cursor:pointer;color:var(--mut);font:inherit;white-space:nowrap}
 .tg.on{background:var(--accs);color:var(--acc);border-color:color-mix(in srgb,var(--acc) 40%,transparent)}
+.stat select{padding:1px 2px;border:1px solid var(--line);border-radius:4px;background:var(--panel);font:inherit;color:inherit}
 .stat input{width:56px;padding:1px 4px;border:1px solid var(--line);border-radius:4px;background:var(--panel);font:inherit;text-align:right}
 .stat .sp{flex:1}
 /* Dialog */
@@ -146,6 +147,7 @@ button,input,select{font:inherit;color:inherit}
    <li><button data-a="cam">Fräsvorschau<kbd>F6</kbd></button></li>
    <li><button data-a="osnap">Objektfang<kbd>F3</kbd></button></li>
    <li><button data-a="grid">Raster anzeigen<kbd>F7</kbd></button></li>
+   <li><button data-a="polar">Winkelfang<kbd>F10</kbd></button></li>
    <li><button data-a="ortho">Ortho<kbd>F8</kbd></button></li>
    <li><button data-a="gsnap">Rasterfang<kbd>F9</kbd></button></li>
   </ul></div>
@@ -179,7 +181,8 @@ button,input,select{font:inherit;color:inherit}
  <div class="stat">
   <span class="xy" id="xy">X 0 · Y 0</span>
   <button class="tg" data-a="osnap" id="t_osnap">FANG</button>
-  <button class="tg" data-a="ortho" id="t_ortho">ORTHO</button>
+  <button class="tg" data-a="polar" id="t_polar" title="Winkelfang: Linie rastet auf 0°, 45°, 90° … ein (F10)">WINKEL</button><select id="pstep" aria-label="Schritt des Winkelfangs" title="Schritt des Winkelfangs"><option value="90">90°</option><option value="45" selected>45°</option><option value="30">30°</option><option value="15">15°</option></select>
+  <button class="tg" data-a="ortho" id="t_ortho" title="Ortho: nur waagrecht und senkrecht (F8)">ORTHO</button>
   <button class="tg" data-a="grid" id="t_grid">RASTER</button>
   <button class="tg" data-a="gsnap" id="t_gsnap">RFANG</button>
   <button class="tg" data-a="cam" id="t_cam">FRÄSEN</button>
@@ -200,7 +203,8 @@ button,input,select{font:inherit;color:inherit}
   <tr><td><code>@500&lt;30</code></td><td>500 mm Länge unter 30° (0° = rechts, 90° = oben)</td></tr>
   <tr><td><code>250</code></td><td>250 mm in Richtung der Maus (mit ORTHO schön gerade)</td></tr>
   <tr><td><code>720-2*19</code></td><td>Rechnen in jeder Zahl</td></tr>
-  <tr><td>F3 · F6 · F7 · F8 · F9</td><td>Objektfang · Fräsvorschau · Raster · Ortho · Rasterfang</td></tr>
+  <tr><td>F3 · F6 · F7 · F8 · F9 · F10</td><td>Objektfang · Fräsvorschau · Raster · Ortho · Rasterfang · Winkelfang</td></tr>
+  <tr><td>Winkelfang</td><td>Beim Zeichnen rastet die Richtung auf 0°, 45°, 90° … ein, sobald du nah dran bist (grüne Hilfslinie). Schrittweite unten neben „WINKEL“ wählbar. Dann einfach die Länge tippen, z. B. <code>250</code>. ORTHO erzwingt immer waagrecht/senkrecht.</td></tr>
   <tr><td>Fräsen</td><td>Objekt wählen, rechts unter „Fräsen“ Frästyp, Tiefe und Fräser-Ø eintragen. Leer = Fräser-Standard. „Automatisch“: geschlossene Kontur = Außen, liegt sie in einer anderen = Innen, offene Linie = Auf Linie, Ebene „Hilfslinien“ = Hilfslinie.</td></tr>
   <tr><td>Fräsvorschau</td><td>gestrichelt = Weg der Fräsermitte · rot = hier kommt der Fräser nicht hin, Material bleibt stehen</td></tr>
   <tr><td>Zur Origin</td><td>Datei › „SVG für Shaper Origin“ (oder <code>EX</code>). Die Datei auf einen USB-Stick kopieren oder bei hub.shapertools.com hochladen. Frästyp, Tiefe und Fräser-Ø stehen in der Datei; Bemaßung wird nicht ausgegeben.</td></tr>
@@ -243,9 +247,9 @@ button,input,select{font:inherit;color:inherit}
  <div class="row"><button class="btn" data-close>Abbrechen</button><button class="btn pri" id="newB">Leeren</button></div>
 </div></div>
 
-<script src="vendor/clipper.js?v=2"></script>
-<script src="font.js?v=2"></script>
-<script src="cad.js?v=2"></script>
+<script src="vendor/clipper.js?v=3"></script>
+<script src="font.js?v=3"></script>
+<script src="cad.js?v=3"></script>
 <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>

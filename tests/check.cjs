@@ -157,6 +157,16 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  ok(r.open&&/Außen1/.test(r.t)&&/Innen1/.test(r.t)&&/250 × 100/.test(r.t)&&/Material stehen/.test(r.w),'Export-Fenster: Übersicht und Warnung (Ecken)',JSON.stringify(r));
  const dl=p.waitForEvent('download');await p.click('#expB');const D=await dl;ok(D.suggestedFilename()==='Zeichnung.svg','SVG wird als Datei gespeichert: '+D.suggestedFilename());
 
+ console.log('Winkelfang');
+ await fresh();await p.evaluate(()=>__cad.zoomAll());await C('L','0,0');
+ const sp=w=>p.evaluate(w=>__cad.w2s(w),w);
+ await p.evaluate(s=>__cad.setMouse(s),await sp([200,4]));r=await p.evaluate(()=>__cad.curP);ok(near(r[1],0,1e-6)&&near(r[0],200,0.01),'fast waagrecht rastet auf 0° ein',JSON.stringify(r));
+ await p.evaluate(s=>__cad.setMouse(s),await sp([3,150]));r=await p.evaluate(()=>__cad.curP);ok(near(r[0],0,1e-6),'fast senkrecht rastet auf 90° ein');
+ await p.evaluate(s=>__cad.setMouse(s),await sp([150,146]));r=await p.evaluate(()=>__cad.curP);ok(near(r[0],r[1],1e-6),'fast diagonal rastet auf 45° ein');
+ await p.evaluate(s=>__cad.setMouse(s),await sp([200,60]));r=await p.evaluate(()=>__cad.curP);ok(near(r[1],60,0.01),'schräg dazwischen bleibt frei');
+ await p.evaluate(s=>__cad.setMouse(s),await sp([200,-5]));await C('250','');E=await ents();ok(E.length===1&&near(E[0].b[0],250,1e-6)&&near(E[0].b[1],0,1e-6),'Länge 250 tippen: Linie genau waagrecht');
+ await p.evaluate(()=>__cad.act('polar'));await C('L','0,0');await p.evaluate(s=>__cad.setMouse(s),await sp([200,4]));r=await p.evaluate(()=>__cad.curP);ok(near(r[1],4,0.01),'Winkelfang aus: nichts rastet');await p.keyboard.press('Escape');await p.evaluate(()=>__cad.act('polar'));
+
  console.log('Darstellung');
  for(const[n,vp]of[['tablet',{width:1024,height:768}],['handy',{width:390,height:844}]]){const q=await open(vp);await q.evaluate(()=>__cad.act('cam'));
   const o=await q.evaluate(()=>({sw:document.documentElement.scrollWidth,w:innerWidth,cv:document.getElementById('cv').clientHeight}));ok(o.sw<=o.w&&o.cv>150,`${n}: nichts läuft seitlich über, Zeichenfläche sichtbar`,JSON.stringify(o));
