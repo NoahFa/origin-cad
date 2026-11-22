@@ -47,8 +47,8 @@ function create(cv,hooks={}){let gl=null,prog,loc,bufs=null,model=null,raf=0,M=n
   gl.uniform1f(loc.uf,0);at(loc.p,bufs.P,3);at(loc.n,bufs.N,3);at(loc.c,bufs.C,3);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);gl.drawArrays(gl.TRIANGLES,0,bufs.nt);gl.disable(gl.POLYGON_OFFSET_FILL);
   if(loc.n>=0)gl.disableVertexAttribArray(loc.n);if(loc.c>=0)gl.disableVertexAttribArray(loc.c);gl.uniform1f(loc.uf,1);gl.uniform3fv(loc.fc,model.edge||EDGE);at(loc.p,bufs.L,3);gl.drawArrays(gl.LINES,0,bufs.nl);if(hooks.draw)hooks.draw()}
  /* Raumpunkt → Bildpunkt (CSS-Pixel) bzw. Bildpunkt → Sehstrahl */
- function project(p){if(!M)return null;const x=M[0]*p[0]+M[4]*p[1]+M[8]*p[2]+M[12],y=M[1]*p[0]+M[5]*p[1]+M[9]*p[2]+M[13],w=M[3]*p[0]+M[7]*p[1]+M[11]*p[2]+M[15];if(w<=1e-6)return null;return[(x/w+1)/2*cv.clientWidth,(1-y/w)/2*cv.clientHeight]}
- function ray(px,py){const e=eye(),t=[cam.tx,cam.ty,cam.tz],f=norm(sub(t,e)),up=Math.abs(Math.cos(cam.el))<1e-3?[Math.sin(cam.az)*-Math.sign(cam.el),Math.cos(cam.az)*Math.sign(cam.el),0]:[0,0,1],r=norm(cross(f,up)),u=cross(r,f),tn=Math.tan(0.3),asp=cv.clientWidth/cv.clientHeight,nx=(px/cv.clientWidth*2-1)*tn*asp,ny=(1-py/cv.clientHeight*2)*tn;
+ function project(p){if(raf){cancelAnimationFrame(raf);draw()}if(!M)return null;const x=M[0]*p[0]+M[4]*p[1]+M[8]*p[2]+M[12],y=M[1]*p[0]+M[5]*p[1]+M[9]*p[2]+M[13],w=M[3]*p[0]+M[7]*p[1]+M[11]*p[2]+M[15];if(w<=1e-6)return null;return[(x/w+1)/2*cv.clientWidth,(1-y/w)/2*cv.clientHeight]}
+ function ray(px,py){if(raf){cancelAnimationFrame(raf);draw()}const e=eye(),t=[cam.tx,cam.ty,cam.tz],f=norm(sub(t,e)),up=Math.abs(Math.cos(cam.el))<1e-3?[Math.sin(cam.az)*-Math.sign(cam.el),Math.cos(cam.az)*Math.sign(cam.el),0]:[0,0,1],r=norm(cross(f,up)),u=cross(r,f),tn=Math.tan(0.3),asp=cv.clientWidth/cv.clientHeight,nx=(px/cv.clientWidth*2-1)*tn*asp,ny=(1-py/cv.clientHeight*2)*tn;
   return{o:e,d:norm([f[0]+r[0]*nx+u[0]*ny,f[1]+r[1]*nx+u[1]*ny,f[2]+r[2]*nx+u[2]*ny]),f}}
  function shot(){if(raf){cancelAnimationFrame(raf);raf=0}draw();return cv.toDataURL('image/png')}
  const redraw=()=>{if(gl&&!raf)raf=requestAnimationFrame(draw)};
