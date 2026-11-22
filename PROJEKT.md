@@ -131,7 +131,22 @@ Eigener Bereich (Knopf „3D-Modus“), Datei `raum.js`, Daten in `S.raum = {bod
 - **3D-Modus:** Antippen des Maßfelds markiert die Zahl (iPad: Tippen ersetzt statt anhängen), Rechteck „600,40“ = 600 × 40, letzter Zug nur korrigierbar, solange seither nichts geändert wurde (`A.chg`), mehrfach hintereinander; Statuszeile nach Esc beim Maßband.
 - **Darstellung:** SVG-Knopf bei 1181–1320 px und 901–980 px, Menüs „Zeichnen“/„Ändern“ am iPad hochkant, Meldungen von Planer/3D als Einblendung unten statt in der Kopfzeile, Planer-Hinweis am Handy aus, Handy quer: Eigenschaften und 3D-Fächer als rechte Spalte, Auswahlfelder mit Beschriftung darüber, Statusleiste schmaler, Rückgängig am Handy immer sichtbar, Dateiname, Kontrast Rot, Ebenenliste und Tippflächen am iPad, Stücklisten und Zuschnittplan am Handy seitlich wischbar, Befehlszeile ohne Leerzeile mit Platzhalter, Hilfe-Reiter bleiben stehen, Begriffe „3D-Vorschau“ und „SVG für Origin“ einheitlich.
 
+## Dritte Prüfung vom 22.11.2026 (v28, vier Prüf-Agenten) – umgesetzt in v29
+- **Frästiefe:** Teile aus dem Korpusplaner tragen ihre Plattenstärke (`th`) – Warnung und Knopf im SVG-Fenster rechnen je Teil (Rückwand 8 → 8,5 statt 19,5). Neue Warnung, wenn eine Bohrung/Tasche über die Außenkontur ragt. Topfband-Beispiel passt zur Türkante (`@-21,5;100` bei rechts).
+- **Korpusplaner:** „Schubkasten oben“ entfernt doppelte Böden auch ohne Mittelwand (erst nach unten schieben, dann zusammenfassen); Topfbänder weichen festen Böden aus (±45 mm); niedrige Türen: Töpfe näher an die Kanten bzw. einer bei unter 150 mm; gleiche Bodenträgerlöcher werden zusammengelegt statt versetzt; Feld „Mittelwände“ zeigt die tatsächliche Anzahl; Felder rechnen („800-80“); nach „In die Zeichnung“ ist nichts gewählt, Hinweis „Rahmen um ein Teil ziehen“; Korpus-Titel einheitlich; Innenmaße dunkel hinterlegt, senkrechte nur in Fächern ab 44 px; Zuschnitt-Nummern gleich groß.
+- **Zeichnen:** „@12,5,30“ wird gemeldet, „2*12,5“ gerechnet, Punkte über 1 km abgelehnt; Anlegen: Zielteil wandert nicht mit, Knopf „Andere Seite“; „Befehl beendet.“ statt „*Abbruch*“; Löschen nennt Strg+Z; „Neu“ beim unveränderten Beispiel ohne Rückfrage; Optionsknöpfe zeigen den Buchstaben, wenn das Wort anders anfängt („Lochkreis (K)“).
+- **Sicherheit/Robustheit:** Ebenen-Grenze 1000 auch bei DXF und Dazuladen; automatisches Speichern meldet, wenn die Zeichnung zu groß ist (über 3 Mio. Zeichen wird nicht mehr abgelegt); Wiederherstellen meldet Verworfenes; Bogen-Erkennung nur bis 5000 Punkte; 3D-Formteile höchstens 2000 Löcher / 200 000 Punkte; große Listen ohne `...`-Spread (`replace`, `pushAll`). Dazugeladene Dateien: Hinweis, dass Planer/3D nicht übernommen werden.
+- **3D-Modus:** X-Achse sofort rot (drawOver war verschachtelt, `overBusy`), Leerzeichen im Maßfeld, Obergrenze 100 m, Korrektur unter 1 mm wird abgelehnt, Maßzahlen überdecken sich nicht, X/Y/Z-Farben im hellen Modus kräftiger.
+- **Darstellung:** Statusleiste springt nicht mehr (Koordinaten ans Ende, am iPad ausgeblendet), „Alles zeigen“ in der Statusleiste (Handy/iPad), Kopfzeilen Planer/3D einzeilig bis 980 px und quer, Handy: kurze Menünamen („Korpus“, „3D“, „Zurück“), Planer am Handy quer dreispaltig, SVG-Fenster: Plattenstärke und Warnung über der Tabelle, Dateiname mit Tooltip, Legende ohne Umbruch, iPad hochkant größere Felder unten, Tippflächen ≥ 40 px.
+
 ## Ideen / offen
+- **Entscheidung Noah:** Außenkonturen aus dem Korpusplaner mit Tiefe = Plattenstärke (jetzt) oder Stärke + 0,5 mm?
+- iPad ohne Tastatur im 3D-Modus: Knöpfe Rot/Grün/Blau für Verschiebe-Richtung und Drehachse (bisher Pfeiltasten).
+- iPad: Bildschirmtastatur nach getippter Eingabe offen lassen (nicht prüfbar ohne iPad).
+- SVG-Fenster: statt Häkchen zwei Knöpfe „Alles speichern“ / „Nur Gewählte“ (Geschmackssache).
+- Eigener Speicher: Origin CAD und Zuhause teilen sich den Browserspeicher (siehe eigene Adresse).
+
+## Ideen / offen (älter)
 - Eigene Adresse (Domain) für Origin CAD – siehe Prüfung.
 - Hängeschrank über einem Unterschrank platzieren (Korpusse liegen bisher nur nebeneinander).
 - Weitere Punkte aus der Prüfung zu Bedienung und Darstellung siehe unten bzw. nächste Etappe.

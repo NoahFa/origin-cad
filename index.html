@@ -10,9 +10,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Origin CAD">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.webmanifest?v=28">
-<link rel="icon" href="icon.svg?v=28" type="image/svg+xml">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=28">
+<link rel="manifest" href="manifest.webmanifest?v=29">
+<link rel="icon" href="icon.svg?v=29" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=29">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <style>
 /* Schrift IBM Plex liegt im Projekt (SIL Open Font License, fonts/OFL.txt) – nichts wird von fremden Servern geladen */
@@ -192,7 +192,7 @@ button,input,select{font:inherit;color:inherit}
 @media(max-width:640px){.kp{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 240px minmax(0,1fr) minmax(0,1fr);overflow:auto}.kpside{grid-row:auto;border-right:0}}
 .row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
 @media(max-width:860px){.tools{grid-template-columns:42px}.tools #bSel{width:42px}.app{grid-template-columns:52px minmax(0,1fr);grid-template-rows:42px minmax(0,1fr) auto 220px 32px;grid-template-areas:"menu menu" "tools cv" "cmd cmd" "side side" "stat stat"}.side{border-left:0;border-top:1px solid var(--line)}.fname{display:none}.hint{display:none}.stat>*{flex:none}.xy{min-width:0;margin-right:6px}}
-@media(max-width:600px){.menu{padding:0 4px;gap:0}.brand{margin-right:4px}.brand span{display:none}.mbtn{padding:6px 6px;font-size:13px}.dd.wide{display:none}.ur{margin-left:auto;padding-left:4px;border-left:0}.ub span{display:none}.ub{padding:5px 7px}.dd>button{padding:6px 8px}.dd ul{max-width:92vw}}
+@media(max-width:620px){.menu{padding:0 4px;gap:0}.brand{margin-right:4px}.brand span{display:none}.mbtn{padding:6px 6px;font-size:13px}.dd.wide{display:none}.ur{margin-left:auto;padding-left:4px;border-left:0}.ub span{display:none}.ub{padding:5px 7px}.dd>button{padding:6px 8px}.dd ul{max-width:92vw}}
 @media(prefers-reduced-motion:no-preference){.dlg .box{animation:pop .16s ease-out}@keyframes pop{from{transform:translateY(8px);opacity:0}}}
 
 /* ---- Prüfung v25: Darstellung ---- */
@@ -210,7 +210,7 @@ button,input,select{font:inherit;color:inherit}
 .rmempty>*{background:#16191dd9;border-radius:10px;padding:6px 12px}.rmempty .muted{color:#9aa3ad}
 @media(max-width:1180px){.cl label{flex:1 1 100%;max-width:none;white-space:normal}.stat .mob{display:inline-block}}
 @media(max-width:900px){.dd.wide{display:none}.brand span,.ur .ub span{display:none}.dd>button,.mbtn{padding:6px 7px}}
-@media(max-width:600px){.menu{overflow-x:auto;scrollbar-width:none}.dd ul{position:fixed;top:42px;left:6px;right:6px;min-width:0}#rmstat{white-space:normal}.rmstatus{flex-wrap:wrap;height:auto;padding:4px 10px}.rm{grid-template-rows:auto minmax(0,1fr) 220px auto}}
+@media(max-width:620px){.menu{overflow-x:auto;scrollbar-width:none}.dd ul{position:fixed;top:42px;left:6px;right:6px;min-width:0}#rmstat{white-space:normal}.rmstatus{flex-wrap:wrap;height:auto;padding:4px 10px}.rm{grid-template-rows:auto minmax(0,1fr) 220px auto}}
 @media(max-width:860px) and (max-height:520px){.app{grid-template-rows:42px minmax(140px,1fr) auto 0 32px}.side{display:none}.hist{height:30px}}
 @media(pointer:coarse){.hint{display:none}.tg,.btn.sm{min-height:36px;padding:6px 12px}.ly button{min-width:40px;min-height:36px}.ly input[type=radio]{width:22px;height:22px}.dd li button{padding:11px 12px}.optbar button{min-height:36px;padding:6px 12px}.kptools .btn,.kptab{min-height:40px}}
 /* ---- Prüfung v27: Darstellung ---- */
@@ -228,11 +228,27 @@ button,input,select{font:inherit;color:inherit}
 .tblwrap,#rmlBody{overflow-x:auto;max-width:100%}
 .v3views{display:flex;gap:8px}
 @media(max-width:1100px){.kpbar .ub span{display:none}}
-@media(max-width:900px){#kpinfo,#rminfo{display:none}}
 @media(max-width:600px){.ur{position:sticky;right:0;margin-left:auto;background:var(--panel)}#dKpl .row .btn,#dRml .row .btn{flex:1 1 45%}#dNew .row{flex-direction:column;align-items:stretch}.kpsheet{overflow-x:auto}.kpsheet svg{min-width:600px}}
 @media(max-height:520px) and (min-width:640px){.rm{grid-template-columns:46px minmax(0,1fr) 240px;grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"bar bar bar" "tools main tray" "stat stat stat"}.rm .rmtray{border-top:0;border-left:1px solid var(--line)}}
 @media(max-width:860px) and (max-height:520px) and (min-width:640px){.app{grid-template-columns:52px minmax(0,1fr) 230px;grid-template-rows:42px minmax(0,1fr) auto 32px;grid-template-areas:"menu menu menu" "tools cv side" "cmd cmd side" "stat stat stat"}.side{display:block;border-top:0;border-left:1px solid var(--line);overflow-y:auto}}
 @media(pointer:coarse){.stat .tg{min-height:30px;padding:4px 10px}.cl input{border-bottom:1px solid var(--line)}.ly{grid-template-columns:28px 30px minmax(0,1fr) 40px 40px}.ly input[type=radio]{margin:0}.ly input[type=color]{width:30px;height:30px}.dd>button,.mbtn,.ub{min-height:40px}.stat select,.stat input{min-height:30px}.kpview label{min-height:40px}.kpview input[type=checkbox]{width:22px;height:22px}}
+/* ---- Prüfung v28: Darstellung ---- */
+@media(max-width:1180px){.stat .xy{order:1;margin-left:8px}label[for=gstep]{display:none}}
+@media(pointer:coarse){.stat .xy{display:none}}
+@media(max-width:980px),(max-height:520px){#kpinfo,#rminfo{display:none}}
+.sh{display:none}
+@media(max-width:620px){.menu{padding-right:0}.ur{box-shadow:-10px 0 8px -6px var(--panel)}.mbtn .lg,.kpbar .lg{display:none}.mbtn .sh,.kpbar .sh{display:inline}.dd.help ul{left:6px;right:6px}.kpnset{display:grid;grid-template-columns:1fr 1fr;gap:6px}#rmmsg{bottom:84px}}
+@media(max-height:520px) and (min-width:640px){.kp{grid-template-columns:240px minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}.kpside{grid-row:auto}.kp3{border-top:0;border-left:1px solid var(--line)}.hist{height:28px}}
+@media(min-width:1001px){#kpmsg{left:calc(50% + 150px)}}
+#expThick{padding:5px 8px;border:1px solid var(--line);border-radius:5px;background:var(--chrome);color:var(--ink);text-align:right;font:inherit}
+.legend .lg{white-space:nowrap;margin-right:10px;display:inline-block}
+.kphint span{box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.rm3{margin-bottom:8px}
+.v3t{display:inline-flex;gap:6px;align-items:center}
+@media(max-width:860px){.rm{grid-template-rows:auto minmax(0,1fr) min(220px,30vh) 34px}}
+@media(max-width:620px){.rm{grid-template-rows:auto minmax(0,1fr) min(220px,30vh) auto}}
+@media(max-width:860px) and (min-height:900px){.app{grid-template-rows:42px minmax(0,1fr) auto 340px 32px}.rm{grid-template-rows:auto minmax(0,1fr) 340px 34px}}
+@media(pointer:coarse){.kpbar .btn,.kpview .btn,.dlg .btn,.htabs button,.addly .btn{min-height:40px}.addly .btn{min-width:40px}.rmrow .btn{min-height:36px}#rmvcb,#expThick{min-height:36px}.rmsw{gap:8px}}
 </style>
 </head>
 <body>
@@ -245,9 +261,9 @@ button,input,select{font:inherit;color:inherit}
    <li><button data-a="importieren">Dazuladen …</button></li>
    <li><button data-a="speichern">Speichern<kbd>Strg+S</kbd></button></li>
    <li><button data-a="drucken">Drucken / PDF …<kbd>PR</kbd></button></li><hr>
-   <li><button data-a="exportSvg">SVG für Origin …<kbd>Strg+E</kbd></button></li>
+   <li><button data-a="exportSvg">SVG für Origin<kbd>Strg+E</kbd></button></li>
    <li><button data-a="exportDxf">Als DXF speichern</button></li><hr>
-   <li><button data-a="tpl">Vorlage einfügen …<kbd>VO</kbd></button></li>
+   <li><button data-a="tpl">Vorlage einfügen<kbd>VO</kbd></button></li>
    <li><button data-a="tplSave">Als Vorlage speichern …</button></li>
   </ul></div>
   <div class="dd"><button>Bearbeiten</button><ul>
@@ -261,7 +277,7 @@ button,input,select{font:inherit;color:inherit}
   <div class="dd"><button>Fräsen</button><ul id="mF"></ul></div>
   <div class="dd"><button>Ansicht</button><ul>
    <li><button data-a="zoomAll">Zoom alles<kbd>Strg+0</kbd></button></li>
-   <li><button data-a="view3d">3D-Vorschau der Platte<kbd>F4</kbd></button></li>
+   <li><button data-a="view3d">3D-Vorschau<kbd>F4</kbd></button></li>
    <li><button data-a="cam">Fräsvorschau<kbd>F6</kbd></button></li>
    <li><button data-a="osnap">Objektfang<kbd>F3</kbd></button></li>
    <li><button data-a="grid">Raster anzeigen<kbd>F7</kbd></button></li>
@@ -269,14 +285,14 @@ button,input,select{font:inherit;color:inherit}
    <li><button data-a="ortho">Nur gerade<kbd>F8</kbd></button></li>
    <li><button data-a="gsnap">Rasterfang<kbd>F9</kbd></button></li>
   </ul></div>
-  <button class="mbtn" data-a="korpus" title="Schränke und Korpusse planen">Korpusplaner</button>
-  <button class="mbtn" data-a="raum" title="Körper frei im Raum zusammensetzen">3D-Modus</button>
+  <button class="mbtn" data-a="korpus" title="Schränke und Korpusse planen"><span class="lg">Korpusplaner</span><span class="sh">Korpus</span></button>
+  <button class="mbtn" data-a="raum" title="Körper frei im Raum zusammensetzen"><span class="lg">3D-Modus</span><span class="sh">3D</span></button>
   <div class="dd help"><button>Hilfe</button><ul>
    <li><button data-a="help">Befehle &amp; Eingabe<kbd>F1</kbd></button></li>
   </ul></div>
   <div class="ur"><button class="ub" data-a="undo" id="bUndo" title="Rückgängig (Strg+Z)" aria-label="Rückgängig"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span>Rückgängig</span></button><button class="ub" data-a="redo" id="bRedo" title="Wiederholen (Strg+Y)" aria-label="Wiederholen"><svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3"/></svg></button></div>
   <div class="acts"><button class="ab" data-a="cam" id="a_cam" title="Zeigt, wo der Fräser läuft und wo Material stehen bleibt (F6)">Fräsvorschau</button><button class="ab" data-a="view3d" title="Platte räumlich ansehen (F4)">3D-Vorschau</button><button class="ab pri" data-a="exportSvg" title="Datei für die Shaper Origin speichern">SVG für Origin</button></div>
-  <div class="fname" id="fname">Zeichnung · Maße in mm</div>
+  <div class="fname" id="fname" title="Maße in mm">Zeichnung</div>
  </nav>
  <div class="tools" id="tools"></div>
  <div class="cvw" id="cvw"><canvas id="cv"></canvas><div class="hint" id="hint">Mausrad = Zoom · Mittlere Maustaste oder Leertaste halten = Ansicht verschieben · Rechtsklick = Enter</div></div>
@@ -285,7 +301,7 @@ button,input,select{font:inherit;color:inherit}
   <section class="sec"><h2 title="Gilt für alles, bei dem du nichts Eigenes eingetragen hast">Fräser-Standard</h2>
    <div class="pr"><label for="d_tool">Fräser Ø mm</label><input id="d_tool" type="text" inputmode="decimal"></div>
    <div class="pr"><label for="d_depth">Tiefe mm</label><input id="d_depth" type="text" inputmode="decimal"></div>
-   <div class="legend" id="legend" hidden><i style="background:#3a3f46"></i>Außen <i style="background:#16191d;margin-left:8px"></i>Innen <i style="background:#7d848d;margin-left:8px"></i>Tasche<br><i style="background:#ffd166"></i>Auf Linie <i style="background:#6f9cff;margin-left:8px"></i>Hilfslinie <i style="background:#e5482d;margin-left:8px"></i>Material bleibt</div></section>
+   <div class="legend" id="legend" hidden><span class="lg"><i style="background:#3a3f46"></i>Außen</span><span class="lg"><i style="background:#16191d"></i>Innen</span><span class="lg"><i style="background:#7d848d"></i>Tasche</span><span class="lg"><i style="background:#ffd166"></i>Auf Linie</span><span class="lg"><i style="background:#6f9cff"></i>Hilfslinie</span><span class="lg"><i style="background:#e5482d"></i>Material bleibt</span></div></section>
   <section class="sec"><h2>Ebenen</h2><div id="layers"></div>
    <form class="addly" id="addly"><input id="lyname" placeholder="Neue Ebene" aria-label="Name der neuen Ebene"><button class="btn" type="submit">+</button></form></section>
 
@@ -295,12 +311,12 @@ button,input,select{font:inherit;color:inherit}
   <div class="cl"><label for="inp" id="prompt">Befehl:</label><span id="optbar" class="optbar"></span><input id="inp" placeholder="Kürzel oder Zahl" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" aria-label="Befehlszeile"><button class="btn sm" data-a="enter" title="Bestätigen / Befehl fertig / letzten Befehl wiederholen">Enter ↵</button><button class="btn sm" data-a="esc" title="Abbrechen">Esc</button></div>
  </div>
  <div class="stat">
-  <button class="tg mob" data-a="cam" id="t_cam">Fräsvorschau</button><button class="tg mob" data-a="view3d" id="t_3d" title="Platte räumlich ansehen (F4)">3D-Vorschau</button><button class="tg mob mobpri" data-a="exportSvg" title="Datei für die Shaper Origin speichern (Strg+E)">SVG</button><span class="sep mob"></span>
+  <button class="tg mob" data-a="cam" id="t_cam">Fräsvorschau</button><button class="tg mob" data-a="view3d" id="t_3d" title="Platte räumlich ansehen (F4)">3D-Vorschau</button><button class="tg mob mobpri" data-a="exportSvg" title="Datei für die Shaper Origin speichern (Strg+E)">SVG</button><button class="tg mob" data-a="zoomAll" title="Ganze Zeichnung zeigen (Strg+0)">Alles zeigen</button><span class="sep mob"></span>
   <span class="xy" id="xy">X 0 · Y 0</span>
   <button class="tg" data-a="osnap" id="t_osnap" title="Rastet auf Ecken, Mitten und Schnittpunkte ein (F3)">Objektfang</button>
   <button class="tg" data-a="polar" id="t_polar" title="Winkelfang: Linie rastet auf 0°, 45°, 90° … ein (F10)">Winkelfang</button><select id="pstep" aria-label="Schritt des Winkelfangs" title="Schritt des Winkelfangs"><option value="90">90°</option><option value="45" selected>45°</option><option value="30">30°</option><option value="15">15°</option></select>
   <button class="tg" data-a="ortho" id="t_ortho" title="Ortho: nur waagrecht und senkrecht (F8)">Nur gerade</button>
-  <button class="tg" data-a="guide" id="t_guide" title="Ab jetzt Hilfslinien zeichnen – blau, werden nicht gefräst (Shift+H oder F2)">Hilfslinien zeichnen</button>
+  <button class="tg" data-a="guide" id="t_guide" title="Ab jetzt Hilfslinien zeichnen – blau, werden nicht gefräst (Shift+H oder F2)">Hilfslinien</button>
   <span class="sep"></span>
   <button class="tg" data-a="grid" id="t_grid" title="Raster anzeigen (F7)">Raster</button>
   <button class="tg" data-a="gsnap" id="t_gsnap" title="Punkte rasten auf das Raster ein (F9)">Rasterfang</button>
@@ -332,10 +348,10 @@ button,input,select{font:inherit;color:inherit}
    <tr><td>Strg+O · S · 0</td><td>Öffnen · Speichern · Zoom alles</td></tr>
    <tr><td>F3 · F7 · F8 · F9 · F10</td><td>Objektfang · Raster · Nur gerade · Rasterfang · Winkelfang (auch unten in der Leiste)</td></tr>
    <tr><td>Winkelfang</td><td>Die Richtung rastet auf 0°, 45°, 90° … ein (grüne Hilfslinie); dann die Länge tippen. „Nur gerade“ erlaubt nur waagrecht und senkrecht.</td></tr>
-   <tr><td>Hilfslinien</td><td>Shift+H, F2 oder unten „Hilfslinien zeichnen“: ab jetzt blau, wird nicht gefräst. <code>HL</code> = unendliche Hilfslinie (<code>W</code> waagrecht, <code>S</code> senkrecht).</td></tr>
+   <tr><td>Hilfslinien</td><td>Shift+H, F2 oder unten „Hilfslinien“: ab jetzt blau, wird nicht gefräst. <code>HL</code> = unendliche Hilfslinie (<code>W</code> waagrecht, <code>S</code> senkrecht).</td></tr>
    <tr><td>Anlegen</td><td><code>AN</code>: gerade Kante eines Teils anklicken, dann die Zielkante – das Teil wird gedreht und verschoben, bis beide bündig liegen (oder mit Abstand).</td></tr>
    <tr><td>Bemaßen</td><td><code>BM</code> waagrecht/senkrecht · <code>BA</code> schräg · <code>BK</code> Kettenmaß · <code>BR</code> Radius oder Durchmesser</td></tr>
-   <tr><td>Fremde Dateien</td><td>Datei › Öffnen liest auch SVG und DXF; „Dazuladen“ fügt eine Datei ein. Datei aufs Fenster ziehen geht auch.</td></tr>
+   <tr><td>Fremde Dateien</td><td>Datei › Öffnen liest auch SVG und DXF; „Dazuladen“ fügt eine Datei ein. Eine Datei aufs Fenster ziehen: Ist das Fenster leer, wird sie geöffnet, sonst dazugeladen (nur die Zeichnung, nicht Korpusplaner/3D).</td></tr>
    <tr><td>Drucken</td><td>Datei › „Drucken / PDF“: Zeichnung mit Bemaßung auf A4; im Druckfenster „Als PDF speichern“ wählen.</td></tr>
    <tr><td>Zwei Finger</td><td>auf dem iPad: auseinander/zusammen = Zoom, schieben = Ansicht verschieben</td></tr>
   </table>
@@ -383,9 +399,9 @@ button,input,select{font:inherit;color:inherit}
 <div class="dlg" id="dExp"><div class="box" style="max-width:520px">
  <h3>SVG für die Shaper Origin</h3>
  <p class="muted">Maße in mm, mit Frästyp, Tiefe und Fräser-Ø je Kontur. Bemaßung und ausgeblendete Ebenen werden nicht ausgegeben.</p>
- <table id="expT"></table>
- <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px"><label for="expThick">Plattenstärke</label><input id="expThick" type="text" inputmode="decimal" style="width:80px"> mm <button class="btn" id="expFix" style="display:none"></button></div>
+ <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><label for="expThick">Plattenstärke</label><input id="expThick" type="text" inputmode="decimal" style="width:80px"> mm <button class="btn" id="expFix" style="display:none"></button></div>
  <div class="warn" id="expW"></div>
+ <table id="expT"></table>
  <label id="expSelRow" style="display:flex;gap:8px;align-items:center;margin-top:12px"><input type="checkbox" id="expSel" style="width:18px;height:18px"> Nur die gewählten Objekte ausgeben</label>
  <div class="row"><button class="btn" data-close>Abbrechen</button><button class="btn pri" id="expB">SVG speichern</button></div>
 </div></div>
@@ -403,7 +419,7 @@ button,input,select{font:inherit;color:inherit}
 </div></div>
 <div class="dlg" id="d3d"><div class="box v3">
  <div class="v3bar"><h3>3D-Vorschau</h3><span class="muted" id="v3info"></span><span class="sp"></span>
-  <label for="v3thick">Plattenstärke</label><input id="v3thick" type="text" inputmode="decimal" aria-label="Plattenstärke in mm"><span class="muted">mm</span>
+  <span class="v3t"><label for="v3thick">Plattenstärke</label><input id="v3thick" type="text" inputmode="decimal" aria-label="Plattenstärke in mm"><span class="muted">mm</span></span>
   <span class="v3views"><button class="btn" data-v3="iso">Schräg</button><button class="btn" data-v3="top">Oben</button><button class="btn" data-v3="front">Vorn</button><button class="btn" data-v3="bottom">Unten</button></span><button class="btn pri" data-v3="close">Schließen</button></div>
  <div class="warn" id="v3warn"></div>
  <div class="v3wrap"><canvas id="v3cv"></canvas><div class="v3hint">Ziehen = drehen · Mausrad oder zwei Finger = Zoom · Rechte Maustaste oder Shift + Ziehen = verschieben</div></div>
@@ -411,7 +427,7 @@ button,input,select{font:inherit;color:inherit}
 <div class="kp" id="kp">
  <div class="kpbar"><h3><i></i>Korpusplaner</h3><span class="muted" id="kpinfo"></span><span class="muted hmsg" id="kpmsg"></span><span class="sp"></span>
   <button class="ub" data-kp="undo" title="Rückgängig (Strg+Z)"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span>Rückgängig</span></button>
-  <button class="btn" data-kp="list">Stückliste</button><button class="btn" data-kp="nest">Zuschnittplan</button><button class="btn" data-kp="draw" title="Alle Teile mit Bohrungen ins Zeichenprogramm legen">In die Zeichnung</button><button class="btn pri" data-kp="close">Zurück zum Zeichnen</button></div>
+  <button class="btn" data-kp="list">Stückliste</button><button class="btn" data-kp="nest">Zuschnittplan</button><button class="btn" data-kp="draw" title="Alle Teile mit Bohrungen ins Zeichenprogramm legen">In die Zeichnung</button><button class="btn pri" data-kp="close"><span class="lg">Zurück zum Zeichnen</span><span class="sh">Zurück</span></button></div>
  <div class="kpside" id="kpform"></div>
  <div class="kpmid"><canvas id="kpcv"></canvas>
   <div class="kptools"><button class="btn on" data-kpm="sel">Auswählen</button><button class="btn" data-kpm="fb">+ Fester Boden</button><button class="btn" data-kpm="eb">+ Einlegeboden</button><button class="btn" data-kpm="mw">+ Mittelwand</button><button class="btn" data-kpm="ks">+ Stange</button></div>
@@ -424,7 +440,7 @@ button,input,select{font:inherit;color:inherit}
  <h3>Stückliste</h3>
  <p class="muted">Gleiche Teile sind zusammengefasst. „SVG“ speichert das Teil mit allen Bohrungen direkt für die Origin. Bohrungen in den Stirnkanten (Dübel) kann die Origin nicht flach fräsen – sie sind als blaue Striche angezeichnet. Schubkästen sind für Blum TANDEM gerechnet; die Hakenbohrung Ø6 hinten ist nur angezeichnet – Lage mit der Blum-Lehre prüfen.</p>
  <div class="tblwrap"><table id="kplT"></table></div><p class="muted" id="kplsum"></p>
- <div class="row"><button class="btn" data-kpl="print">Drucken</button><button class="btn" data-kpl="csv">Als Tabelle (CSV)</button><button class="btn" data-kpl="cut">Für CutList Optimizer</button><button class="btn" data-kpl="draw">Alle Teile ins Zeichenprogramm</button><button class="btn pri" data-close>Schließen</button></div>
+ <div class="row"><button class="btn" data-kpl="print">Drucken</button><button class="btn" data-kpl="csv">Als Tabelle (CSV)</button><button class="btn" data-kpl="cut">Für CutList Optimizer</button><button class="btn" data-kpl="draw" title="Alle Teile mit Bohrungen ins Zeichenprogramm legen">In die Zeichnung</button><button class="btn pri" data-close>Schließen</button></div>
 </div></div>
 <div class="dlg" id="dKpn" style="z-index:45"><div class="box" style="max-width:980px">
  <h3>Zuschnittplan</h3>
@@ -455,13 +471,13 @@ button,input,select{font:inherit;color:inherit}
  <div class="row"><button class="btn" data-close>Abbrechen</button><button class="btn" id="newSave">Vorher speichern</button><button class="btn pri" id="newB">Leeren</button></div>
 </div></div>
 
-<script src="vendor/clipper.js?v=28"></script>
-<script src="font.js?v=28"></script>
-<script src="vendor/earcut.min.js?v=28"></script>
-<script src="view3d.js?v=28"></script>
-<script src="cad.js?v=28"></script>
-<script src="korpus.js?v=28"></script>
-<script src="raum.js?v=28"></script>
-<script src="start.js?v=28"></script>
+<script src="vendor/clipper.js?v=29"></script>
+<script src="font.js?v=29"></script>
+<script src="vendor/earcut.min.js?v=29"></script>
+<script src="view3d.js?v=29"></script>
+<script src="cad.js?v=29"></script>
+<script src="korpus.js?v=29"></script>
+<script src="raum.js?v=29"></script>
+<script src="start.js?v=29"></script>
 </body>
 </html>

@@ -281,7 +281,7 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  ok(/Seite-links-560x720\.svg/.test(D2.suggestedFilename())&&/shaper:cutType="outside" shaper:cutDepth="19mm"/.test(svgK)&&(svgK.match(/cutType="pocket"/g)||[]).length>10&&/shaper:cutDepth="12mm"/.test(svgK)&&/shaper:cutDepth="10mm"/.test(svgK),'SVG je Teil: Seite mit Außenkontur 19, Dübeln 12 tief, Nut 10 tief',D2.suggestedFilename());
  r=await p.evaluate(()=>KORPUS.csv(',',true).split('\n').slice(0,2));ok(r[0]==='Length,Width,Qty,Material,Label,Enabled'&&/^720,560,1,W1000 19mm,Seite links,true$/.test(r[1]),'Liste für CutList Optimizer',r.join(' | '));
  await p.click('[data-kpl="draw"]');r=await p.evaluate(()=>({open:KORPUS.isOpen(),n:__cad.S.ents.length,sel:__cad.sel.size,ly:__cad.S.layers.map(l=>l.n).join(),kp:!!__cad.S.korpus}));
- ok(!r.open&&r.n>80&&r.sel===r.n&&/Rückseite/.test(r.ly),'„Alle Teile ins Zeichenprogramm“: '+r.n+' Objekte gezeichnet und gewählt',JSON.stringify(r));
+ ok(!r.open&&r.n>80&&r.sel===0&&/Rückseite/.test(r.ly),'„In die Zeichnung“: '+r.n+' Objekte gezeichnet, nichts vorgewählt',JSON.stringify(r));
  const jsK=await p.evaluate(()=>JSON.stringify({app:'OriginCAD',v:3,...__cad.S}));await fresh();await p.setInputFiles('#file',{name:'Schrank.json',mimeType:'application/json',buffer:Buffer.from(jsK)});await p.waitForFunction(()=>document.getElementById('fname').textContent.startsWith('Schrank.json'));
  ok((await p.evaluate(()=>__cad.S.korpus&&__cad.S.korpus.cabs.length))===2,'Planung wird mit der Zeichnung gespeichert und wieder geladen');
 
@@ -409,7 +409,7 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  await p.click('[data-rm="close"]');await fresh();
 
  console.log('Bedienung und Darstellung (Prüfung)');
- await fresh();await C('BB');r=await p.evaluate(()=>[...document.querySelectorAll('#optbar [data-opt]')].map(b=>b.textContent).join());ok(r==='Lochreihe,Topfband,Dübelbild,Lochkreis','Bohrbild: Wahlmöglichkeiten als Knöpfe neben Enter',r);
+ await fresh();await C('BB');r=await p.evaluate(()=>[...document.querySelectorAll('#optbar [data-opt]')].map(b=>b.textContent).join());ok(r==='Lochreihe,Topfband,Dübelbild,Lochkreis (K)','Bohrbild: Wahlmöglichkeiten als Knöpfe neben Enter',r);
  await p.click('#optbar [data-opt="T"]');ok((await p.evaluate(()=>__cad.REQ&&__cad.REQ.prompt)).startsWith('Topf-Ø'),'Knopf „Topfband“ angetippt → weiter mit Topf-Ø');
  await C('','');await C('L');r=await p.evaluate(()=>({req:__cad.REQ&&__cad.REQ.prompt,last:document.getElementById('hist').lastChild.textContent}));ok(/Dübellöcher|Beschlag/.test(r.req)&&/passt hier nicht/.test(r.last),'Mitten im Befehl startet ein getipptes „L“ nicht die Linie, sondern gibt einen Hinweis',JSON.stringify(r));await p.keyboard.press('Escape');
  await C('R','0,0','100,50');await p.keyboard.press('Escape');await p.evaluate(()=>{__cad.act('alle')});await p.evaluate(()=>{document.getElementById('inp').blur()});await p.keyboard.press('Backspace');ok((await p.evaluate(()=>__cad.S.ents.length))===0,'Rücktaste löscht das Gewählte');await p.keyboard.press('Control+z');
@@ -437,7 +437,7 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  await p.fill('#kc_nm','1');await p.keyboard.press('Enter');await p.fill('#kc_nf','1');await p.keyboard.press('Enter');await p.fill('#kc_ne','2');await p.keyboard.press('Enter');await p.selectOption('#kc_front','m2');
  r=await p.evaluate(()=>{const c=KORPUS.state.cabs[0];return{fb:c.fb.length,eb:c.eb.length,nm:c.nm,f:document.getElementById('kc_nm').value}});ok(r.fb===1&&r.eb===2&&r.nm===0&&r.f==='0','Schubkasten oben + Türen bei Mittelwand: Böden nicht doppelt, Mittelwände auf 0',JSON.stringify(r));
  await p.selectOption('#kc_typ','1');r=await p.evaluate(()=>document.getElementById('kc_typ').value);ok(r==='1','Schranktyp bleibt nach der Wahl sichtbar',r);
- r=await p.evaluate(()=>KORPUS.clean({t:-100000,fuge:1e5,plL:5,cabs:[{b:600,h:720,d:560,nm:99}]}));ok(r.t===5&&r.fuge===20&&r.plL===500&&r.cabs[0].nm===6,'Geladene Korpuswerte werden auf die Formularbereiche begrenzt',JSON.stringify({t:r.t,f:r.fuge,p:r.plL,nm:r.cabs[0].nm}));
+ r=await p.evaluate(()=>KORPUS.clean({t:-100000,fuge:1e5,plL:5,cabs:[{b:600,h:720,d:560,nm:99}]}));ok(r.t===5&&r.fuge===20&&r.plL===500&&r.cabs[0].nm===0,'Geladene Korpuswerte werden auf die Formularbereiche begrenzt',JSON.stringify({t:r.t,f:r.fuge,p:r.plL,nm:r.cabs[0].nm}));
  await p.click('[data-kp="close"]');await fresh();
  // Zeichnen: Stutzen, Kommas, Rücktaste, Hilfe
  await C('L','0;0','100;0','');await p.keyboard.press('Escape');await p.evaluate(()=>{const e=__cad.S.ents[0];e.ct='inside';e.cd=7});await C('L','50;-20','50;20','');await p.keyboard.press('Escape');
@@ -495,6 +495,47 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  // Darstellung: SVG-Knopf am iPad Pro quer, Menüs am iPad hochkant
  for(const[w,h,sel,txt]of[[1194,834,'.acts [data-a="exportSvg"]','SVG-Knopf ganz sichtbar'],[1280,800,'.acts [data-a="exportSvg"]','SVG-Knopf ganz sichtbar'],[768,1024,'.dd.wide','Menüs „Zeichnen“ und „Ändern“ sichtbar']]){const q=await b.newPage({viewport:{width:w,height:h}});await q.goto(url);await q.waitForFunction(()=>window.__cad);
   r=await q.evaluate(s=>[...document.querySelectorAll(s)].map(e=>{const r=e.getBoundingClientRect();return e.offsetParent!==null&&r.width>0&&r.right<=innerWidth+0.5}),sel);ok(r.length>0&&r.every(Boolean),`${w} × ${h}: ${txt}`,JSON.stringify(r));await q.close()}
+ await fresh();
+
+ console.log('Nachprüfung (v29)');
+ // SVG-Fenster: Planer-Teile mit eigener Stärke, Topf außerhalb
+ await fresh();await p.evaluate(()=>{__cad.S.def.thick=19;__cad.kp.commit(()=>__cad.kp.addEnts([{t:'pline',ly:'Kontur',pts:[[0,0],[400,0],[400,300],[0,300]],closed:true,rect:true,ct:'outside',cd:8,th:8},{t:'pline',ly:'Kontur',pts:[[500,0],[900,0],[900,300],[500,300]],closed:true,rect:true,ct:'outside',cd:6,th:8},{t:'pline',ly:'Kontur',pts:[[0,400],[300,400],[300,700],[0,700]],closed:true,rect:true,ct:'outside'}]))});
+ await p.evaluate(()=>__cad.act('exportSvg'));r=await p.evaluate(()=>document.getElementById('expFix').textContent);ok(/^2 Außenkonturen/.test(r),'Rückwand 8 mm mit Tiefe 8 gilt als durchgefräst, nur die zu flachen werden angeboten',r);
+ await p.click('#expFix');r=await p.evaluate(()=>__cad.S.ents.map(e=>__cad.cutOf(e).d).join());ok(r==='8,8.5,19.5','Knopf setzt je Teil Stärke + 0,5 mm (8-mm-Teil → 8,5, nicht 19,5)',r);await p.keyboard.press('Escape');
+ await fresh();await C('R','0;0','560;720');await p.keyboard.press('Escape');await p.evaluate(()=>__cad.kp.commit(()=>__cad.kp.addEnts([{t:'circle',ly:'Kontur',c:[581.5,100],r:17.5,ct:'pocket',cd:13}])));await p.evaluate(()=>__cad.act('exportSvg'));
+ r=await p.evaluate(()=>document.getElementById('expW').textContent);ok(/ragen über die Außenkontur/.test(r),'Warnung: Bohrung ragt über die Außenkontur',r);await p.keyboard.press('Escape');
+ await fresh();await C('BB','T','35','13','B','R','0;0');r=await p.evaluate(()=>__cad.REQ.prompt);ok(/@-21,5;100/.test(r),'Topfband mit Türkante rechts: Beispiel zeigt nach innen (@-21,5;100)',r);await p.keyboard.press('Escape');
+ // Eingaben
+ await fresh();await C('R','0;0','@12,5,30');r=await p.evaluate(()=>({n:__cad.S.ents.length,m:document.getElementById('hist').lastChild.textContent}));ok(r.n===0&&/zu viele Zahlen/.test(r.m),'„@12,5,30“ wird gemeldet statt still 12 × 5 zu zeichnen',JSON.stringify(r));await p.keyboard.press('Escape');
+ await C('K','0;0','2*12,5');await p.keyboard.press('Escape');r=await p.evaluate(()=>__cad.S.ents[0]&&__cad.S.ents[0].r);ok(r===25,'Kreisradius „2*12,5“ = 25',String(r));
+ await C('L','0;0');await p.keyboard.press('Escape');r=await p.evaluate(()=>[...document.getElementById('hist').children].slice(-1)[0].textContent);ok(r==='Befehl beendet.','Esc mitten im Befehl: „Befehl beendet.“',r);
+ await fresh();await C('R','0;0','@100;50','R','300;0','@100;200');await p.keyboard.press('Escape');await p.evaluate(()=>__cad.act('alle'));await C('AN');await p.evaluate(()=>{const S=__cad.S;__cad.adv({e:S.ents[0],p:[100,25]});__cad.adv({e:S.ents[1],p:[300,100]})});await C('0');
+ r=await p.evaluate(()=>{const x=e=>e.pts.map(q=>q[0]);return{a:[Math.min(...x(__cad.S.ents[0])),Math.max(...x(__cad.S.ents[0]))],b:Math.min(...x(__cad.S.ents[1]))}});ok(r.a[1]===300&&r.b===300,'Anlegen mit allem gewählt: Zielteil bleibt stehen',JSON.stringify(r));
+ r=await p.evaluate(()=>[...document.querySelectorAll('#optbar [data-opt]')].map(b=>b.textContent).join());ok(r==='Andere Seite','Knopf heißt „Andere Seite“',r);await p.keyboard.press('Escape');
+ // Beispiel beim Start: „Neu“ ohne Rückfrage; Dateien mit vielen Ebenen
+ {const q=await b.newPage({viewport:{width:1200,height:800}});await q.goto(url);await q.waitForFunction(()=>window.__cad);await q.evaluate(()=>__cad.act('neu'));r=await q.evaluate(()=>({dlg:document.getElementById('dNew').classList.contains('open'),n:__cad.S.ents.length}));ok(!r.dlg&&r.n===0,'Unverändertes Beispiel: „Neu“ ohne Rückfrage',JSON.stringify(r));await q.close()}
+ {let d='0\nSECTION\n2\nENTITIES\n';for(let i=0;i<1500;i++)d+=`0\nLINE\n8\nL${i}\n10\n${i}\n20\n0\n11\n${i}\n21\n10\n`;d+='0\nENDSEC\n0\nEOF\n';const t2=Date.now();await p.setInputFiles('#file',{name:'Ebenen.dxf',mimeType:'application/dxf',buffer:Buffer.from(d)});await p.waitForFunction(()=>document.getElementById('fname').textContent.startsWith('Ebenen.dxf'));
+  r=await p.evaluate(()=>({ly:__cad.S.layers.length,n:__cad.S.ents.length,m:document.getElementById('hist').textContent}));ok(r.ly<=1000&&r.n===1500&&/Mehr als 1000 Ebenen/.test(r.m),'DXF mit 1500 Ebenen: höchstens 1000 Ebenen, Hinweis ('+(Date.now()-t2)+' ms)',JSON.stringify({ly:r.ly,n:r.n}))}
+ await fresh();r=await p.evaluate(async()=>{const ents=[];for(let i=0;i<60000;i++)ents.push({id:i+1,t:'line',ly:'0',a:[i,0],b:[i,10]});await __cad.loadFile(new File([JSON.stringify({ents})],'riesig.json'),'open');return document.getElementById('hist').textContent});ok(/zu groß für den Speicher im Browser/.test(r),'Sehr große Zeichnung: Hinweis, dass sie nicht automatisch gesichert wird');await fresh();
+ // Korpusplaner
+ await p.click('.mbtn[data-a="korpus"]');await p.evaluate(()=>{const k=KORPUS.state,c=k.cabs[0];Object.assign(c,{b:600,h:720,d:560,front:'2',mw:[],nm:0,fb:[],eb:[{x:300,y:560},{x:300,y:640}]});KORPUS.refresh()});await p.selectOption('#kc_front','ml');
+ r=await p.evaluate(()=>KORPUS.state.cabs[0].eb.length);ok(r===1,'Schubkasten oben ohne Mittelwand: Böden nicht doppelt',String(r));
+ await p.evaluate(()=>{const c=KORPUS.state.cabs[0];Object.assign(c,{front:'l',fb:[{x:300,y:592}],eb:[]});KORPUS.state.sv=true;KORPUS.state.topf=true;KORPUS.refresh()});ok((await clashes())===0,'Fester Boden auf Höhe eines Topfbands: Topfband weicht aus, nichts trifft sich');
+ await p.evaluate(()=>{const c=KORPUS.state.cabs[0];Object.assign(c,{h:200,fb:[],eb:[]});KORPUS.refresh()});r=await p.evaluate(()=>{const d=KORPUS.parts().find(q=>q.name.startsWith('Tür'));const cups=d.holes.filter(h=>h.d===35);return{ys:cups.map(h=>h.y),H:d.H}});ok(r.ys.length===2&&r.ys[1]-r.ys[0]>=40&&r.ys.every(y=>y-17.5>=0&&y+17.5<=r.H),'Niedrige Tür (200): Töpfe liegen getrennt und in der Tür',JSON.stringify(r));
+ await p.evaluate(()=>{const c=KORPUS.state.cabs[0];Object.assign(c,{h:720,front:'2',eb:[{x:300,y:300},{x:300,y:364}]});KORPUS.state.lr='boden';KORPUS.refresh()});r=await p.evaluate(()=>KORPUS.parts().find(q=>q.name==='Seite links').holes.filter(h=>h.pin).map(h=>h.x+'/'+h.y));ok(!r.some(s=>s.startsWith('53/')),'Zwei Einlegeböden 64 mm auseinander: gleiches Loch nur einmal, kein Extraloch',r.join(' '));
+ await p.fill('#kc_b','800-80');await p.keyboard.press('Enter');r=await p.evaluate(()=>KORPUS.state.cabs[0].b);ok(r===720,'Planer-Felder rechnen: „800-80“ = 720',String(r));
+ await p.click('[data-kp="close"]');await fresh();
+ // 3D-Modus
+ await p.click('.mbtn[data-a="raum"]');{const rb=await p.locator('#rm3d').boundingBox(),P3=w=>p.evaluate(w=>RAUM.viewer.project(w),w),clk=async w=>{const s=await P3(w);await p.mouse.move(rb.x+s[0],rb.y+s[1]);await p.mouse.click(rb.x+s[0],rb.y+s[1])};
+  r=await p.evaluate(()=>{const s=RAUM.viewer.project([500,0,0]),o=RAUM.viewer.project([0,0,0]),c=document.getElementById('rmov'),d=window.devicePixelRatio||1,q=[(s[0]*2+o[0])/3,(s[1]*2+o[1])/3],px=c.getContext('2d').getImageData(Math.round(q[0]*d),Math.round(q[1]*d),1,1).data;return[...px]});ok(r[0]>180&&r[2]<120,'Leerer 3D-Raum: X-Achse ist von Anfang an rot',r.join());
+  await p.keyboard.press('r');await clk([0,0,0]);await p.keyboard.type('600 400');await p.keyboard.press('Enter');r=await p.evaluate(()=>{const b=RAUM.state.bodies[0];return b?[b.L,b.B].join():''});ok(r==='600,400','3D-Rechteck „600 400“ (mit Leerzeichen) wird 600 × 400',r);
+  await p.keyboard.press('r');await clk([0,800,0]);await p.keyboard.type('6000000;300');await p.keyboard.press('Enter');r=await p.evaluate(()=>({n:RAUM.state.bodies.length,s:document.getElementById('rmstat').textContent}));ok(r.n===1&&/höchstens 100 m/.test(r.s),'3D: zu großes Maß wird abgelehnt',JSON.stringify(r));await p.keyboard.press('Escape');
+  await p.keyboard.press('p');await clk([300,200,0]);await p.keyboard.type('19');await p.keyboard.press('Enter');await p.keyboard.type('0,5');await p.keyboard.press('Enter');r=await p.evaluate(()=>({H:RAUM.state.bodies[0].H,s:document.getElementById('rmstat').textContent}));ok(r.H===19&&/mindestens 1 mm/.test(r.s),'Letzten Zug auf 0,5 korrigieren: wird abgelehnt statt flach',JSON.stringify(r));
+  await p.keyboard.press('Escape');await p.click('[data-rm="close"]')}
+ // Darstellung
+ {const q=await b.newPage({viewport:{width:932,height:430}});await q.goto(url);await q.waitForFunction(()=>window.__cad);await q.evaluate(()=>__cad.act('korpus'));await q.waitForTimeout(150);r=await q.evaluate(()=>document.querySelector('#kp .kpbar').getBoundingClientRect().height);ok(r<60,'Handy quer 932: Kopfzeile des Planers einzeilig ('+Math.round(r)+' px)');
+  r=await q.evaluate(()=>{const a=document.querySelector('.kpmid').getBoundingClientRect(),c=document.querySelector('.kp3').getBoundingClientRect();return[Math.round(a.height),Math.round(c.height)]});ok(r[0]>250&&r[1]>250,'Handy quer: Vorderansicht und 3D nebeneinander, groß genug',r.join());await q.close()}
+ {const q=await b.newPage({viewport:{width:1440,height:900}});await q.goto(url);await q.waitForFunction(()=>window.__cad);r=await q.evaluate(()=>{const e=document.getElementById('fname');return{t:e.textContent,ti:e.title,w:e.scrollWidth<=e.clientWidth+1}});ok(r.w&&/Maße in mm/.test(r.ti),'Dateiname passt, „Maße in mm“ im Tooltip',JSON.stringify(r));await q.close()}
  await fresh();
 
  console.log('Sicherheit');

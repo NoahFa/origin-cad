@@ -54,12 +54,14 @@ function tidy(k){for(const c of k.cabs){c.b=clampN(c.b,150,3000);c.h=clampN(c.h,
   if(!c.ks)c.ks=[];for(const l of[c.fb,c.eb])for(const s of l){s.y=num(clampN(s.y,k.t+20,c.h-2*k.t-20));s.x=clampN(s.x,k.t+1,c.b-k.t-1)}
   for(const s of c.ks){s.y=num(clampN(s.y,k.t+30,c.h-k.t-25));s.x=clampN(s.x,k.t+1,c.b-k.t-1)}
   if(c.front==='s'){c.mw=[];c.nm=0;c.fb=[];c.eb=[];c.ks=[]}
-  if(c.front[0]==='m'){if(c.mw.length){/* ohne Mittelwand liegen die Böden der früheren Fächer übereinander: doppelte entfernen */const dd=l=>l.filter((q,i)=>!l.slice(0,i).some(o=>Math.abs(o.y-q.y)<k.t));c.fb=dd(c.fb);c.eb=dd(c.eb).filter(q=>!c.fb.some(o=>Math.abs(o.y-q.y)<k.t));c.ks=dd(c.ks)}c.mw=[];c.nm=0;c.sfh=clampN(c.sfh||140,80,c.h-300);const top=c.h-c.sfh-2*k.fuge-40;for(const l of[c.fb,c.eb])for(const q of l)q.y=Math.min(q.y,num(top-k.t));for(const q of c.ks)q.y=Math.min(q.y,num(top))}c.zo=clampN(c.zo||0,0,2600);c.sn=clampN(Math.round(c.sn)||1,1,8)}}
+  if(c.front[0]==='m'){c.mw=[];c.nm=0;c.sfh=clampN(c.sfh||140,80,Math.max(80,c.h-300));const top=c.h-c.sfh-2*k.fuge-40;for(const l of[c.fb,c.eb])for(const q of l)q.y=Math.min(q.y,num(top-k.t));for(const q of c.ks)q.y=Math.min(q.y,num(top));
+   /* unter dem Schubkasten (und ohne Mittelwand) können Böden aufeinander liegen: doppelte entfernen */const dd=l=>l.filter((q,i)=>!l.slice(0,i).some(o=>Math.abs(o.y-q.y)<k.t));c.fb=dd(c.fb);c.eb=dd(c.eb).filter(q=>!c.fb.some(o=>Math.abs(o.y-q.y)<k.t));c.ks=dd(c.ks)}
+  if(c.front[0]!=='m'&&c.front!=='s')c.nm=c.mw.length;c.zo=clampN(c.zo||0,0,2600);c.sn=clampN(Math.round(c.sn)||1,1,8)}}
 
 /* ----- Teile erzeugen ----- */
 function dubPos(len){const steps=Math.floor((len-64)/32);if(steps<1)return[num(len/2)];const n=Math.max(2,Math.round(steps*32/192)+1),o=[];for(let i=0;i<n;i++)o.push(32+32*Math.round(i*steps/(n-1)));return[...new Set(o)]}
 function dubSv(len){/* Dübel zwischen den Verbindern: 64 hinter dem vorderen und vor dem hinteren, ab 300 mm Abstand einer in der Mitte */const a=101,b=len-101;if(b-a<32)return[num(len/2)];const o=[a];if(b-a>300)o.push(a+32*Math.round((b-a)/64));o.push(num(b));return o}
-function hingeYs(H){const n=H>1600?4:H>900?3:2,o=[];for(let i=0;i<n;i++)o.push(num(100+(H-200)*i/(n-1)));return o}
+function hingeYs(H){const n=H>1600?4:H>900?3:H>=150?2:1;if(n===1)return[num(H/2)];/* bei niedrigen Türen näher an die Kanten, aber mind. 40 mm */const m=Math.min(100,Math.max(40,(H-80)/2)),o=[];for(let i=0;i<n;i++)o.push(num(m+(H-2*m)*i/(n-1)));return o}
 function parts(k){k=k||K();const out=[],t=k.t;let x0=0;
  const mk=(ci,name,W,H,T,o,u,v,x={})=>{const p=Object.assign({ci,name,W:num(W),H:num(H),T,o,u,v,holes:[],grooves:[],ticks:[],tint:[1,1,1]},x);p.matId=p.rod?'':p.isFront?k.matF:p.mat==='Rückwand'?k.matR:k.matK;if(p.matId)p.tint=p.name.startsWith('Sockel')?[0.8,0.8,0.8]:[1,1,1];out.push(p);return p};
  k.cabs.forEach((c,ci)=>{const z0=cz(k,c),dE=k.nut?c.d-k.na-k.rw:c.d,svs=k.sv&&dE>=140?[37,dE-37]:[],xs=!k.dub?[]:svs.length?dubSv(dE):dubPos(dE),xs0=xs,svs0=svs;
@@ -107,7 +109,9 @@ function parts(k){k=k||K();const out=[],t=k.t;let x0=0;
    else mk(ci,'Griff '+de(k.grA),L,10,10,[wx+5,-t-22,wz-L/2],[0,0,1],[-1,0,0],{rod:true,mat:'Griff',isFront:true,tint:[0.7,0.72,0.75]})};
   const door=f=>{const Wd=f.w,Hd=f.h,side=f.side,xR=f.x+f.w,p=mk(ci,'Tür '+(side==='l'?'links':'rechts'),Wd,Hd,t,[x0+xR,-t-2,z0+f.z],[-1,0,0],[0,0,1],{front:1,isFront:true,tint:FT});
    if(k.topf){const hx=side==='l'?Wd-21.5:21.5,sg=side==='l'?-1:1;
-    for(const y of hingeYs(Hd)){hole(p,hx,y,TOPF_D,TOPF_T);hole(p,hx+sg*9.5,y+22.5,8,11);hole(p,hx+sg*9.5,y-22.5,8,11);
+    const bz=c.fb.filter(s=>{const q=compAt(c,k,s.x);return side==='l'?Math.abs(q.x0-t)<1e-6:Math.abs(q.x1-(c.b-t))<1e-6}).map(s=>s.y+t/2-f.z);
+    const ys=hingeYs(Hd).map(y=>{for(const b of bz)if(Math.abs(y-b)<45){const up=b+45,dn=b-45,okU=up<=Hd-40&&!bz.some(o=>Math.abs(up-o)<45),okD=dn>=40&&!bz.some(o=>Math.abs(dn-o)<45);if(okU||okD)y=okU&&(!okD||Math.abs(up-y)<=Math.abs(dn-y))?up:dn}return num(y)});
+    for(const y of ys){hole(p,hx,y,TOPF_D,TOPF_T);hole(p,hx+sg*9.5,y+22.5,8,11);hole(p,hx+sg*9.5,y-22.5,8,11);
      for(const dz of[-16,16])side==='l'?hole(SL,37,f.z+y+dz,LR_D,LR_T):hole(SR,c.d-37,f.z+y+dz,LR_D,LR_T)}}
    /* Griff senkrecht an der Öffnungsseite; beim Hängeschrank unten, sonst oben */
    const gx=side==='l'?k.grR:Wd-k.grR,gy=c.zo>0?k.grO+k.grA/2:Hd-k.grO-k.grA/2;if(Hd>k.grA+2*k.grO)grip(p,false,gx,gy,x0+xR-gx,z0+f.z+gy)};
@@ -126,6 +130,7 @@ function parts(k){k=k||K();const out=[],t=k.t;let x0=0;
   const isPin=h=>!!h.pin;
   for(const p of out){if(p.ci!==ci||!p.holes.length)continue;p.holes=p.holes.filter(h=>!isPin(h)||!p.holes.some(o=>o!==h&&!o.mark&&!isPin(o)&&o.back===h.back&&Math.hypot(o.x-h.x,o.y-h.y)<(o.d+h.d)/2+1));
    /* trifft ein Bodenträgerloch ein Loch von der anderen Seite (oder ein anderes Loch derselben Seite), wird es um 16 bzw. 32 mm verschoben, sonst weggelassen */
+   {const seen=new Set();p.holes=p.holes.filter(h=>{if(!isPin(h))return true;const key=h.back+':'+Math.round(h.x*2)+':'+Math.round(h.y*2);if(seen.has(key))return false;seen.add(key);return true})}
    const near=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y)<(a.d+b.d)/2+1,drop=new Set();
    const bad=h=>p.holes.some(o=>o!==h&&!o.mark&&!drop.has(o)&&near(o,h)&&(o.back===h.back||o.depth+h.depth>=p.T-1));
    for(const h of p.holes.filter(isPin).sort((a,b)=>(b.back?1:0)-(a.back?1:0))){if(!bad(h))continue;const x1=h.x;let ok=false;for(const dx of[16,-16,32,-32]){const x=num(x1+dx);if(x<20||x>p.W-20)continue;h.x=x;if(!bad(h)){ok=true;break}}if(!ok){h.x=x1;drop.add(h)}}
@@ -141,7 +146,7 @@ function parts(k){k=k||K();const out=[],t=k.t;let x0=0;
 
 /* ----- Einzelteil als Zeichnung (für die Origin) ----- */
 function partEnts(p,qty){const es=[],tool=S().def.tool;
- es.push({t:'pline',ly:'Kontur',pts:[[0,0],[p.W,0],[p.W,p.H],[0,p.H]],closed:true,rect:true,ct:'outside',cd:p.T});
+ es.push({t:'pline',ly:'Kontur',pts:[[0,0],[p.W,0],[p.W,p.H],[0,p.H]],closed:true,rect:true,ct:'outside',cd:p.T,th:p.T});
  for(const g of p.grooves)es.push({t:'pline',ly:'Kontur',pts:[[g.x,g.y],[g.x+g.w,g.y],[g.x+g.w,g.y+g.h],[g.x,g.y+g.h]],closed:true,rect:true,ct:'pocket',cd:g.depth,...(tool>Math.min(g.w,g.h)?{tool:Math.min(6,Math.min(g.w,g.h))}:{})});
  for(const h of p.holes){if(h.mark){es.push({t:'circle',ly:'Hilfslinien',c:[h.x,h.y],r:h.d/2,ct:'guide'},{t:'line',ly:'Hilfslinien',a:[h.x-h.d,h.y],b:[h.x+h.d,h.y]},{t:'line',ly:'Hilfslinien',a:[h.x,h.y-h.d],b:[h.x,h.y+h.d]});continue}
   if(h.back)es.push({t:'circle',ly:'Rückseite',c:[h.x,h.y],r:h.d/2,ct:'guide'});else es.push({t:'circle',ly:'Kontur',c:[h.x,h.y],r:h.d/2,ct:'pocket',cd:h.depth,...(tool<h.d-1e-9?{}:{tool:3})})}
@@ -176,6 +181,7 @@ function items(k){/* anklickbare Dinge: {type:'fb'|'eb'|'mw', ci, i, rect:[x,z,w
  k.cabs.forEach((c,ci)=>{const X=cabX(k,ci),z0=cz(k,c);c.mw.forEach((x,i)=>o.push({type:'mw',ci,i,rect:[X+x,z0+k.t,k.t,c.h-2*k.t]}));
   for(const ty of['fb','eb'])c[ty].forEach((s,i)=>{const f=compAt(c,k,s.x);o.push({type:ty,ci,i,rect:[X+f.x0,z0+s.y,f.x1-f.x0,k.t]})});
   (c.ks||[]).forEach((s,i)=>{const f=compAt(c,k,s.x);o.push({type:'ks',ci,i,rect:[X+f.x0,z0+s.y-k.ksD/2,f.x1-f.x0,k.ksD]})})});return o}
+let tForm=0;
 function draw(){const c=cv(),k=K();if(!c.clientWidth)return;const dpr=window.devicePixelRatio||1;if(c.width!==Math.round(c.clientWidth*dpr)||c.height!==Math.round(c.clientHeight*dpr)){c.width=Math.round(c.clientWidth*dpr);c.height=Math.round(c.clientHeight*dpr)}
  if(!drag)fitView();const g=c.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.fillStyle='#16191d';g.fillRect(0,0,c.clientWidth,c.clientHeight);
  const R=(x,z,w,h,fill,stroke,lw=1,dash)=>{g.beginPath();g.rect(sx(x),sy(z+h),w*view.s,h*view.s);if(fill){g.fillStyle=fill;g.fill()}if(stroke){g.strokeStyle=stroke;g.lineWidth=lw;g.setLineDash(dash||[]);g.stroke();g.setLineDash([])}};
@@ -188,7 +194,7 @@ function draw(){const c=cv(),k=K();if(!c.clientWidth)return;const dpr=window.dev
   for(const f of fronts(c,k)){if(f.typ==='s'){R(X+f.x,z0+f.z,f.w,f.h,'rgba(201,168,119,.28)','#e8d5b0',1.2);const zc=z0+f.z+f.h/2;g.strokeStyle='#e8d5b0';g.lineWidth=2;g.beginPath();g.moveTo(sx(X+c.b/2-40),sy(zc));g.lineTo(sx(X+c.b/2+40),sy(zc));g.stroke()}
    else if(showFront){R(X+f.x,z0+f.z,f.w,f.h,null,'#e8d5b0',1.2,[7,5]);g.strokeStyle='rgba(232,213,176,.5)';g.lineWidth=1;g.setLineDash([3,5]);g.beginPath();const xh=X+(f.side==='l'?f.x:f.x+f.w),xo=X+(f.side==='l'?f.x+f.w:f.x);g.moveTo(sx(xh),sy(z0+f.z));g.lineTo(sx(xo),sy(z0+f.z+f.h/2));g.lineTo(sx(xh),sy(z0+f.z+f.h));g.stroke();g.setLineDash([])}}
   if(act){g.strokeStyle='#e5482d';g.lineWidth=2;g.strokeRect(sx(X)-3,sy(z0+c.h)-3,c.b*view.s+6,c.h*view.s+6)}
-  {const room=c.b*view.s-6;g.font='12.5px "IBM Plex Sans",system-ui,sans-serif';const tt=['Korpus '+(ci+1)+' · Tiefe '+de(c.d),(ci+1)+' · T '+de(c.d),String(ci+1)].find(x=>g.measureText(x).width<=room)||String(ci+1);T(tt,sx(X+c.b/2),sy(z0+c.h)-16,act?'#ff8a70':'#9aa3ad')}});
+  {/* für alle Korpusse dieselbe Form, so kurz wie der schmalste es braucht */g.font='12.5px "IBM Plex Sans",system-ui,sans-serif';const F=[(i,d)=>'Korpus '+i+' · Tiefe '+d,(i,d)=>i+' · T '+d,i=>String(i)];if(ci===0)tForm=F.findIndex(fn=>k.cabs.every((q,i)=>g.measureText(fn(i+1,de(q.d))).width<=q.b*view.s-6));const tt=F[tForm<0?2:tForm](ci+1,de(c.d));T(tt,sx(X+c.b/2),sy(z0+c.h)-16,act?'#ff8a70':'#9aa3ad')}});
  for(const it of items(k)){const sel=pick&&pick.type===it.type&&pick.ci===it.ci&&pick.i===it.i,[x,z,w,h]=it.rect;
   if(it.type==='ks'){R(x,z,w,h,'#b9c2cc',sel?'#e5482d':'#7d8792',sel?2:1);R(x,z-6,8,h+12,'#7d8792',null);R(x+w-8,z-6,8,h+12,'#7d8792',null)}
   else R(x,z,w,h,it.type==='eb'?'rgba(201,168,119,.55)':wood,sel?'#e5482d':woodD,sel?2:1,it.type==='eb'?[5,3]:null);
@@ -201,8 +207,9 @@ function dims(g,k,T){const de=v=>String(Math.round(v*10)/10).replace('.',',');co
  g.strokeStyle=col;g.lineWidth=1;g.setLineDash([]);
  /* Innenmaße werden weggelassen, wenn ihr Text auf einem anderen Maß landen würde (schmale Fächer) */
  const used=[],free=r=>!used.some(u=>r[0]<u[0]+u[2]&&u[0]<r[0]+r[2]&&r[1]<u[1]+u[3]&&u[1]<r[1]+r[3]),tw=s=>s.length*7.4+8;
- const dH=(xa,xb,py,txt,ext,inner)=>{const a=sx(xa),b=sx(xb),show=b-a>=30||(txt.length<4&&b-a>=18),r=[(a+b)/2-tw(txt)/2,py-17,tw(txt),16];if(inner&&(!show||!free(r)))return;line(a,py,b,py);tick(a,py);tick(b,py);if(ext){line(a,ext,a,py+5);line(b,ext,b,py+5)}if(show){used.push(r);T(txt,(a+b)/2,py-9,col)}};
- const dV=(za,zb,px,txt,ext,side=-1,inner)=>{const a=sy(za),b=sy(zb),show=a-b>=30,r=[px+side*9-8,(a+b)/2-tw(txt)/2,16,tw(txt)];if(inner&&(!show||!free(r)||!free([px-3,b,6,a-b])))return;line(px,a,px,b);tick(px,a);tick(px,b);if(ext!=null){line(ext,a,px+side*5,a);line(ext,b,px+side*5,b)}if(show){used.push(r);T(txt,px+side*9,(a+b)/2,col,'center',-Math.PI/2)}};
+ const dH=(xa,xb,py,txt,ext,inner)=>{const a=sx(xa),b=sx(xb),show=b-a>=30||(txt.length<4&&b-a>=18),r=[(a+b)/2-tw(txt)/2,py-17,tw(txt),16];if(inner&&(!show||!free(r)))return;line(a,py,b,py);tick(a,py);tick(b,py);if(ext){line(a,ext,a,py+5);line(b,ext,b,py+5)}if(show){used.push(r);if(inner)bg(r);T(txt,(a+b)/2,py-9,col)}};
+ const bg=r=>{g.fillStyle='#16191dd9';g.fillRect(r[0]+2,r[1]+1,r[2]-4,r[3]-2)};
+ const dV=(za,zb,px,txt,ext,side=-1,inner)=>{const a=sy(za),b=sy(zb),show=a-b>=30,r=[px+side*9-8,(a+b)/2-tw(txt)/2,16,tw(txt)];if(inner&&(!show||!free(r)||!free([px-3,b,6,a-b])))return;line(px,a,px,b);tick(px,a);tick(px,b);if(ext!=null){line(ext,a,px+side*5,a);line(ext,b,px+side*5,b)}if(show){used.push(r);if(inner)bg(r);T(txt,px+side*9,(a+b)/2,col,'center',-Math.PI/2)}};
  /* unten: Korpusbreiten, darunter Gesamtbreite */
  const y1=sy(0)+26,y2=sy(0)+54;let X=0;k.cabs.forEach(c=>{dH(X,X+c.b,y1,de(c.b),sy(0)+4);X+=c.b});if(k.cabs.length>1)dH(0,W,y2,de(W),y1+4);
  /* links: Abstand zum Boden (Sockel oder Hängehöhe) + Korpus, außen Gesamthöhe */
@@ -214,7 +221,7 @@ function dims(g,k,T){const de=v=>String(Math.round(v*10)/10).replace('.',',');co
  k.cabs.forEach(c=>{const z0=cz(k,c);if(c.front!=='s')for(const f of comps(c,k)){const xm=(f.x0+f.x1)/2,inF=l=>l.filter(s=>Math.abs(compAt(c,k,s.x).x0-f.x0)<1e-6);
     const lv=[{a:t,b:t},...inF(c.fb).map(s=>({a:s.y,b:s.y+t})),...inF(c.eb).map(s=>({a:s.y,b:s.y+t})),{a:c.h-t,b:c.h-t}].sort((p,q)=>p.a-q.a);
     dH(X+f.x0,X+f.x1,sy(z0+c.h-t)+16,de(f.x1-f.x0),0,1);
-    const px=sx(X+f.x0)+13;for(let i=0;i<lv.length-1;i++){const lo=lv[i].b,hi=lv[i+1].a;if(hi-lo>1)dV(z0+lo,z0+hi,px,de(hi-lo),null,1,1)}
+    const px=sx(X+f.x0)+13;if((f.x1-f.x0)*view.s>=44)for(let i=0;i<lv.length-1;i++){const lo=lv[i].b,hi=lv[i+1].a;if(hi-lo>1)dV(z0+lo,z0+hi,px,de(hi-lo),null,1,1)}
     for(const s of inF(c.ks||[]))T('Stange '+de(s.y),sx(X+xm),sy(z0+s.y)+k.ksD/2*view.s+11,col)}
   for(const f of fronts(c,k))if(f.typ==='s'&&f.h*view.s>40){const tx=de(f.w)+' × '+de(f.h),px=sx(X+c.b/2),py=sy(z0+f.z+f.h/2)+15;g.font='12.5px "IBM Plex Sans",system-ui,sans-serif';const tw=g.measureText(tx).width;if(tw>c.b*view.s-8)continue;g.fillStyle='#16191dcc';g.fillRect(px-tw/2-3,py-8,tw+6,16);T(tx,px,py,'#e8d5b0')}
   X+=c.b})}
@@ -274,7 +281,7 @@ function form(){const k=K(),c=k.cabs[cur],inp=(id,lab,val,x='')=>`<div class="pr
  ${sec('sock','Sockel',k.sockel?de(k.sh)+' mm hoch':'ohne',`${chk('kr_sockel','Sockel unter den stehenden Korpussen',k.sockel)}${k.sockel?inp('kr_sh','Sockelhöhe mm',k.sh)+inp('kr_sr','Rücksprung mm',k.sr):''}`)}`;
  $('kpform').querySelectorAll('details.kpsec').forEach(d=>d.addEventListener('toggle',()=>{d.open?openSec.add(d.dataset.sec):openSec.delete(d.dataset.sec)}));
  $('kpform').querySelectorAll('[data-kpcab]').forEach(bt=>bt.onclick=()=>{cur=+bt.dataset.kpcab;pick=null;refresh()});
- const val=el=>{const v=parseFloat(el.value.replace(',','.'));return isFinite(v)?v:null},on=(id,fn)=>{const el=$(id);if(!el)return;el.addEventListener('change',()=>{fn(el);refresh()});if(el.tagName==='INPUT'&&el.type==='text')el.addEventListener('keydown',e=>{if(e.key==='Enter')el.blur()})};
+ const val=el=>{const s=el.value.replace(/,/g,'.'),v=A.ev?A.ev(s):parseFloat(s);return typeof v==='number'&&isFinite(v)?v:null},on=(id,fn)=>{const el=$(id);if(!el)return;el.addEventListener('change',()=>{fn(el);refresh()});if(el.tagName==='INPUT'&&el.type==='text')el.addEventListener('keydown',e=>{if(e.key==='Enter')el.blur()})};
  const set=(obj,f,min,max,after)=>el=>{const v=val(el);if(v==null)return;A.commit(()=>{obj[f]=clampN(v,min,max);after&&after();tidy(k)})};
  on('kc_b',set(c,'b',150,3000,()=>scaleX(c,k)));on('kc_h',set(c,'h',150,3000));on('kc_d',set(c,'d',120,1200));
  on('kc_front',el=>A.commit(()=>{c.front=el.value;tidy(k)}));on('kc_zo',set(c,'zo',0,2600));on('kc_sfh',set(c,'sfh',80,600));
@@ -316,7 +323,7 @@ function printList(){const w=window.open('','_blank');if(!w){msg('Das Druckfenst
 function toDrawing(){const rows=list(K()).filter(r=>!r.p.rod),all=[];let x=0,y=0,rowH=0;const b=A.bbox(S().ents),bx=b?b[2]+150:0,by=b?b[1]:0;
  for(const r of rows){if(r.p.rod)continue;if(x>0&&x+r.p.W>3200){x=0;y+=rowH+80;rowH=0}for(const e of partEnts(r.p,r.n)){const mv=p=>[p[0]+bx+x,p[1]+by+y],n=JSON.parse(JSON.stringify(e));
    if(n.pts)n.pts=n.pts.map(mv);if(n.c)n.c=mv(n.c);if(n.a&&n.b){n.a=mv(n.a);n.b=mv(n.b)}if(n.p)n.p=mv(n.p);all.push(n)}x+=r.p.W+80;rowH=Math.max(rowH,r.p.H)}
- let made;A.commit(()=>{made=A.addEnts(all)});close();A.after();A.select(made);A.log(`Korpusplaner: ${rows.length} verschiedene Teile in die Zeichnung gelegt (sind gewählt). Für die Origin: ein Teil wählen, Datei › SVG für Origin und dort „nur Gewählte“ anhaken – oder im Planer in der Stückliste „SVG“ je Teil.`,'ok')}
+ A.commit(()=>{A.addEnts(all)});close();A.after();A.log(`Korpusplaner: ${rows.length} verschiedene Teile rechts neben die Zeichnung gelegt. Für die Origin: einen Rahmen um ein Teil ziehen (so sind die Bohrungen dabei), dann „SVG für Origin“ und „Nur die gewählten Objekte ausgeben“ anhaken – einfacher: im Planer in der Stückliste „SVG“ je Teil.`,'ok')}
 
 /* ----- Zuschnittplan: Teile in Streifen auf Platten verteilen (einfache, sägegerechte Aufteilung) ----- */
 function nest(k){k=k||K();const pieces=[];list(k).filter(r=>!r.p.rod).forEach((r,i)=>{const p=r.p;/* Länge (größeres Maß) läuft in Plattenlänge = Maserung längs */
@@ -335,11 +342,11 @@ function nestOf(pieces,k){k=k||K();const groups=new Map(),uw=k.plL-2*k.rand,uh=k
  return{groups:out,misfit,plL:k.plL,plB:k.plB,rand:k.rand}}
 function nestSVG(n,sh){const s=v=>Math.round(v*100)/100;let b=`<rect x="0" y="0" width="${n.plL}" height="${n.plB}" fill="#f4efe6" stroke="#333" stroke-width="3"/>`;
  for(const q of sh.parts){const x=n.rand+q.x,y=n.rand+q.y,fs=Math.max(n.plL/70,Math.min(46,q.h*0.32,q.w*0.11)),full=q.w*0.11>=n.plL/70&&q.h*0.32>=n.plL/70;b+=`<rect x="${s(x)}" y="${s(y)}" width="${s(q.w)}" height="${s(q.h)}" fill="#d9c29a" stroke="#222" stroke-width="2.5"/>`+
-   (full&&q.w>150&&q.h>44?`<text x="${s(x+q.w/2)}" y="${s(y+q.h/2+fs*0.35)}" font-size="${s(fs)}" text-anchor="middle" font-family="Arial,sans-serif" fill="#111">${q.nr} · ${de(q.w)} × ${de(q.h)}</text>`:`<text x="${s(x+q.w/2)}" y="${s(y+q.h/2+Math.min(n.plL/50,q.h*0.8)*0.35)}" font-size="${s(Math.min(n.plL/50,q.h*0.8))}" text-anchor="middle" font-family="Arial,sans-serif" fill="#111">${q.nr}</text>`)}
+   (full&&q.w>150&&q.h>44?`<text x="${s(x+q.w/2)}" y="${s(y+q.h/2+fs*0.35)}" font-size="${s(fs)}" text-anchor="middle" font-family="Arial,sans-serif" fill="#111">${q.nr} · ${de(q.w)} × ${de(q.h)}</text>`:`<text x="${s(x+q.w/2)}" y="${s(y+q.h/2+Math.min(fs,q.h*0.8)*0.35)}" font-size="${s(Math.min(fs,q.h*0.8))}" text-anchor="middle" font-family="Arial,sans-serif" fill="#111">${q.nr}</text>`)}
  return`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 ${n.plL+8} ${n.plB+8}" style="width:100%;height:auto;display:block">${b}</svg>`}
 function nestHTML(){return nestHTMLOf(nest(K()))}
 function nestHTMLOf(n){let h='';
- for(const g of n.groups){h+=`<h4>${g.kind} ${de(g.T)} mm${g.matId?' · '+A.esc(matName(g.matId)):''} – ${g.sheets.length} Platte${g.sheets.length>1?'n':''}, Verschnitt ${Math.round(g.waste*100)} %</h4>`;g.sheets.forEach((sh,i)=>{h+=`<div class="kpsheet"><div class="muted">Platte ${i+1} von ${g.sheets.length} · ${sh.parts.length} Teile</div>${nestSVG(n,sh)}</div>`})}
+ for(const g of n.groups){h+=`<h4>${A.esc(g.kind)} ${de(g.T)} mm${g.matId?' · '+A.esc(matName(g.matId)):''} – ${g.sheets.length} Platte${g.sheets.length>1?'n':''}, Verschnitt ${Math.round(g.waste*100)} %</h4>`;g.sheets.forEach((sh,i)=>{h+=`<div class="kpsheet"><div class="muted">Platte ${i+1} von ${g.sheets.length} · ${sh.parts.length} Teile</div>${nestSVG(n,sh)}</div>`})}
  if(n.misfit.length)h+=`<div class="warn">Passt auf keine Platte: ${[...new Set(n.misfit.map(q=>`${A.esc(q.name)} ${de(q.w)} × ${de(q.h)}`))].join(', ')}</div>`;
  return h||'<p class="muted">Keine Teile.</p>'}
 function openNest(){const k=K();for(const f of['plL','plB','kerf','rand'])$('kn_'+f).value=de(k[f]);$('kpnBody').innerHTML=nestHTML();$('dKpn').classList.add('open')}
