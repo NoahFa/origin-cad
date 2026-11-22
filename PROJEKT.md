@@ -8,6 +8,7 @@ Live: https://noahfa.github.io/origin-cad/ (installierbar auf iPad/PC, läuft da
 - `index.html` – Oberfläche und Gestaltung
 - `cad.js` – das ganze Programm
 - `font.js` – Einstrich-Schrift (Hershey Sans 1-stroke, Hinweis zur Herkunft steht in der Datei)
+- `view3d.js`, `vendor/earcut.min.js` (ISC) – 3D-Ansicht
 - `vendor/clipper.js` – Clipper 6.4.2 (Boost-Lizenz): Versatz und Formen kombinieren
 - `sw.js`, `manifest.webmanifest`, Symbole – App-Installation und Offline-Betrieb
 - `tests/check.cjs` – Prüfung im echten Browser: `node tests/check.cjs [Foto-Ordner]`
@@ -66,6 +67,8 @@ Live: https://noahfa.github.io/origin-cad/ (installierbar auf iPad/PC, läuft da
 - **Auswahlmodus** mit Shift+A (oder Pfeil oben in der Werkzeugleiste): beendet den laufenden Befehl, danach Objekte anklicken/Rahmen.
 
 - **Hilfslinien**: Shift+H / F2 / Knopf „HILFSLINIE“ schaltet die aktuelle Ebene zwischen „Hilfslinien“ und der vorigen um. `HL` = unendliche Hilfslinie (Typ `xline {p,d}`, d = Richtung, Länge 1); fangbar, Versatz geht, nicht in SVG, in DXF als XLINE.
+
+- **3D-Ansicht** (F4, Knopf „3D“, `DD`): `build3D()` in cad.js zerlegt die Platte in Schichten je Frästiefe (Außenkonturen minus alle Fräsungen, die mindestens so tief sind), `view3d.js` zeigt sie mit eigenem kleinen WebGL-Betrachter (Dreiecke über `vendor/earcut.min.js`). Plattenstärke `def.thick` (Standard 19). Innen-Ausschnitt mit Tiefe < Stärke = nur Nut in Fräserbreite.
 
 ## Ideen / offen
 - An der echten Origin prüfen: Wird die SVG mit Frästyp, Tiefe und Fräser-Ø richtig erkannt? (Format nach Shaper-Vorgabe gebaut, aber noch nicht an der Maschine getestet.)

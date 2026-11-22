@@ -10,9 +10,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Origin CAD">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.webmanifest?v=8">
-<link rel="icon" href="icon.svg?v=8" type="image/svg+xml">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=8">
+<link rel="manifest" href="manifest.webmanifest?v=9">
+<link rel="icon" href="icon.svg?v=9" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=9">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -117,6 +117,12 @@ button,input,select{font:inherit;color:inherit}
 .dlg textarea{width:100%;height:220px;font:12px "IBM Plex Mono",monospace;background:var(--chrome);border:1px solid var(--line);border-radius:6px;padding:8px}
 .warn{margin-top:8px;padding:8px 10px;border-radius:6px;background:var(--accs);color:var(--ink);font-size:12.5px;line-height:1.45;border-left:3px solid var(--acc)}
 .legend{font-size:12.5px;color:var(--mut);line-height:1.7}.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px;border:1px solid #0003}
+.dlg .box.v3{max-width:none;width:100%;height:100%;max-height:none;padding:14px 16px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.v3bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.v3bar h3{margin:0 6px 0 0;font-size:18px}.v3bar .sp{flex:1}
+.v3bar input{width:64px;padding:5px 8px;border:1px solid var(--line);border-radius:5px;background:var(--chrome);text-align:right}
+.v3wrap{position:relative;flex:1;min-height:0;border-radius:8px;overflow:hidden;background:#16191d}.v3wrap canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+.v3hint{position:absolute;left:10px;bottom:8px;color:#9aa3ad;font-size:12.5px;pointer-events:none;background:#16191dcc;padding:4px 8px;border-radius:5px}
+.dlg .box.v3 .warn{margin:0}
 .row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
 @media(max-width:860px){.app{grid-template-columns:52px minmax(0,1fr);grid-template-rows:38px minmax(0,1fr) auto 220px 30px;grid-template-areas:"menu menu" "tools cv" "cmd cmd" "side side" "stat stat"}.side{border-left:0;border-top:1px solid var(--line)}.fname{display:none}.hint{display:none}.stat>*{flex:none}.xy{min-width:0;margin-right:6px}}
 @media(max-width:600px){.menu{padding:0 4px;gap:0}.brand{margin-right:4px}.brand span{display:none}.dd.wide{display:none}.ur{margin-left:auto;padding-left:4px;border-left:0}.ub span{display:none}.ub{padding:5px 7px}.dd>button{padding:6px 8px}.dd ul{max-width:92vw}}
@@ -148,6 +154,7 @@ button,input,select{font:inherit;color:inherit}
   <div class="dd"><button>Fräsen</button><ul id="mF"></ul></div>
   <div class="dd"><button>Ansicht</button><ul>
    <li><button data-a="zoomAll">Zoom alles<kbd>Strg+0</kbd></button></li>
+   <li><button data-a="view3d">3D-Ansicht der Platte<kbd>F4</kbd></button></li>
    <li><button data-a="cam">Fräsvorschau<kbd>F6</kbd></button></li>
    <li><button data-a="osnap">Objektfang<kbd>F3</kbd></button></li>
    <li><button data-a="grid">Raster anzeigen<kbd>F7</kbd></button></li>
@@ -191,6 +198,7 @@ button,input,select{font:inherit;color:inherit}
   <button class="tg" data-a="grid" id="t_grid">RASTER</button>
   <button class="tg" data-a="gsnap" id="t_gsnap">RFANG</button>
   <button class="tg" data-a="cam" id="t_cam">FRÄSEN</button>
+  <button class="tg" data-a="view3d" id="t_3d" title="3D-Ansicht der Platte (F4)">3D</button>
   <button class="tg" data-a="guide" id="t_guide" title="Auf der Ebene „Hilfslinien“ zeichnen (Shift+H oder F2)">HILFSLINIE</button>
   <label for="gstep" style="margin-left:6px;color:var(--mut)">Raster</label><input id="gstep" type="number" min="0.1" step="any" value="10"><span style="color:var(--mut)">mm</span>
   <span class="sp"></span><span style="color:var(--mut)" id="cnt"></span>
@@ -219,6 +227,7 @@ button,input,select{font:inherit;color:inherit}
   <tr><td>Winkelfang</td><td>Beim Zeichnen rastet die Richtung auf 0°, 45°, 90° … ein, sobald du nah dran bist (grüne Hilfslinie). Schrittweite unten neben „WINKEL“ wählbar. Dann einfach die Länge tippen, z. B. <code>250</code>. ORTHO erzwingt immer waagrecht/senkrecht.</td></tr>
   <tr><td>Fräsen</td><td>Objekt wählen, rechts unter „Fräsen“ Frästyp, Tiefe und Fräser-Ø eintragen. Leer = Fräser-Standard. „Automatisch“: geschlossene Kontur = Außen, liegt sie in einer anderen = Innen, offene Linie = Auf Linie, Ebene „Hilfslinien“ = Hilfslinie.</td></tr>
   <tr><td>Fräsvorschau</td><td>gestrichelt = Weg der Fräsermitte · rot = hier kommt der Fräser nicht hin, Material bleibt stehen</td></tr>
+  <tr><td>3D-Ansicht</td><td><code>F4</code> oder Knopf „3D“ unten: zeigt die Platte räumlich mit allen Ausschnitten, Bohrungen, Taschen und Gravuren in der eingetragenen Tiefe. Plattenstärke oben im 3D-Fenster eintragen.</td></tr>
   <tr><td>Zur Origin</td><td>Datei › „SVG für Shaper Origin“ (oder <code>EX</code>). Die Datei auf einen USB-Stick kopieren oder bei hub.shapertools.com hochladen. Frästyp, Tiefe und Fräser-Ø stehen in der Datei; Bemaßung wird nicht ausgegeben.</td></tr>
   <tr><td>Fremde Dateien</td><td>Datei › Öffnen liest auch SVG und DXF. „Dazuladen“ fügt eine Datei in die aktuelle Zeichnung ein. Datei aufs Fenster ziehen geht auch.</td></tr>
   <tr><td>Vorlagen</td><td><code>VO</code> fügt eine Vorlage ein (z. B. Topfband mit Dübellöchern). Eigene: Objekte wählen, Datei › „Als Vorlage speichern“. Eigene Vorlagen liegen nur auf diesem Gerät.</td></tr>
@@ -253,15 +262,24 @@ button,input,select{font:inherit;color:inherit}
  <form id="tplSaveF"><input id="tplName" placeholder="Name der Vorlage" aria-label="Name der Vorlage" maxlength="60" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--chrome)">
  <div class="row"><button class="btn" type="button" data-close>Abbrechen</button><button class="btn pri" type="submit">Speichern</button></div></form>
 </div></div>
+<div class="dlg" id="d3d"><div class="box v3">
+ <div class="v3bar"><h3>3D-Ansicht</h3><span class="muted" id="v3info"></span><span class="sp"></span>
+  <label for="v3thick">Plattenstärke</label><input id="v3thick" type="text" inputmode="decimal" aria-label="Plattenstärke in mm"><span class="muted">mm</span>
+  <button class="btn" data-v3="iso">Schräg</button><button class="btn" data-v3="top">Oben</button><button class="btn" data-v3="front">Vorn</button><button class="btn" data-v3="bottom">Unten</button><button class="btn pri" data-v3="close">Schließen</button></div>
+ <div class="warn" id="v3warn"></div>
+ <div class="v3wrap"><canvas id="v3cv"></canvas><div class="v3hint">Ziehen = drehen · Mausrad oder zwei Finger = Zoom · Rechte Maustaste oder Shift + Ziehen = verschieben</div></div>
+</div></div>
 <div class="dlg" id="dNew"><div class="box" style="max-width:420px">
  <h3>Neue Zeichnung?</h3>
  <p class="muted">Die aktuelle Zeichnung wird geleert. Rückgängig (Strg+Z) holt sie zurück.</p>
  <div class="row"><button class="btn" data-close>Abbrechen</button><button class="btn pri" id="newB">Leeren</button></div>
 </div></div>
 
-<script src="vendor/clipper.js?v=8"></script>
-<script src="font.js?v=8"></script>
-<script src="cad.js?v=8"></script>
+<script src="vendor/clipper.js?v=9"></script>
+<script src="font.js?v=9"></script>
+<script src="vendor/earcut.min.js?v=9"></script>
+<script src="view3d.js?v=9"></script>
+<script src="cad.js?v=9"></script>
 <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>

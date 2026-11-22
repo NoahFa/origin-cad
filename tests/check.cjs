@@ -7,7 +7,7 @@ const srv=http.createServer((q,r)=>{let f=decodeURIComponent(q.url.split('?')[0]
 let fails=0;const ok=(c,t,extra='')=>{console.log((c?'  ok   ':'  FEHLER ')+t+(c?'':' '+extra));if(!c)fails++};
 const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
 (async()=>{await new Promise(r=>srv.listen(0,r));const url=`http://localhost:${srv.address().port}/`;
- const b=await chromium.launch();const errs=[];
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist']});const errs=[];
  const open=async(vp)=>{const ctx=await b.newContext({viewport:vp,serviceWorkers:'block',acceptDownloads:true});const p=await ctx.newPage();p.on('pageerror',e=>errs.push(String(e)));p.on('console',m=>{if(m.type()==='error'&&!/fonts\.g|ERR_|Failed to load resource/.test(m.text()))errs.push(m.text())});
   await p.addInitScript(()=>{delete window.showSaveFilePicker});await p.route(/fonts\.(googleapis|gstatic)\.com/,r=>r.abort());await p.goto(url);await p.waitForFunction(()=>window.__cad);return p};
  const p=await open({width:1440,height:900});
@@ -204,6 +204,20 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  svg=await p.evaluate(()=>__cad.buildSVG(__cad.exportList(false)));ok(!/guide/.test(svg)&&/width="100mm"/.test(svg),'Unendliche Hilfslinien nicht in der SVG, Größe stimmt');
  r=await p.evaluate(()=>__cad.importDXF(__cad.buildDXF(__cad.S.ents)).ents.map(e=>e.t).join());ok(r==='xline,xline,xline,pline','DXF behält die Hilfslinien',r);
  await C('VS','10');await p.evaluate(()=>{const e=__cad.S.ents[0];__cad.adv({e,p:[0,50]});__cad.adv({p:[0,80]})});await C('');E=await ents();ok(E.length===5&&near(E[4].p[1],60),'Versatz geht auch mit Hilfslinien');
+
+ console.log('3D-Ansicht');
+ await fresh();await C('R','0,0','400,600','K','21.5,100','17.5','R','150,200','@100,150','L','50,500','350,500','');await p.keyboard.press('Escape');
+ await p.evaluate(()=>{const S=__cad.S;S.ents[0].cd=19;S.ents[1].ct='pocket';S.ents[1].cd=13;S.ents[2].cd=19;S.ents[3].cd=2;__cad.act('alle');__cad.sel.clear()});
+ r=await p.evaluate(()=>{const m=__cad.build3D(19);return{n:m.sections.length,z:m.sections.map(s=>s.z1),vol:m.vol,notes:m.notes.length,info:m.info}});
+ const volSoll=400*600*19-Math.PI*17.5*17.5*13-100*150*19-(300*6+Math.PI*9)*2;
+ ok(r.n===3&&r.z.join()==='2,13,19'&&Math.abs(r.vol-volSoll)<30&&r.notes===0,'Platte 19 mm: Tasche 13 tief, Ausschnitt durch, Nut 2 tief – Volumen stimmt',JSON.stringify(r)+' soll '+volSoll);
+ await p.keyboard.press('F4');r=await p.evaluate(()=>({open:CAD3D.isOpen(),st:CAD3D.stats,info:document.getElementById('v3info').textContent}));
+ ok(r.open&&r.st&&r.st.tris>200&&/400 × 600 × 19 mm/.test(r.info),'F4 öffnet die 3D-Ansicht ('+(r.st&&r.st.tris)+' Dreiecke)',JSON.stringify(r));
+ await p.waitForTimeout(300);if(SHOTS)await p.screenshot({path:path.join(SHOTS,'07-3d.png')});
+ r=await p.evaluate(()=>{const c=document.getElementById('v3cv'),g=c.getContext('webgl'),px=new Uint8Array(4);g.readPixels(c.width>>1,c.height>>1,1,1,g.RGBA,g.UNSIGNED_BYTE,px);return[...px]});
+ await p.fill('#v3thick','10');await p.keyboard.press('Enter');r=await p.evaluate(()=>({t:__cad.S.def.thick,info:document.getElementById('v3info').textContent,w:document.getElementById('v3warn').textContent}));
+ ok(r.t===10&&/× 10 mm/.test(r.info)&&/tiefer als die Platte/.test(r.w),'Plattenstärke 10 eingetragen: Ansicht neu, Hinweis auf zu tiefe Fräsungen',JSON.stringify(r));
+ await p.click('[data-v3="bottom"]');await p.click('[data-v3="close"]');ok(!(await p.evaluate(()=>CAD3D.isOpen())),'Schließen geht');
 
  console.log('Darstellung');
  for(const[n,vp]of[['tablet',{width:1024,height:768}],['handy',{width:390,height:844}]]){const q=await open(vp);await q.evaluate(()=>__cad.act('cam'));

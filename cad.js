@@ -26,7 +26,7 @@ function ev(s){s=s.replace(/\s+/g,'');let i=0;
 
 /* ---------- Zustand ---------- */
 const DEF_LAYERS=()=>[{n:'0',c:'#c9ced6',v:true},{n:'Kontur',c:'#f4f6f8',v:true},{n:'Hilfslinien',c:'#6f9cff',v:true},{n:'Bemaßung',c:'#5ad1e8',v:true}];
-const DEF_CUT=()=>({tool:6,depth:6});
+const DEF_CUT=()=>({tool:6,depth:6,thick:19});
 let S={ents:[],layers:DEF_LAYERS(),cur:'Kontur',nid:1,def:DEF_CUT()};
 let sel=new Set(),undoS=[],redoS=[];
 const view={s:1,ox:0,oy:0};
@@ -314,9 +314,10 @@ const CMDS={
  SM:{n:'Schnittmenge',g:'F',i:'M9 5a7 7 0 1 0 0 14a7 7 0 1 0 0-14M15 5a7 7 0 1 0 0 14a7 7 0 1 0 0-14',*run(){yield* boolRun('ctIntersection')}},
  VO:{n:'Vorlage einfügen',g:'F',i:'M5 4h10l4 4v12H5zM15 4v4h4M9 13h6M12 10v6',now:()=>openTpls()},
  EX:{n:'SVG für Origin ausgeben',g:'F',i:'M12 4v11M8 11l4 4 4-4M5 19h14',now:()=>openExport()},
+ DD:{n:'3D-Ansicht',g:'F',i:'M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12L4 7.5M12 12v9',now:()=>open3D()},
  ZA:{n:'Zoom alles',now:()=>zoomAll()},
 };
-const ALIAS={HILFSLINIE:'HL',XL:'HL',XLINE:'HL',SKALIEREN:'SK',SC:'SK',VORLAGE:'VO',EXPORT:'EX',SVG:'EX',VERBINDEN:'VB',VEREINIGEN:'VE',ABZIEHEN:'AB',SCHNITTMENGE:'SM',BOHRBILD:'BB',BOHREN:'BB',TEXT:'TX',GRAVUR:'TX',JOIN:'VB',UNION:'VE',SUBTRACT:'AB',
+const ALIAS={'3D':'DD',ANSICHT3D:'DD',HILFSLINIE:'HL',XL:'HL',XLINE:'HL',SKALIEREN:'SK',SC:'SK',VORLAGE:'VO',EXPORT:'EX',SVG:'EX',VERBINDEN:'VB',VEREINIGEN:'VE',ABZIEHEN:'AB',SCHNITTMENGE:'SM',BOHRBILD:'BB',BOHREN:'BB',TEXT:'TX',GRAVUR:'TX',JOIN:'VB',UNION:'VE',SUBTRACT:'AB',
  LINIE:'L',POLYLINIE:'PL',RECHTECK:'R',KREIS:'K',BOGEN:'B',POLYGON:'PG',LANGLOCH:'LL',VERSCHIEBEN:'V',KOPIEREN:'KO',DREHEN:'D',SPIEGELN:'SP',VERSATZ:'VS',ABRUNDEN:'AR',FASEN:'FA',STUTZEN:'ST',REIHE:'RK',ZERLEGEN:'ZL',LÖSCHEN:'E',ENTF:'E',BEMASSUNG:'BM',BEMAßUNG:'BM',MESSEN:'MS',ZOOM:'ZA',
  C:'K',A:'B',M:'V',CO:'KO',RO:'D',MI:'SP',O:'VS',F:'AR',CHA:'FA',TR:'ST',X:'ZL',DI:'MS'};
 /* Strg + Buchstabe (auf dem Mac/iPad: ⌘). Strg+T, N, W, Q gehören dem Browser und gehen nicht. */
@@ -602,12 +603,12 @@ function toggleGuide(){if(S.cur==='Hilfslinien'){S.cur=lyr(prevLy)&&prevLy!=='Hi
  geoVer++;save();updLayers();log(S.cur==='Hilfslinien'?'Ab jetzt wird auf „Hilfslinien“ gezeichnet (blau, wird nicht gefräst). Shift+H schaltet zurück.':'Ab jetzt wird wieder auf „'+S.cur+'“ gezeichnet.','ok')}
 function selectMode(){inp.value='';const was=!!G;cancel(true);mouse.in&&computeSnap();log(was?'Auswahlmodus: Befehl beendet – jetzt Objekte anklicken oder Rahmen aufziehen.':'Auswahlmodus: Objekte anklicken oder Rahmen aufziehen. Shift+Klick nimmt wieder heraus.');updTools();render()}
 function act(a){const T={osnap:1,polar:1,ortho:1,grid:1,gsnap:1,cam:1};if(T[a]){tg[a]=!tg[a];log(({osnap:'Objektfang',polar:'Winkelfang',ortho:'Ortho',grid:'Raster',gsnap:'Rasterfang',cam:'Fräsvorschau'})[a]+(tg[a]?' an':' aus')+(a==='cam'&&tg[a]?' – gestrichelt: Weg der Fräsermitte · rot: hier bleibt Material stehen':''));updTools();computeSnap();render();saveUI();return}
- ({guide:toggleGuide,select:selectMode,enter:onEnter,esc:()=>{inp.value='';cancel(false)},neu:()=>$('dNew').classList.add('open'),oeffnen:()=>{fileMode='open';$('file').click()},importieren:()=>{fileMode='import';$('file').click()},
+ ({view3d:open3D,guide:toggleGuide,select:selectMode,enter:onEnter,esc:()=>{inp.value='';cancel(false)},neu:()=>$('dNew').classList.add('open'),oeffnen:()=>{fileMode='open';$('file').click()},importieren:()=>{fileMode='import';$('file').click()},
   exportSvg:openExport,exportDxf:exportDXF,tpl:openTpls,tplSave:openSaveTpl,speichern:saveFile,undo,redo,zoomAll,help:()=>$('dHelp').classList.add('open'),
   alle:()=>{S.ents.filter(vis).forEach(e=>sel.add(e.id));updProps();render()}})[a]?.()}
 window.addEventListener('keydown',e=>{const t=e.target,inProp=t!==inp&&(t.tagName==='INPUT'||t.tagName==='SELECT'||t.tagName==='TEXTAREA');
  if(document.querySelector('.dlg.open')){if(e.key==='Escape')document.querySelectorAll('.dlg.open').forEach(d=>d.classList.remove('open'));return}
- const F={F2:'guide',F1:'help',F3:'osnap',F6:'cam',F7:'grid',F8:'ortho',F9:'gsnap',F10:'polar'};if(F[e.key]){e.preventDefault();act(F[e.key]);return}
+ const F={F4:'view3d',F2:'guide',F1:'help',F3:'osnap',F6:'cam',F7:'grid',F8:'ortho',F9:'gsnap',F10:'polar'};if(F[e.key]){e.preventDefault();act(F[e.key]);return}
  if(inProp)return;
  if(e.ctrlKey||e.metaKey){const k=e.key.toLowerCase(),K=(e.code||'').startsWith('Key')?e.code.slice(3):k.toUpperCase();
   if(!e.altKey&&!e.shiftKey){
@@ -916,6 +917,34 @@ function openSaveTpl(){const es=[...sel].map(byId).filter(Boolean);$('tplInfo').
 $('tplSaveF').addEventListener('submit',e=>{e.preventDefault();const n=$('tplName').value.trim();if(!n)return;let es=[...sel].map(byId).filter(Boolean);if(!es.length)es=S.ents;
  const u=userTpls().filter(t=>t.n!==n);u.unshift({n,d:`${es.length} Objekte`,ents:es.map(({id,...r})=>clone(r))});if(setUserTpls(u)){$('dTplSave').classList.remove('open');log(`Vorlage „${n}“ gespeichert. Einfügen mit VO.`,'ok')}});
 
+/* ---------- 3D-Ansicht: Platte in Schichten zerlegen ---------- */
+function clEx(type,subj,clip){const c=new CL.Clipper();c.AddPaths(subj.map(toCl),CL.PolyType.ptSubject,true);if(clip&&clip.length)c.AddPaths(clip.map(toCl),CL.PolyType.ptClip,true);const t=new CL.PolyTree();
+ c.Execute(CL.ClipType[type],t,CL.PolyFillType.pftNonZero,CL.PolyFillType.pftNonZero);const cl=q=>fromCl(CL.Clipper.CleanPolygon(q,SC*0.004));
+ return CL.JS.PolyTreeToExPolygons(t).map(x=>({outer:cl(x.outer),holes:x.holes.map(cl).filter(h=>h.length>2)})).filter(x=>x.outer.length>2)}
+function build3D(T){T=T||S.def.thick||19;const es=exportList(false),notes=[];if(!es.length)return null;
+ const P=e=>ccw(pathsOf(e)[0].pts);let base=[];const cuts=[];let deeper=0,partOut=0,partIn=0;
+ for(const e of es){const c=cutOf(e);if(c.eff==='guide')continue;
+  if(c.eff==='outside'){base.push(P(e));if(c.d<T-1e-6)partOut++;continue}
+  let d=c.d;if(d>T+1e-6){deeper++}d=Math.min(d,T);if(d<=1e-6)continue;
+  if(c.eff==='pocket')cuts.push({d,polys:[P(e)]});
+  else if(c.eff==='inside'){if(d>=T-1e-6)cuts.push({d:T,polys:[P(e)]});else{partIn++;const p=P(e),inner=clOffset([p],-c.tool);cuts.push({d,polys:clBool('ctDifference',[p],inner)})}}
+  else if(c.eff==='online'){const b=camOf(e).band;if(b.length)cuts.push({d,polys:b})}}
+ const bb=bbox(es);
+ if(!base.length){const m=10;base=[[[bb[0]-m,bb[1]-m],[bb[2]+m,bb[1]-m],[bb[2]+m,bb[3]+m],[bb[0]-m,bb[3]+m]]];notes.push('Keine Außenkontur gefunden – es wird eine Rohplatte mit 10 mm Rand angenommen.')}
+ if(partOut)notes.push(`${partOut} Außenkontur(en) sind nicht ganz durchgefräst (Tiefe kleiner als die Plattenstärke) – in 3D trotzdem als fertiges Teil gezeigt.`);
+ if(partIn)notes.push(`${partIn} Innen-Ausschnitt(e) sind nicht ganz durchgefräst – zu sehen ist nur die Nut in Fräserbreite. Für ein Loch die Tiefe auf die Plattenstärke stellen.`);
+ if(deeper)notes.push(`${deeper} Fräsung(en) sind tiefer als die Platte – sie gehen in 3D ganz durch.`);
+ const lv=[...new Set(cuts.map(c=>+c.d.toFixed(4)))].filter(d=>d<T-1e-6).sort((a,b)=>a-b),zs=[0,...lv,T],sections=[];let vol=0;
+ const baseU=clBool('ctUnion',base,[]);
+ for(let i=0;i<zs.length-1;i++){const z0=zs[i],z1=zs[i+1],rem=cuts.filter(c=>c.d>=z1-1e-6).flatMap(c=>c.polys),polys=clEx('ctDifference',baseU,rem);
+  if(polys.length){sections.push({z0,z1,polys});for(const pg of polys)vol+=(Math.abs(area(pg.outer))-pg.holes.reduce((s,h)=>s+Math.abs(area(h)),0))*(z1-z0)}}
+ if(!sections.length)return null;
+ const ob=[Infinity,Infinity,-Infinity,-Infinity];for(const q of baseU)for(const p of q){ob[0]=Math.min(ob[0],p[0]);ob[1]=Math.min(ob[1],p[1]);ob[2]=Math.max(ob[2],p[0]);ob[3]=Math.max(ob[3],p[1])}
+ const w=ob[2]-ob[0],h=ob[3]-ob[1];
+ return{T,sections,notes,bbox:ob,size:Math.max(w,h,T),vol,info:`${fmtDE(w)} × ${fmtDE(h)} × ${fmtDE(T)} mm · ${cuts.length} Fräsung(en)`}}
+function open3D(){const m=build3D();if(!m){log('Für die 3D-Ansicht fehlt noch etwas zum Fräsen – erst eine Kontur zeichnen.','e');return}cancel(true);
+ if(window.CAD3D)window.CAD3D.open(m,v=>{pushUndo();S.def.thick=v;save();updUndo();return build3D(v)})}
+
 /* ---------- Start ---------- */
 function sample0(){const K='Kontur',B='Bemaßung';S.nid=1;S.ents=[
  mk('pline',{pts:[[0,0],[400,0],[400,600],[0,600]],closed:true,rect:true},K),
@@ -930,6 +959,6 @@ log('Tipp: L + Enter für Linie, R für Rechteck, K für Kreis. F1 zeigt alle Be
 buildTools();updTools();updUndo();updDefs();updProps();updLayers();updPrompt();
 new ResizeObserver(()=>{const first=!W;resize();if(first)zoomAll()}).observe($('cvw'));
 if(matchMedia('(pointer:fine)').matches)inp.focus();
-window.__cad={get curP(){return curP},setMouse:sp=>{mouse.sp=sp;mouse.in=true;computeSnap();render()},buildSVG,buildDXF,importSVG,importDXF,loadFile,exportList,fitArcs,userTpls,w2s,get S(){return S},run,onEnter,inp,adv,get REQ(){return REQ},sel,zoomAll,cutOf,camOf,act,tg,updProps,bbox,
+window.__cad={build3D,open3D,get curP(){return curP},setMouse:sp=>{mouse.sp=sp;mouse.in=true;computeSnap();render()},buildSVG,buildDXF,importSVG,importDXF,loadFile,exportList,fitArcs,userTpls,w2s,get S(){return S},run,onEnter,inp,adv,get REQ(){return REQ},sel,zoomAll,cutOf,camOf,act,tg,updProps,bbox,
  areaOf:(id,off)=>{const P=[ccw(toPaths(byId(id))[0].pts)];return(off?clOffset(P,off):P).reduce((s,q)=>s+area(q),0)}};
 }
