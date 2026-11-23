@@ -1019,7 +1019,8 @@ function addEnts(list,defLy,keepSrc){const made=[],names=new Set(S.layers.map(l=
   if(!keepSrc)delete n.src;n.id=S.nid++;S.ents.push(n);made.push(n)}
  if(over)log(`Mehr als ${MAXLY} Ebenen: ${over} Objekte liegen auf Ebene „${S.layers[0].n}“.`,'e');return made}
 let fileMode='open';
-async function loadFile(f,mode){const name=f.name||'Datei',ext=(name.split('.').pop()||'').toLowerCase();let text;try{text=await f.text()}catch(err){log('Datei konnte nicht gelesen werden.','e');return}
+async function loadFile(f,mode){const name=f.name||'Datei',ext=(name.split('.').pop()||'').toLowerCase();
+ /* STL ist ein 3D-Modell: in den 3D-Modus einfügen */if(ext==='stl'){if(window.RAUM){if(!RAUM.isOpen())RAUM.open();RAUM.addSTL(f)}return}let text;try{text=await f.text()}catch(err){log('Datei konnte nicht gelesen werden.','e');return}
  try{
   if(ext==='json'||(/^\s*\{/.test(text)&&ext!=='svg'&&ext!=='dxf')){const o=JSON.parse(text);if(!Array.isArray(o.ents))throw new Error('Das ist keine Origin-CAD-Zeichnung.');
    const cd=cleanDoc(o),drop=o.ents.length-cd.ents.length;if(o.ents.length&&!cd.ents.length){log(`${name}: Keins der ${o.ents.length} Objekte in der Datei ist lesbar – die Zeichnung bleibt unverändert.`,'e');return}if(drop)log(`${drop} fehlerhafte Objekt(e) in der Datei übersprungen.`,'e');

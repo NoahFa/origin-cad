@@ -7,19 +7,20 @@ const A=window.__cad.kp,$=id=>document.getElementById(id),S=()=>window.__cad.S;
 /* Geladenes 3D-Modell prüfen */
 const AXV=v=>Array.isArray(v)&&v.length===3&&v.every(x=>x===0||x===1||x===-1)&&Math.abs(v[0])+Math.abs(v[1])+Math.abs(v[2])===1;
 function clean(o){if(!o||typeof o!=='object'||!Array.isArray(o.bodies))return null;const fin=(v,lo=-1e6,hi=1e6)=>typeof v==='number'&&Number.isFinite(v)&&v>=lo&&v<=hi,P2=p=>Array.isArray(p)&&p.length===2&&fin(p[0])&&fin(p[1]);
- const KND=['box','sph','cyl','cone','tor','plane','ext'],MATS=window.KORPUS?window.KORPUS.MATS:[['']],out=[];let id=1;
- let gpts=100000;/* Punkte aller Formteile zusammen – mehr macht den 3D-Modus zäh */
+ const KND=['box','sph','cyl','cone','tor','plane','ext','mesh'],MATS=window.KORPUS?window.KORPUS.MATS:[['']],out=[];let id=1;
+ let gpts=100000,gtri=MAXTRI_ALL;/* Punkte aller Formteile zusammen – mehr macht den 3D-Modus zäh */
  let round=0,holesCut=0;const ROUND=['sph','cyl','cone','tor'];
  for(const b of o.bodies.slice(0,5000)){if(!b||typeof b!=='object'||!KND.includes(b.kind))continue;if(ROUND.includes(b.kind)&&++round>MAXROUND)continue;if(![b.L,b.B,b.H].every(v=>fin(v,0,1e5)))continue;if(!(Array.isArray(b.o)&&b.o.length===3&&b.o.every(v=>fin(v))))continue;
   const u=AXV(b.u)?[...b.u]:[1,0,0],v=AXV(b.v)&&Math.abs(u[0]*b.v[0]+u[1]*b.v[1]+u[2]*b.v[2])<0.5?[...b.v]:(u[2]?[1,0,0]:[0,0,1]);
   const n={id:id++,name:typeof b.name==='string'&&b.name.trim()?b.name.slice(0,60):'Körper',kind:b.kind,L:b.L,B:b.B,H:b.H,o:[...b.o],u,v,mat:MATS.some(m=>m[0]===b.mat)?b.mat:''};
   if(fin(b.D2,0,1e5))n.D2=b.D2;if(b.rod)n.rod=1;if(Array.isArray(b.tint)&&b.tint.length===3&&b.tint.every(x=>fin(x,0,2)))n.tint=[...b.tint];
+  if(b.kind==='mesh'){const m=b.mesh;if(!m||!Array.isArray(m.v)||m.v.length<9||m.v.length%9||m.v.length/9>Math.min(MAXTRI,gtri)||![m.L0,m.B0,m.H0].every(x=>fin(x,0,1e5))||!m.v.every(x=>fin(x,-1e5,1e5)))continue;gtri-=m.v.length/9;n.mesh={v:m.v.slice(),L0:m.L0,B0:m.B0,H0:m.H0}}
   if(b.kind==='ext'){const pl=b.poly;if(!pl||!Array.isArray(pl.outer)||pl.outer.length<3||pl.outer.length>Math.min(50000,gpts)||!pl.outer.every(P2))continue;let bud=Math.min(50000,gpts)-pl.outer.length;n.poly={outer:pl.outer.map(p=>[...p]),holes:(Array.isArray(pl.holes)?pl.holes:[]).slice(0,300).filter(h=>Array.isArray(h)&&h.length>2&&h.length<=bud&&h.every(P2)&&(bud-=h.length)>=0).map(h=>h.map(p=>[...p]))};holesCut+=(Array.isArray(pl.holes)?pl.holes.length:0)-n.poly.holes.length;gpts-=n.poly.outer.length+n.poly.holes.reduce((s,h)=>s+h.length,0)}
   out.push(n)}
  {const lost=o.bodies.length-out.length;if(lost>0||holesCut>0)setTimeout(()=>A.log(`3D-Modus: ${lost>0?lost+' Körper':''}${lost>0&&holesCut>0?' und ':''}${holesCut>0?holesCut+' Löcher':''} weggelassen (zu viele oder fehlerhaft).`,'e'),0)}
  return{bodies:out,nid:id}}
 /* Obergrenzen, damit der 3D-Modus flüssig bleibt (gleich beim Anlegen und beim Laden) */
-const MAXROUND=500,MAXHOLES=300,MAXPTS=50000,MAXALL=100000,extPts=b=>b.poly.outer.length+b.poly.holes.reduce((s,h)=>s+h.length,0);
+const MAXTRI=20000,MAXTRI_ALL=40000,MAXROUND=500,MAXHOLES=300,MAXPTS=50000,MAXALL=100000,extPts=b=>b.poly.outer.length+b.poly.holes.reduce((s,h)=>s+h.length,0);
 const R=()=>{const s=S();if(!s.raum)s.raum={bodies:[],nid:1};return s.raum};
 const num=v=>Math.round(v*100)/100,de=v=>String(num(v)).replace('.',',');
 /* Zahl aus einem Feld – rechnen wie in der Befehlszeile (720-2*19), Komma als Dezimalzeichen */
@@ -38,8 +39,27 @@ function rotate(b,ax){const c0=box(b),c=[(c0[0]+c0[3])/2,(c0[1]+c0[4])/2,(c0[2]+
  b.u=f(b.u);b.v=f(b.v);b.o=add(c,f(sub(b.o,c))).map(num);const n=box(b);/* auf den Boden und an die alte Ecke setzen */moveBy(b,[c0[0]-n[0],c0[1]-n[1],c0[2]-n[2]])}
 /* ----- Modell für den Betrachter ----- */
 /* Grundkörper: Maße stecken in L/B/H (Kugel L=B=H=Ø · Zylinder/Kegel L=B=Ø, H · Torus L=B=Außen-Ø, H=Rohr-Ø · Ebene H=0) */
-const KINDS={box:'Quader',sph:'Kugel',cyl:'Zylinder',cone:'Kegel',tor:'Torus',plane:'Ebene',ext:'Formteil'};
+const KINDS={box:'Quader',sph:'Kugel',cyl:'Zylinder',cone:'Kegel',tor:'Torus',plane:'Ebene',ext:'Formteil',mesh:'STL-Modell'};
 const circle=(cx,cy,r,n=48)=>Array.from({length:n},(_,i)=>[cx+r*Math.cos(i*2*Math.PI/n),cy+r*Math.sin(i*2*Math.PI/n)]);
+/* STL-Modell: Dreiecke liegen in eigenen Maßen (L0×B0×H0) und werden auf L×B×H gestreckt; Flächennormalen neu berechnet */
+const stlCache=new Map();
+function meshTris(b){const m=b.mesh,key=b.id+'|'+[b.L,b.B,b.H,m.v.length].join('|');if(stlCache.has(key))return stlCache.get(key);if(stlCache.size>50)stlCache.clear();
+ const sx=m.L0?b.L/m.L0:1,sy=m.B0?b.B/m.B0:1,sz=m.H0?b.H/m.H0:1,v=m.v,T=new Array(v.length*2);let k=0;
+ for(let i=0;i<v.length;i+=9){const a=[v[i]*sx,v[i+1]*sy,v[i+2]*sz],c=[v[i+3]*sx,v[i+4]*sy,v[i+5]*sz],d=[v[i+6]*sx,v[i+7]*sy,v[i+8]*sz],e1=sub(c,a),e2=sub(d,a);let n=[e1[1]*e2[2]-e1[2]*e2[1],e1[2]*e2[0]-e1[0]*e2[2],e1[0]*e2[1]-e1[1]*e2[0]];const l=Math.hypot(...n)||1;n=n.map(x=>x/l);for(const p of[a,c,d]){T[k++]=p[0];T[k++]=p[1];T[k++]=p[2];T[k++]=n[0];T[k++]=n[1];T[k++]=n[2]}}
+ stlCache.set(key,T);return T}
+/* STL lesen (binär oder Text), Maße in mm */
+function parseSTL(buf){const u8=new Uint8Array(buf),dv=new DataView(buf),out=[];
+ if(buf.byteLength>=84){const n=dv.getUint32(80,true);if(84+50*n===buf.byteLength){if(n>MAXTRI)throw new Error(`Das Modell hat ${n} Dreiecke – höchstens ${MAXTRI} gehen in den 3D-Modus. Bitte vereinfacht (weniger fein) speichern.`);for(let i=0;i<n;i++){const o=84+50*i+12;for(let j=0;j<9;j++)out.push(dv.getFloat32(o+4*j,true))}return out}}
+ const txt=new TextDecoder().decode(u8.subarray(0,Math.min(u8.length,64e6)));if(!/^\s*solid/i.test(txt)||!/facet/i.test(txt))throw new Error('Das ist keine lesbare STL-Datei.');
+ const re=/vertex\s+(\S+)\s+(\S+)\s+(\S+)/gi;let m;while((m=re.exec(txt))){out.push(+m[1],+m[2],+m[3]);if(out.length>MAXTRI*9)throw new Error(`Das Modell hat mehr als ${MAXTRI} Dreiecke – bitte vereinfacht speichern.`)}if(out.length<9||out.length%9)throw new Error('In der STL-Datei wurden keine Dreiecke gefunden.');return out}
+async function addSTL(f){let v;try{v=parseSTL(await f.arrayBuffer())}catch(err){msg(err.message||'STL-Datei konnte nicht gelesen werden.');return}
+ if(!v.every(Number.isFinite)){msg('Die STL-Datei enthält ungültige Zahlen.');return}
+ const used=R().bodies.filter(b=>b.kind==='mesh').reduce((s,b)=>s+b.mesh.v.length/9,0);if(used+v.length/9>MAXTRI_ALL){msg(`Zu viele Dreiecke im 3D-Modus (zusammen höchstens ${MAXTRI_ALL}).`);return}
+ const mn=[Infinity,Infinity,Infinity],mx=[-Infinity,-Infinity,-Infinity];for(let i=0;i<v.length;i++){const a=i%3;if(v[i]<mn[a])mn[a]=v[i];if(v[i]>mx[a])mx[a]=v[i]}const L0=mx[0]-mn[0],B0=mx[1]-mn[1],H0=mx[2]-mn[2];
+ if(!(Math.max(L0,B0,H0)>0)||Math.max(L0,B0,H0)>1e5){msg('Das Modell ist leer oder größer als 100 m.');return}
+ const loc=v.map((x,i)=>num(x-mn[i%3])),name=(f.name||'STL').replace(/\.stl$/i,'').slice(0,60)||'STL';let b;
+ A.commit(()=>{const alt=[...R().bodies];b=newBody({name,kind:'mesh',L:num(L0)||0.01,B:num(B0)||0.01,H:num(H0)||0.01,o:[0,0,0],mesh:{v:loc,L0:num(L0)||0.01,B0:num(B0)||0.01,H0:num(H0)||0.01}});if(alt.length){const m=boxAll(alt);moveBy(b,[m[3]+50,m[1],0])}selId=b.id});
+ refresh();ensureVisible(b);msg(`STL eingefügt: ${name} – ${de(L0)} × ${de(B0)} × ${de(H0)} mm, ${v.length/9} Dreiecke. Maße unter „Objektinfo“ änderbar.`)}
 function trisOf(b){const key=[b.kind,b.L,b.B,b.H,b.D2||0].join('|');if(meshCache.has(key))return meshCache.get(key);if(meshCache.size>300)meshCache.clear();const T=[],v=(p,n)=>T.push(p[0],p[1],p[2],n[0],n[1],n[2]),quad=(a,b2,c,d)=>{v(...a);v(...b2);v(...c);v(...a);v(...c);v(...d)},cx=b.L/2,cy=b.B/2,TAU=Math.PI*2;
  if(b.kind==='sph'){const r=b.L/2,nu=32,nv=16,pt=(i,j)=>{const t=i/nu*TAU,ph=-Math.PI/2+j/nv*Math.PI,n=[Math.cos(ph)*Math.cos(t),Math.cos(ph)*Math.sin(t),Math.sin(ph)];return[[cx+r*n[0],cy+r*n[1],r+r*n[2]],n]};
   for(let i=0;i<nu;i++)for(let j=0;j<nv;j++)quad(pt(i,j),pt(i+1,j),pt(i+1,j+1),pt(i,j+1))}
@@ -50,6 +70,7 @@ function trisOf(b){const key=[b.kind,b.L,b.B,b.H,b.D2||0].join('|');if(meshCache
  const out=new Float32Array(T);meshCache.set(key,out);return out}
 function model(){const r=R(),parts=r.bodies.map(b=>{const m=window.KORPUS.mat(b.mat||''),base={o:b.o,u:b.u,v:b.v,color:b.mat?m[2]:null,tint:b.id===selId?[1.08,0.94,0.9]:b.tint||[1,1,1]};
   if(b.kind==='sph'||b.kind==='cone'||b.kind==='tor')return{...base,T:b.H,sections:[],tris:trisOf(b)};
+  if(b.kind==='mesh')return{...base,T:b.H,sections:[],tris:meshTris(b)};
   const poly=b.kind==='ext'?b.poly:b.kind==='cyl'?{outer:circle(b.L/2,b.B/2,b.L/2),holes:[]}:{outer:[[0,0],[b.L,0],[b.L,b.B],[0,b.B]],holes:[]},T=Math.max(b.H,0.3);
   return{...base,T,sections:[{z0:0,z1:T,polys:[poly]}]}}),bb=boxAll(r.bodies);
  const size=Math.max(bb[3]-bb[0],bb[4]-bb[1],bb[5]-bb[2],100),st=[10,50,100,250,500,1000].find(v=>(size*1.6)/v<=40)||1000,g=[],x0=Math.floor((bb[0]-size*0.3)/st)*st,x1=Math.ceil((bb[3]+size*0.3)/st)*st,y0=Math.floor((bb[1]-size*0.3)/st)*st,y1=Math.ceil((bb[4]+size*0.3)/st)*st;
@@ -198,6 +219,7 @@ function resize(b,face,d){const ax=axisOf(b,face.i),grow=(k,a,dd,minEnd)=>{const
  if(b.kind==='box'||b.kind==='plane'){grow(ax.k,ax.a,d,minEnd);return}
  if(ax.k==='H'&&(b.kind==='ext'||b.kind==='cyl'||b.kind==='cone')){grow('H',ax.a,d,minEnd);return}
  if(b.kind==='ext')return'Bei einem Formteil lässt sich nur die Höhe ziehen – die Form änderst du in der Zeichnung.';
+ if(b.kind==='mesh')return'Bei einem STL-Modell bitte die Maße rechts unter „Objektinfo“ ändern.';
  /* runde Körper: Durchmesser ändern, Mitte bleibt */
  const w=wOf(b);if(b.kind==='tor'&&ax.k==='H'){const r=grow('H',w,2*d,false);b.o=sub(b.o,mul(w,r/2)).map(num);if(b.H>b.L/2)b.H=num(b.L/2);return}
  const nd=Math.max(2,num(b.L+2*d)),real=nd-b.L;b.L=b.B=nd;b.o=sub(sub(b.o,mul(b.u,real/2)),mul(b.v,real/2)).map(num);if(b.kind==='sph'){b.H=nd;b.o=sub(b.o,mul(w,real/2)).map(num)}if(b.kind==='tor')b.H=Math.min(b.H,num(nd/2));if(b.kind==='cone')b.D2=Math.min(b.D2||0,nd)}
@@ -239,12 +261,12 @@ function side(){const r=R(),inp=(id,lab,v)=>`<div class="pr"><label for="${id}">
  $('rmside').innerHTML=sec('info','Objektinfo','<div id="rmsel"></div>')
   +sec('mat','Materialien',`<div class="rmsw">${MATS.map(q=>`<button data-mat="${q[0]}" class="${curMat===q[0]?'on':''}" title="${q[0]?q[0]+' '+q[1]:q[1]}" style="background:rgb(${q[2].map(v=>Math.round(v*255)).join(',')})"></button>`).join('')}</div><p class="muted kpnote" id="rmmatn">${A.esc(curMat?curMat+' '+window.KORPUS.mat(curMat)[1]:'Holz neutral')} – anklicken überträgt aufs Gewählte, mit dem Farbeimer (B) auf weitere Körper.</p>`)
   +sec('ins','Einfügen',`<div class="rmprim">${Object.keys(PRIM).map(k=>`<button data-prim="${k}" title="${PRIM[k].name} einfügen"><svg viewBox="0 0 24 24"><path d="${ICO[k]}"/></svg>${PRIM[k].name}</button>`).join('')}</div>
-   <div class="rmsep"></div>${inp('rn_X','Höhe beim Hochziehen',19)}<button class="btn" id="rn_ext" style="width:100%">Kontur aus der Zeichnung hochziehen</button><p class="muted kpnote">Nimmt die im Zeichenprogramm gewählten geschlossenen Konturen, sonst alle. Löcher bleiben erhalten.</p>
+   <div class="rmsep"></div>${inp('rn_X','Höhe beim Hochziehen',19)}<button class="btn" id="rn_ext" style="width:100%">Kontur aus der Zeichnung hochziehen</button><button class="btn" id="rn_stl" style="width:100%;margin-top:6px">STL-Datei einfügen …</button><p class="muted kpnote">Nimmt die im Zeichenprogramm gewählten geschlossenen Konturen, sonst alle. Löcher bleiben erhalten.</p>
    <button class="btn" id="rn_kp" style="width:100%">Schrank aus dem Korpusplaner holen</button>`)
   +sec('out',`Gliederung (${r.bodies.length})`,r.bodies.length?`<div class="rmlist">${r.bodies.map(b=>`<button class="rmit ${b.id===selId?'on':''}" data-rmid="${b.id}"><b>${A.esc(b.name)}</b><span>${dimTxt(b)}</span></button>`).join('')}</div>`:'<p class="muted">Noch keine Körper.</p>');
  $('rmside').querySelectorAll('details.rmsec').forEach(d=>d.addEventListener('toggle',()=>{traySec[d.dataset.sec]=d.open}));
  for(const id in keep)if($(id))$(id).value=keep[id];
- $('rmside').querySelectorAll('[data-prim]').forEach(bt=>bt.onclick=()=>addPrim(bt.dataset.prim));$('rn_ext').onclick=addFromDrawing;$('rn_kp').onclick=addFromKorpus;
+ $('rmside').querySelectorAll('[data-prim]').forEach(bt=>bt.onclick=()=>addPrim(bt.dataset.prim));$('rn_ext').onclick=addFromDrawing;$('rn_stl').onclick=()=>$('rmstl').click();$('rn_kp').onclick=addFromKorpus;
  $('rmside').querySelectorAll('[data-mat]').forEach(bt=>bt.onclick=()=>{curMat=bt.dataset.mat;const b=body(selId);if(b)A.commit(()=>{b.mat=curMat});refresh()});
  $('rmside').querySelectorAll('[data-rmid]').forEach(bt=>bt.onclick=()=>{selId=+bt.dataset.rmid;refresh(true)});fillSel()}
 const roundFull=k=>['sph','cyl','cone','tor'].includes(k)&&R().bodies.filter(b=>['sph','cyl','cone','tor'].includes(b.kind)).length>=MAXROUND;
@@ -254,7 +276,7 @@ const addBox=()=>addPrim('box');
 function fillSel(){const el=$('rmsel'),b=body(selId);if(!el)return;if(!b){el.innerHTML='<p class="muted">Nichts gewählt. Körper anklicken (Auswählen, Leertaste).</p>';return}if(el.contains(document.activeElement)&&document.activeElement.tagName==='INPUT'&&op)return;
  const m=box(b),inp=(id,lab,v,ro)=>`<div class="pr"><label for="${id}">${lab}</label><input id="${id}" type="text" inputmode="decimal" value="${typeof v==='number'?de(v):A.esc(v)}" ${ro?'readonly':''}></div>`,MATS=window.KORPUS.MATS;
  el.innerHTML=`<div class="pr"><label for="rs_name">Name</label><input id="rs_name" type="text" value="${A.esc(b.name)}" style="text-align:left"></div>
-  ${{box:()=>inp('rs_L','Länge',b.L)+inp('rs_B','Breite',b.B)+inp('rs_H','Höhe / Stärke',b.H),plane:()=>inp('rs_L','Länge',b.L)+inp('rs_B','Breite',b.B),sph:()=>inp('rs_D','Durchmesser',b.L),cyl:()=>inp('rs_D','Durchmesser',b.L)+inp('rs_H','Höhe',b.H),cone:()=>inp('rs_D','Durchmesser unten',b.L)+inp('rs_D2','Durchmesser oben',b.D2||0)+inp('rs_H','Höhe',b.H),tor:()=>inp('rs_D','Außendurchmesser',b.L)+inp('rs_H','Rohrdurchmesser',b.H),ext:()=>inp('rs_LB','Grundfläche',de(b.L)+' × '+de(b.B),true)+inp('rs_H','Höhe',b.H)}[b.kind]()}
+  ${{box:()=>inp('rs_L','Länge',b.L)+inp('rs_B','Breite',b.B)+inp('rs_H','Höhe / Stärke',b.H),plane:()=>inp('rs_L','Länge',b.L)+inp('rs_B','Breite',b.B),sph:()=>inp('rs_D','Durchmesser',b.L),cyl:()=>inp('rs_D','Durchmesser',b.L)+inp('rs_H','Höhe',b.H),cone:()=>inp('rs_D','Durchmesser unten',b.L)+inp('rs_D2','Durchmesser oben',b.D2||0)+inp('rs_H','Höhe',b.H),tor:()=>inp('rs_D','Außendurchmesser',b.L)+inp('rs_H','Rohrdurchmesser',b.H),ext:()=>inp('rs_LB','Grundfläche',de(b.L)+' × '+de(b.B),true)+inp('rs_H','Höhe',b.H),mesh:()=>inp('rs_L','Länge',b.L)+inp('rs_B','Breite',b.B)+inp('rs_H','Höhe',b.H)+'<p class="muted kpnote">STL-Modell – Länge, Breite und Höhe strecken es.</p>'}[b.kind]()}
   <div class="rm3"><label>Lage (linke vordere untere Ecke)</label><input id="rs_x" type="text" inputmode="decimal" value="${de(m[0])}" aria-label="X"><input id="rs_y" type="text" inputmode="decimal" value="${de(m[1])}" aria-label="Y"><input id="rs_z" type="text" inputmode="decimal" value="${de(m[2])}" aria-label="Z"><span style="color:light-dark(#c2381f,#ff7a5c)">X</span><span style="color:light-dark(#1a7f37,#3fb950)">Y</span><span style="color:light-dark(#1f5fd1,#6aa6ff)">Z</span></div>
   <div class="pr"><label for="rs_mat">Material</label><select id="rs_mat">${MATS.map(q=>`<option value="${q[0]}" ${(b.mat||'')===q[0]?'selected':''}>${q[0]?q[0]+' '+q[1]:q[1]}</option>`).join('')}</select></div>
   <div class="rmrow"><button class="btn" id="rs_floor">Auf den Boden</button><button class="btn" id="rs_copy" title="Strg+D">Kopieren</button><button class="btn" id="rs_del" title="Entf">Löschen</button></div>`;
@@ -290,6 +312,7 @@ function open(){A.cancel();R();if(window.KORPUS&&window.KORPUS.isOpen())window.K
   $('rm3d').addEventListener('pointermove',e=>{if(e.buttons)return;hooksMove(e)});$('rm3d').addEventListener('pointerleave',()=>{hover=null;if(!op)infer=null;drawOver()});
   /* Antippen des Maßfelds markiert den Inhalt – Tippen ersetzt dann die Zahl, statt sie zu verlängern (iPad) */
   {const el=$('rmvcb');let tap=false;el.addEventListener('pointerdown',()=>{tap=document.activeElement!==el});el.addEventListener('click',()=>{if(tap){tap=false;try{el.setSelectionRange(0,el.value.length)}catch(e){}}})}
+  $('rmstl').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(f)addSTL(f)});
   $('rmvcb').addEventListener('keydown',e=>{e.stopPropagation();if((/^[a-wyzA-WYZ]$/.test(e.key)||(e.key===' '&&!$('rmvcb').value.trim()))&&!e.ctrlKey&&!e.metaKey){e.preventDefault();$('rmvcb').blur();key(e);return}if(e.key==='Enter'){e.preventDefault();vcbEnter();$('rmvcb').blur()}else if(e.key==='Escape'){$('rmvcb').blur();key({key:'Escape',preventDefault(){},target:document.body})}});
   $('rmempty').addEventListener('click',e=>{const b=e.target.closest('[data-prim],[data-tool]');if(!b)return;if(b.dataset.prim)addPrim(b.dataset.prim);else setTool(b.dataset.tool)});
   $('rmdims').addEventListener('change',e=>{showDims=e.target.checked;drawOver()});
@@ -316,6 +339,6 @@ function key(e){const t=e.target,inField=t&&t.closest&&t.closest('#rm,#dRml')&&(
  const b=body(selId);if(!b)return;
  if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();removeSel();return}
  const st=e.shiftKey?10:1,mv={ArrowLeft:[-st,0,0],ArrowRight:[st,0,0],ArrowUp:[0,st,0],ArrowDown:[0,-st,0],PageUp:[0,0,st],PageDown:[0,0,-st]}[e.key];if(mv&&tool==='sel'){e.preventDefault();A.commit(()=>moveBy(b,mv));refresh(true)}}
-return{clean,addPrim,setTool,resize,vcbEnter,get tool(){return tool},get op(){return op},get tapeRes(){return tapeRes},pickPoint,open,close,isOpen,key,refresh,list,nest,box,get state(){return R()},get sel(){return selId},select:id=>{selId=id;refresh(true)},addBox,addFromDrawing,addFromKorpus,rotate:(id,ax)=>{A.commit(()=>rotate(body(id),ax));refresh(true)},get viewer(){return V},hooks}})();
+return{addSTL,clean,addPrim,setTool,resize,vcbEnter,get tool(){return tool},get op(){return op},get tapeRes(){return tapeRes},pickPoint,open,close,isOpen,key,refresh,list,nest,box,get state(){return R()},get sel(){return selId},select:id=>{selId=id;refresh(true)},addBox,addFromDrawing,addFromKorpus,rotate:(id,ax)=>{A.commit(()=>rotate(body(id),ax));refresh(true)},get viewer(){return V},hooks}})();
 /* wiederhergestelltes 3D-Modell aus dem Browserspeicher prüfen */
 {const s=window.__cad.S;if(s.raum)s.raum=window.RAUM.clean(s.raum)||undefined}

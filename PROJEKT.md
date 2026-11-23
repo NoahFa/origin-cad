@@ -158,6 +158,9 @@ Eigener Bereich (Knopf „3D-Modus“), Datei `raum.js`, Daten in `S.raum = {bod
 - **3D-Modus:** Strg+R = Rechteck, Strg+K = Kreis, K und V wie im Zeichnen; „(“ startet das Maßfeld; „7x“ und „600;400;10“ werden gemeldet; Objektinfo meldet Unsinn, Lage höchstens 1 km; höchstens 500 runde Körper; Formteil-Grenzen schon beim Hochziehen, Gekürztes wird gemeldet; Maßzahlen beider Maßkästen zum Schluss; am Finger-Gerät passende Statuszeile.
 - **Darstellung:** große iPhones hochkant bekommen nicht mehr die iPad-Regeln, „Hilfe“ bis 480 px sichtbar, leerer 3D-Raum und F4 am Handy quer, Statusleiste am PC bis 1180 px, Ebenennamen quer, Planer quer mit breiterer Mitte.
 
+## STL-Import (v32, 23.11.2026)
+- 3D-Modus › Einfügen › „STL-Datei einfügen …“, oder Datei › Öffnen / aufs Fenster ziehen (öffnet den 3D-Modus). Binär- und Text-STL, Maße in mm, bis 20 000 Dreiecke je Modell, 40 000 zusammen. Neuer Körpertyp `mesh` (`b.mesh={v,L0,B0,H0}`, Dreiecke in eigenen Maßen, über L/B/H gestreckt). Drücken/Ziehen geht nicht (Maße in der Objektinfo), nicht im Zuschnittplan.
+
 ## Ideen / offen
 - **Entscheidung Noah:** Außenkonturen aus dem Korpusplaner mit Tiefe = Plattenstärke (jetzt) oder Stärke + 0,5 mm?
 - iPad ohne Tastatur im 3D-Modus: Knöpfe Rot/Grün/Blau für Verschiebe-Richtung und Drehachse (bisher Pfeiltasten).

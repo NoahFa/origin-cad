@@ -617,6 +617,16 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  {const q=await b.newPage({viewport:{width:390,height:844}});await q.goto(url);await q.waitForFunction(()=>window.__cad);await q.evaluate(()=>__cad.act('korpus'));await q.waitForTimeout(200);r=await q.evaluate(()=>KORPUS.view.s);ok(r>0.1,'Handy hochkant: Vorderansicht im Planer groß genug (Maßstab '+r.toFixed(3)+')');await q.close()}
  await fresh();
 
+ console.log('STL-Import (v32)');
+ {const tri=[[0,0,0,100,0,0,100,50,0],[0,0,0,100,50,0,0,50,0],[0,0,0,0,50,0,0,0,30],[100,0,0,100,50,30,100,50,0]],buf=Buffer.alloc(84+50*tri.length);buf.writeUInt32LE(tri.length,80);tri.forEach((t,i)=>t.forEach((v,j)=>buf.writeFloatLE(v+10,84+50*i+12+4*j)));
+  await fresh();await p.setInputFiles('#file',{name:'Teil.stl',mimeType:'model/stl',buffer:buf});await p.waitForTimeout(500);
+  r=await p.evaluate(()=>({open:RAUM.isOpen(),b:RAUM.state.bodies.map(b=>[b.kind,b.L,b.B,b.H,b.o.join('/')].join())}));ok(r.open&&r.b[0]==='mesh,100,50,30,0/0/0','Binäre STL über Datei › Öffnen: 3D-Modus mit Modell 100 × 50 × 30',JSON.stringify(r));
+  const asc='solid t\nfacet normal 0 0 1\nouter loop\nvertex 0 0 0\nvertex 20 0 0\nvertex 0 20 5\nendloop\nendfacet\nendsolid t\n';await p.setInputFiles('#rmstl',{name:'Dreieck.stl',mimeType:'model/stl',buffer:Buffer.from(asc)});await p.waitForTimeout(300);
+  r=await p.evaluate(()=>RAUM.state.bodies.map(b=>[b.kind,b.L,b.B,b.H].join()));ok(r[1]==='mesh,20,20,5','Text-STL über „STL-Datei einfügen“',r.join(' | '));
+  await p.fill('#rs_L','200');await p.keyboard.press('Enter');r=await p.evaluate(()=>{const b=RAUM.state.bodies[1];return[b.L,RAUM.viewer.stats.tris]});ok(r[0]===200&&r[1]>0,'STL-Modell lässt sich über die Objektinfo strecken',r.join());
+  r=await p.evaluate(()=>RAUM.clean({bodies:[{kind:'mesh',L:1,B:1,H:1,o:[0,0,0],u:[1,0,0],v:[0,1,0],mesh:{v:[0,0,'x',1,0,0,0,1,0],L0:1,B0:1,H0:1}}]}).bodies.length);ok(r===0,'Präpariertes STL-Modell in einer Datei wird verworfen');
+  await p.click('[data-rm="close"]');await fresh()}
+
  console.log('Sicherheit');
  r=await p.evaluate(async()=>{await document.fonts.ready;return{sans:document.fonts.check('500 14px "IBM Plex Sans"'),mono:document.fonts.check('14px "IBM Plex Mono"'),csp:!!document.querySelector('meta[http-equiv="Content-Security-Policy"]'),ext:[...document.querySelectorAll('link[href^="http"],script[src^="http"]')].length}});
  ok(r.sans&&r.mono&&r.csp&&r.ext===0,'Schrift aus dem Projekt geladen, nichts von fremden Servern, Sicherheitsregel gesetzt',JSON.stringify(r));

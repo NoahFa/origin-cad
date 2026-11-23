@@ -10,9 +10,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Origin CAD">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.webmanifest?v=31">
-<link rel="icon" href="icon.svg?v=31" type="image/svg+xml">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=31">
+<link rel="manifest" href="manifest.webmanifest?v=32">
+<link rel="icon" href="icon.svg?v=32" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=32">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <style>
 /* Schrift IBM Plex liegt im Projekt (SIL Open Font License, fonts/OFL.txt) – nichts wird von fremden Servern geladen */
@@ -345,7 +345,7 @@ button,input,select{font:inherit;color:inherit}
  </div>
 </div>
 <div class="tip" id="tip"></div>
-<input type="file" id="file" accept=".json,.svg,.dxf,application/json,image/svg+xml" hidden>
+<input type="file" id="file" accept=".json,.svg,.dxf,.stl,application/json,image/svg+xml" hidden>
 
 <div class="dlg" id="dHelp"><div class="box">
  <h3>Hilfe</h3>
@@ -405,7 +405,7 @@ button,input,select{font:inherit;color:inherit}
    <tr><td>T · E · B</td><td>Maßband · Radiergummi · Farbeimer</td></tr>
    <tr><td>O · H · Shift+Z</td><td>Ansicht drehen · schieben · alles zeigen (mittlere Maustaste dreht, mit Shift schiebt)</td></tr>
    <tr><td>Maße</td><td>Zahlen einfach lostippen, sie landen unten rechts im Feld „Maße“; Enter übernimmt. Zwei Maße mit Strichpunkt: <code>600;400</code>.</td></tr>
-   <tr><td>Einfügen</td><td>Rechts: Grundkörper, Kontur aus der Zeichnung hochziehen, Schrank aus dem Korpusplaner holen.</td></tr>
+   <tr><td>Einfügen</td><td>Rechts: Grundkörper, Kontur aus der Zeichnung hochziehen, Schrank aus dem Korpusplaner holen, „STL-Datei einfügen …“ (3D-Modell, z. B. aus einem anderen Programm; Maße in mm, bis 20 000 Dreiecke). Eine STL-Datei lässt sich auch aufs Fenster ziehen.</td></tr>
   </table>
  </section>
  <div class="row"><button class="btn pri" data-close>Alles klar</button></div>
@@ -486,7 +486,7 @@ button,input,select{font:inherit;color:inherit}
   <div class="kpview"><button class="btn" data-rm="iso" title="Schräg von vorn">Schräg</button><button class="btn" data-rm="front">Vorn</button><button class="btn" data-rm="top">Oben</button><button class="btn" data-rm="fit" title="Alles zeigen (Shift+Z)">Alles zeigen</button><label><input type="checkbox" id="rmdims" checked> Maße zeigen</label></div>
   <div class="rmempty" id="rmempty"><b>Leerer Raum</b><span>Zeichne mit dem <button data-tool="rect">Rechteck (R)</button> eine Fläche auf den Boden<br>und zieh sie mit <button data-tool="push">Drücken/Ziehen (P)</button> hoch.</span><span>Oder unter „Einfügen“ einen fertigen Körper wählen: <button data-prim="box">Quader</button></span></div>
  </div>
- <div class="kpside rmtray" id="rmside"></div>
+ <div class="kpside rmtray" id="rmside"></div><input type="file" id="rmstl" accept=".stl,model/stl" hidden>
  <div class="rmstatus"><span id="rmstat"></span><label for="rmvcb" id="rmvcbl">Maße</label><input id="rmvcb" type="text" inputmode="decimal" autocomplete="off" title="Einfach lostippen – die Zahl landet hier. Enter übernimmt. Zwei Maße mit Strichpunkt trennen: 600;400"></div>
 </div>
 <div class="dlg" id="dRml" style="z-index:45"><div class="box" style="max-width:980px">
@@ -499,13 +499,13 @@ button,input,select{font:inherit;color:inherit}
  <div class="row"><button class="btn" data-close>Abbrechen</button><button class="btn" id="newSave">Vorher speichern</button><button class="btn pri" id="newB">Leeren</button></div>
 </div></div>
 
-<script src="vendor/clipper.js?v=31"></script>
-<script src="font.js?v=31"></script>
-<script src="vendor/earcut.min.js?v=31"></script>
-<script src="view3d.js?v=31"></script>
-<script src="cad.js?v=31"></script>
-<script src="korpus.js?v=31"></script>
-<script src="raum.js?v=31"></script>
-<script src="start.js?v=31"></script>
+<script src="vendor/clipper.js?v=32"></script>
+<script src="font.js?v=32"></script>
+<script src="vendor/earcut.min.js?v=32"></script>
+<script src="view3d.js?v=32"></script>
+<script src="cad.js?v=32"></script>
+<script src="korpus.js?v=32"></script>
+<script src="raum.js?v=32"></script>
+<script src="start.js?v=32"></script>
 </body>
 </html>
