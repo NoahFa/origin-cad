@@ -8,15 +8,18 @@ const A=window.__cad.kp,$=id=>document.getElementById(id),S=()=>window.__cad.S;
 const AXV=v=>Array.isArray(v)&&v.length===3&&v.every(x=>x===0||x===1||x===-1)&&Math.abs(v[0])+Math.abs(v[1])+Math.abs(v[2])===1;
 function clean(o){if(!o||typeof o!=='object'||!Array.isArray(o.bodies))return null;const fin=(v,lo=-1e6,hi=1e6)=>typeof v==='number'&&Number.isFinite(v)&&v>=lo&&v<=hi,P2=p=>Array.isArray(p)&&p.length===2&&fin(p[0])&&fin(p[1]);
  const KND=['box','sph','cyl','cone','tor','plane','ext'],MATS=window.KORPUS?window.KORPUS.MATS:[['']],out=[];let id=1;
+ let gpts=100000;/* Punkte aller Formteile zusammen – mehr macht den 3D-Modus zäh */
  for(const b of o.bodies.slice(0,5000)){if(!b||typeof b!=='object'||!KND.includes(b.kind))continue;if(![b.L,b.B,b.H].every(v=>fin(v,0,1e5)))continue;if(!(Array.isArray(b.o)&&b.o.length===3&&b.o.every(v=>fin(v))))continue;
   const u=AXV(b.u)?[...b.u]:[1,0,0],v=AXV(b.v)&&Math.abs(u[0]*b.v[0]+u[1]*b.v[1]+u[2]*b.v[2])<0.5?[...b.v]:(u[2]?[1,0,0]:[0,0,1]);
   const n={id:id++,name:typeof b.name==='string'&&b.name.trim()?b.name.slice(0,60):'Körper',kind:b.kind,L:b.L,B:b.B,H:b.H,o:[...b.o],u,v,mat:MATS.some(m=>m[0]===b.mat)?b.mat:''};
   if(fin(b.D2,0,1e5))n.D2=b.D2;if(b.rod)n.rod=1;if(Array.isArray(b.tint)&&b.tint.length===3&&b.tint.every(x=>fin(x,0,2)))n.tint=[...b.tint];
-  if(b.kind==='ext'){const pl=b.poly;if(!pl||!Array.isArray(pl.outer)||pl.outer.length<3||pl.outer.length>200000||!pl.outer.every(P2))continue;let bud=200000-pl.outer.length;n.poly={outer:pl.outer.map(p=>[...p]),holes:(Array.isArray(pl.holes)?pl.holes:[]).slice(0,2000).filter(h=>Array.isArray(h)&&h.length>2&&h.length<=bud&&h.every(P2)&&(bud-=h.length)>=0).map(h=>h.map(p=>[...p]))}}
+  if(b.kind==='ext'){const pl=b.poly;if(!pl||!Array.isArray(pl.outer)||pl.outer.length<3||pl.outer.length>Math.min(50000,gpts)||!pl.outer.every(P2))continue;let bud=Math.min(50000,gpts)-pl.outer.length;n.poly={outer:pl.outer.map(p=>[...p]),holes:(Array.isArray(pl.holes)?pl.holes:[]).slice(0,300).filter(h=>Array.isArray(h)&&h.length>2&&h.length<=bud&&h.every(P2)&&(bud-=h.length)>=0).map(h=>h.map(p=>[...p]))};gpts-=n.poly.outer.length+n.poly.holes.reduce((s,h)=>s+h.length,0)}
   out.push(n)}
  return{bodies:out,nid:id}}
 const R=()=>{const s=S();if(!s.raum)s.raum={bodies:[],nid:1};return s.raum};
 const num=v=>Math.round(v*100)/100,de=v=>String(num(v)).replace('.',',');
+/* Zahl aus einem Feld – rechnen wie in der Befehlszeile (720-2*19), Komma als Dezimalzeichen */
+const pnum=s=>{s=String(s).trim().replace(/,/g,'.');if(!s)return null;const v=A.ev?A.ev(s):parseFloat(s);return typeof v==='number'&&isFinite(v)?v:null};
 const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],mul=(a,k)=>[a[0]*k,a[1]*k,a[2]*k],dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
 let V=null,selId=null,showDims=true,bound=false;const meshCache=new Map();
 const body=id=>R().bodies.find(b=>b.id===id);
@@ -109,9 +112,10 @@ function drawOver0(){const c=$('rmov'),cv=$('rm3d');if(!c||!V)return;const dpr=w
   const t={end:'Endpunkt',face:'Auf Fläche',ground:'Auf dem Boden',plane:'',axis:''}[infer.kind]||infer.txt||'';if(t){g.font='12px "IBM Plex Sans",sans-serif';g.fillStyle='rgba(22,25,29,.85)';const tw=g.measureText(t).width;g.fillRect(s[0]+12,s[1]+10,tw+8,17);g.fillStyle='#e4e7eb';g.textAlign='left';g.textBaseline='middle';g.fillText(t,s[0]+16,s[1]+18.5)}}}
  /* Maße */
  if(showDims&&r.bodies.length){const dimBox=(m,col,off)=>{g.strokeStyle=col;g.lineWidth=1.2;const[x0,y0,z0,x1,y1,z1]=m;
-   label(seg([x0,y0-off,z0],[x1,y0-off,z0]),de(x1-x0),col);seg([x0,y0,z0],[x0,y0-off-8,z0]);seg([x1,y0,z0],[x1,y0-off-8,z0]);
-   label(seg([x1+off,y0,z0],[x1+off,y1,z0]),de(y1-y0),col);seg([x1,y0,z0],[x1+off+8,y0,z0]);seg([x1,y1,z0],[x1+off+8,y1,z0]);
-   label(seg([x0-off,y0,z0],[x0-off,y0,z1]),de(z1-z0),col);seg([x0,y0,z0],[x0-off-8,y0,z0]);seg([x0,y0,z1],[x0-off-8,y0,z1])};
+   const mx=seg([x0,y0-off,z0],[x1,y0-off,z0]);seg([x0,y0,z0],[x0,y0-off-8,z0]);seg([x1,y0,z0],[x1,y0-off-8,z0]);
+   const my=seg([x1+off,y0,z0],[x1+off,y1,z0]);seg([x1,y0,z0],[x1+off+8,y0,z0]);seg([x1,y1,z0],[x1+off+8,y1,z0]);
+   const flat=z1-z0<0.01;let mz=null;if(!flat){mz=seg([x0-off,y0,z0],[x0-off,y0,z1]);seg([x0,y0,z0],[x0-off-8,y0,z0]);seg([x0,y0,z1],[x0-off-8,y0,z1])}
+   /* Zahlen erst nach allen Linien, damit keine Linie sie durchstreicht */label(mx,de(x1-x0),col);label(my,de(y1-y0),col);if(mz)label(mz,de(z1-z0),col)};
   dimBox(all,'#5ad1e8',sz*0.07);if(b&&r.bodies.length>1)dimBox(box(b),'#ffb020',sz*0.025)}}
 /* Rechteck aus zwei Punkten auf einer Ebene */
 function rectOf(p0,p1,n){const fi=n.findIndex(v=>Math.abs(v)>0.5),[u,v]=UV[fi+','+Math.sign(n[fi])],d=sub(p1,p0),a=dot(d,u),c=dot(d,v);return{o:add(add(p0,mul(u,Math.min(a,0))),mul(v,Math.min(c,0))).map(num),u,v,L:num(Math.abs(a)),B:num(Math.abs(c)),sa:Math.sign(a)||1,sb:Math.sign(c)||1}}
@@ -168,7 +172,7 @@ function finishRect(){const q=rectOf(op.p0,op.p1,op.n);if(q.L<1||q.B<1){status('
 function finishCirc(){if(!(op.r>=1)){status('Der Kreis ist zu klein.');return}const[u,v]=UV[op.face.i+','+op.face.sign],r=op.r,o=sub(sub(op.c,mul(u,r)),mul(v,r)).map(num);op=null;infer=null;let b;A.commit(()=>{b=newBody({name:'Kreisfläche',kind:'cyl',L:num(2*r),B:num(2*r),H:0,o,u,v})});selId=b.id;refresh();status('Kreis gezeichnet. Mit Drücken/Ziehen (P) hochziehen.')}
 /* Eingabe im Feld „Maße“ */
 /* Rechteck braucht zwei Maße: ein einzelnes Komma trennt dann Breite und Tiefe (600,40 = 600 × 40); Kommazahlen mit Strichpunkt: 600,5;400 */
-function vcbEnter(){const raw=$('rmvcb').value.trim();if(!raw)return;const list=op&&op.t==='rect'&&!/[;x×\s]/.test(raw)&&(raw.match(/,/g)||[]).length===1?raw.split(','):raw.split(/[;x×\s]+/),nums=list.map(q=>parseFloat(q.replace(/,/g,'.'))).filter(v=>isFinite(v));if(!nums.length){status('Bitte eine Zahl eingeben.');return}if(nums.some(q=>Math.abs(q)>1e5)){status('Zu groß – höchstens 100 m (100000 mm).');return}const v=nums[0];
+function vcbEnter(){const raw=$('rmvcb').value.trim();if(!raw)return;const list=op&&op.t==='rect'&&!/[;x×\s]/.test(raw)&&(raw.match(/,/g)||[]).length===1?raw.split(','):raw.split(/[;x×\s]+/),nums=list.filter(q=>q.trim()).map(pnum);if(!nums.length||nums.some(v=>v==null)){status(`„${raw}“ nicht verstanden – Zahl oder Rechnung wie 720-2*19, zwei Maße mit Strichpunkt: 600;400`);return}if(nums.some(q=>Math.abs(q)>1e5)){status('Zu groß – höchstens 100 m (100000 mm).');return}const v=nums[0];
  if(op&&op.t==='rect'){const q=op.p1?rectOf(op.p0,op.p1,op.n):{sa:1,sb:1},[u,vv]=UV[op.face.i+','+op.face.sign],L=Math.abs(v),B=Math.abs(nums[1]!=null?nums[1]:v);op.p1=add(add(op.p0,mul(u,L*q.sa)),mul(vv,B*q.sb));finishRect();return}
  if(op&&op.t==='circ'){op.r=Math.abs(v);finishCirc();return}
  if(op&&op.t==='push'){pushTo(v);commitPush();return}
@@ -215,7 +219,7 @@ function addFromDrawing(){const c=A.contours(),H=val('rn_X')||19;if(!c.list.leng
  msg(`${c.list.length} Kontur${c.list.length>1?'en':''} ${c.bySel?'(die gewählten) ':''}hochgezogen.`);refresh()}
 function addFromKorpus(){const K=window.KORPUS,ps=K.parts();if(!ps.length)return;A.commit(()=>{const alt=[...R().bodies],neu=[];for(const p of ps)neu.push(newBody({name:p.name,L:p.W,B:p.H,H:p.T,o:[...p.o],u:[...p.u],v:[...p.v],mat:p.matId||'',...(p.rod?{tint:[0.8,0.83,0.87],rod:1}:{})}));
   if(alt.length){const m=boxAll(alt),q=boxAll(neu);for(const b of neu)moveBy(b,[m[3]+50-q[0],m[1]-q[1],0])}selId=null});msg(`Schrank übernommen: ${ps.length} Körper. Er ist jetzt vom Korpusplaner gelöst – Bohrungen bleiben im Planer.`);refresh();V&&V.fit()}
-const val=id=>{const el=$(id);if(!el)return null;const v=parseFloat(el.value.replace(',','.'));return isFinite(v)&&v>0?v:null};
+const val=id=>{const el=$(id);if(!el)return null;const v=pnum(el.value);return v!=null&&v>0?v:null};
 function msg(t){$('rmmsg').textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()=>$('rmmsg').textContent='',7000)}
 const dims3=b=>[b.L,b.B,b.H].slice().sort((x,y)=>y-x),dimTxt=b=>b.kind==='sph'?'Ø '+de(b.L):b.kind==='cyl'||b.kind==='cone'?'Ø '+de(b.L)+' × '+de(b.H):b.kind==='tor'?'Ø '+de(b.L)+' · Rohr Ø '+de(b.H):b.kind==='plane'?de(b.L)+' × '+de(b.B):dims3(b).map(de).join(' × ');
 /* ----- Werkzeugleiste und Fächer (rechts) ----- */
@@ -245,7 +249,7 @@ function fillSel(){const el=$('rmsel'),b=body(selId);if(!el)return;if(!b){el.inn
   <div class="rm3"><label>Lage (linke vordere untere Ecke)</label><input id="rs_x" type="text" inputmode="decimal" value="${de(m[0])}" aria-label="X"><input id="rs_y" type="text" inputmode="decimal" value="${de(m[1])}" aria-label="Y"><input id="rs_z" type="text" inputmode="decimal" value="${de(m[2])}" aria-label="Z"><span style="color:light-dark(#c2381f,#ff7a5c)">X</span><span style="color:light-dark(#1a7f37,#3fb950)">Y</span><span style="color:light-dark(#1f5fd1,#6aa6ff)">Z</span></div>
   <div class="pr"><label for="rs_mat">Material</label><select id="rs_mat">${MATS.map(q=>`<option value="${q[0]}" ${(b.mat||'')===q[0]?'selected':''}>${q[0]?q[0]+' '+q[1]:q[1]}</option>`).join('')}</select></div>
   <div class="rmrow"><button class="btn" id="rs_floor">Auf den Boden</button><button class="btn" id="rs_copy" title="Strg+D">Kopieren</button><button class="btn" id="rs_del" title="Entf">Löschen</button></div>`;
- const on=(id,fn)=>{const x=$(id);if(!x)return;x.addEventListener('keydown',e=>{if(e.key==='Enter')x.blur()});x.addEventListener('change',()=>{fn(x);refresh(true)})},nv=x=>{const v=parseFloat(x.value.replace(',','.'));return isFinite(v)?v:null};
+ const on=(id,fn)=>{const x=$(id);if(!x)return;x.addEventListener('keydown',e=>{if(e.key==='Enter')x.blur()});x.addEventListener('change',()=>{fn(x);refresh(true)})},nv=x=>pnum(x.value);
  on('rs_name',x=>{const t=x.value.trim();if(t)A.commit(()=>{b.name=t.slice(0,60)})});
  for(const[id,f]of[['rs_L','L'],['rs_B','B'],['rs_H','H']])on(id,x=>{const v=nv(x);if(v>0)A.commit(()=>{const c0=box(b);b[f]=num(Math.min(v,10000));if(b.kind==='plane'&&f==='H')b.kind='box';const n=box(b);moveBy(b,[c0[0]-n[0],c0[1]-n[1],c0[2]-n[2]])})});
  ['rs_x','rs_y','rs_z'].forEach((id,i)=>on(id,x=>{const v=nv(x);if(v!=null)A.commit(()=>{const d=[0,0,0];d[i]=v-box(b)[i];moveBy(b,d)})}));

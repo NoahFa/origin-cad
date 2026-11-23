@@ -44,7 +44,7 @@ function cleanEnt(e){if(!e||typeof e!=='object')return null;const o={t:e.t,ly:ok
  case'dim':if(!okP(e.p))return null;if(e.m==='rad'||e.m==='dia'){if(!okP(e.c)||!okN(e.r,1e-6,LIM))return null;Object.assign(o,{c:[...e.c],r:e.r,p:[...e.p],m:e.m});break}
   if(!okP(e.a)||!okP(e.b))return null;Object.assign(o,{a:[...e.a],b:[...e.b],p:[...e.p],m:['h','v','al'].includes(e.m)?e.m:'al'});break;
  default:return null}
- if(typeof e.ct==='string'&&Object.prototype.hasOwnProperty.call(CUTS,e.ct))o.ct=e.ct;if(okN(e.cd,0.01,1000))o.cd=e.cd;if(okN(e.tool,0.01,200))o.tool=e.tool;if(okN(e.th,0.1,500))o.th=e.th;return o}
+ if(typeof e.ct==='string'&&Object.prototype.hasOwnProperty.call(CUTS,e.ct))o.ct=e.ct;if(okN(e.cd,0.01,1000))o.cd=e.cd;if(okN(e.tool,0.01,200))o.tool=e.tool;if(okN(e.th,0.1,500))o.th=e.th;if(e.src==='kp')o.src='kp';return o}
 const MAXLY=1000;
 function cleanLayers(ls){const out=[],seen=new Set();for(const l of Array.isArray(ls)?ls:[]){if(out.length>=MAXLY)break;const n=okStr(l&&l.n,60);if(!n||seen.has(n))continue;seen.add(n);out.push({n,c:/^#[0-9a-f]{6}$/i.test(l.c)?l.c:'#c9ced6',v:l.v!==false})}return out.length?out:DEF_LAYERS()}
 /* ganze Zeichnung prüfen; Korpusplaner und 3D-Modus prüfen ihre Teile selbst (cleanDoc.korpus / cleanDoc.raum) */
@@ -197,7 +197,7 @@ function fix2(o){if(!o||!o.closed||!o.pts||o.pts.length!==2)return o;const bl=o.
  o.pts=P;o.bl=B;return o}
 /* Objekt durch neue Fassung ersetzen (auch Felder entfernen, die es nicht mehr hat, z. B. „rect“ nach dem Drehen) */
 function setAll(e,n){for(const k of Object.keys(e))if(k!=='id'&&!(k in n))delete e[k];Object.assign(e,n,{id:e.id})}
-function explode(e){if(e.t==='pline'||e.t==='slot')return prims(e).map(q=>{const n=q.a?mk('line',{a:q.a,b:q.b},e.ly):mk('arc',{c:q.c,r:q.r,a0:na(q.a0),a1:na(q.a1)},e.ly);for(const k of['ct','cd','tool'])if(e[k]!=null)n[k]=e[k];return n});return null}
+function explode(e){if(e.t==='pline'||e.t==='slot')return prims(e).map(q=>{const n=q.a?mk('line',{a:q.a,b:q.b},e.ly):mk('arc',{c:q.c,r:q.r,a0:na(q.a0),a1:na(q.a1)},e.ly);for(const k of['ct','cd','tool','th','src'])if(e[k]!=null)n[k]=e[k];return n});return null}
 const nearest=(es,p)=>es.reduce((b,e)=>(!b||dEnt(p,e)<dEnt(p,b))?e:b,null);
 function rectE(a,b,real){const o={pts:[a,[b[0],a[1]],b,[a[0],b[1]]],closed:true,rect:true};return real?mk('pline',o):tmp('pline',o)}
 function polyE(c,p,n,real){const r=dist(c,p),t0=ang(sub(p,c)),pts=[];for(let i=0;i<n;i++)pts.push(pol(c,r,t0+i*TAU/n));return real?mk('pline',{pts,closed:true}):tmp('pline',{pts,closed:true})}
@@ -208,7 +208,7 @@ function dimAuto(a,b,p){const x0=Math.min(a[0],b[0]),x1=Math.max(a[0],b[0]),y0=M
  let m;if(gx===0&&gy===0)m=(x1-x0)>=(y1-y0)?'h':'v';else m=gy>=gx?'h':'v';return tmp('dim',{a,b,p,m,ly:dimLayer()})}
 
 /* Stutzen */
-function trimEnt(e,p){const pts=[];for(const f of geomEnts())if(f!==e&&f.t!=='text')pts.push(...iEE(e,f));
+function trimEnt(e,p){const pts=[];for(const f of geomEnts())if(f!==e&&f.t!=='text')pushAll(pts,iEE(e,f));
  const pieces=(ts,span)=>{ts=[...new Set(ts.map(t=>+t.toFixed(9)))].filter(t=>t>1e-6&&t<span-1e-6).sort((a,b)=>a-b);if(!ts.length)return null;return ts};
  if(e.t==='line'){const d=sub(e.b,e.a),L2=dot(d,d),ts=pieces(pts.map(q=>dot(sub(q,e.a),d)/L2),1);if(!ts)return null;const tp=dot(sub(p,e.a),d)/L2;let lo=0,hi=1;for(const t of ts){if(t<tp)lo=t;else{hi=t;break}}
   const o=[];if(lo>1e-6)o.push(mk('line',{a:e.a,b:add(e.a,mul(d,lo))},e.ly));if(hi<1-1e-6)o.push(mk('line',{a:add(e.a,mul(d,hi)),b:e.b},e.ly));return o}
@@ -253,7 +253,8 @@ function updUndo(){const u=document.getElementById('bUndo'),r=document.getElemen
 let chg=0,pristine=false;
 function pushUndo(){chg++;pristine=false;undoS.push(snapS());if(undoS.length>200)undoS.shift();redoS=[];updUndo()}
 function dropUndo(){chg++;S=JSON.parse(undoS.pop());updUndo()}
-function doCommit(fn){pushUndo();fn();afterChange()}
+/* nach jeder Änderung prüfen, ob alles gültig bleibt (z. B. nichts über 1 km) – sonst zurücknehmen, statt es beim nächsten Laden zu verlieren */
+function doCommit(fn){pushUndo();fn();if(S.ents.length<=60000&&S.ents.some(e=>!cleanEnt(e))){chg++;S=JSON.parse(undoS.pop());updUndo();log('Das Ergebnis läge über 1 km oder wäre ungültig – Änderung zurückgenommen.','e');afterChange();return false}afterChange();return true}
 function undo(){if(G)cancel(true);if(!undoS.length){log('Nichts rückgängig zu machen.');return}chg++;redoS.push(snapS());S=JSON.parse(undoS.pop());sel.clear();log('Rückgängig.');afterChange()}
 function redo(){if(G)cancel(true);if(!redoS.length){log('Nichts zu wiederholen.');return}chg++;undoS.push(snapS());S=JSON.parse(redoS.pop());sel.clear();afterChange()}
 
@@ -269,7 +270,7 @@ const CMDS={
    if(r.opt==='Z'){if(pts.length>1)pts.pop();continue}
    if(!r.p){if(pts.length>1)doCommit(()=>S.ents.push(mk('pline',{pts,closed:r.opt==='S'&&pts.length>2})));return}
    pts.push(r.p)}}},
- R:{n:'Rechteck',g:'Z',i:'M4 6h16v12H4z',*run(){const r0=yield P('Erste Ecke');if(!r0.p)return;const a=r0.p;const r=yield P('Gegenecke oder @Breite,Höhe',{base:a,prev:p=>[rectE(a,p)]});if(!r.p||r.p[0]===a[0]||r.p[1]===a[1])return;doCommit(()=>S.ents.push(rectE(a,r.p,true)))}},
+ R:{n:'Rechteck',g:'Z',i:'M4 6h16v12H4z',*run(){const r0=yield P('Erste Ecke');if(!r0.p)return;const a=r0.p;const r=yield P('Gegenecke oder @Breite;Höhe',{base:a,prev:p=>[rectE(a,p)]});if(!r.p||r.p[0]===a[0]||r.p[1]===a[1])return;doCommit(()=>S.ents.push(rectE(a,r.p,true)))}},
  K:{n:'Kreis',g:'Z',i:'M20 12a8 8 0 1 1-16 0a8 8 0 1 1 16 0',*run(){const r0=yield P('Mittelpunkt');if(!r0.p)return;const c=r0.p;
   const r=yield P('Radius (Zahl oder Punkt)  [D]urchmesser',{base:c,num:true,opts:['D'],prev:p=>[tmp('circle',{c,r:Math.max(dist(c,p),1e-6)})]});
   let rad=null;if(r.opt==='D'){const d=yield N('Durchmesser',mem.dia);if(d==null)return;mem.dia=d;rad=d/2}else if(r.n!=null)rad=r.n;else if(r.p)rad=dist(c,r.p);
@@ -301,7 +302,7 @@ const CMDS={
   const d=yield N('Loch-Ø',mem[D.d]);if(!d||d<=0)return;mem[D.d]=d;const n=yield N('Anzahl Löcher',mem[D.n]);if(!n||n<1)return;mem[D.n]=Math.round(n);
   let sp=0;if(mem[D.n]>1){sp=yield N('Lochabstand',mem[D.s]);if(!sp||sp<=0)return;mem[D.s]=sp}const t=yield N('Tiefe',mem[D.t]);if(t==null||t<=0)return;mem[D.t]=t;
   const ref=(yield P('Bezugspunkt anklicken (z. B. Ecke) · Enter = ohne')).p;
-  const a=(yield P('Erstes Loch'+(ref?' (z. B. @37,9.5 vom Bezugspunkt)':''),{base:ref||undefined,prev:p=>[tmp('circle',{c:p,r:d/2})]})).p;if(!a)return;
+  const a=(yield P('Erstes Loch'+(ref?' (z. B. @37;9,5 vom Bezugspunkt)':''),{base:ref||undefined,prev:p=>[tmp('circle',{c:p,r:d/2})]})).p;if(!a)return;
   const row=dir=>{const u=nrm(dir),o=[];for(let i=0;i<mem[D.n];i++)o.push(add(a,mul(u,i*sp)));return o};
   let L;if(mem[D.n]>1){const r=yield P('Richtung: Punkt anklicken oder Winkel (0 = rechts, 90 = oben)',{base:a,num:true,prev:p=>dist(p,a)<1e-9?[]:row(sub(p,a)).map(q=>tmp('circle',{c:q,r:d/2}))});
    if(r.n!=null)L=row(pol([0,0],1,r.n*D2R));else if(r.p&&dist(r.p,a)>1e-9)L=row(sub(r.p,a));else return}else L=[a];
@@ -330,7 +331,7 @@ const CMDS={
   const gap=yield N('Abstand zur Zielkante (0 = bündig)',mem.gap||0);if(gap==null)return;mem.gap=gap;
   const es=(sel.has(e.id)?[...sel].map(byId).filter(x=>x&&x.t!=='dim'||x===e):[e]).filter(x=>x!==tE);
   const orig=es.map(clone),res=alignTo(es,s,t,gap);doCommit(()=>es.forEach((x,i)=>setAll(x,res[i])));log(`Angelegt: um ${fmtDE(deg(res.rot))}° gedreht${gap?`, ${fmtDE(gap)} mm Abstand`:', bündig'}.`,'ok');
-  const r3=yield P('Angelegt.  [A]ndere Seite der Zielkante · Enter = fertig',{opts:['A'],free:true});if(r3.opt!=='A')return;
+  const r3=yield P('Angelegt. [A]ndere Seite der Zielkante · Enter = fertig',{opts:['A'],free:true});if(r3.opt!=='A')return;
   const res2=alignTo(orig,s,t,gap,true);doCommit(()=>es.forEach((x,i)=>setAll(x,res2[i])));log(`Auf die andere Seite gelegt (um ${fmtDE(deg(res2.rot))}° gedreht).`,'ok')}},
  SP:{n:'Spiegeln',g:'A',i:'M12 3v18M9 7L4 17h5zM15 7l5 10h-5z',*run(){const es=yield* needSel();if(!es.length)return;const a=(yield P('Erster Punkt der Spiegelachse')).p;if(!a)return;
   const r=yield P('Zweiter Punkt der Spiegelachse',{base:a,prev:p=>dist(p,a)<1e-9?[]:[tmp('line',{a,b:p}),...es.map(e=>xf(e,mirF(a,p),'mir'))]});if(!r.p||dist(r.p,a)<1e-9)return;const b=r.p;
@@ -342,9 +343,9 @@ const CMDS={
  AR:{n:'Abrunden',g:'A',i:'M4 20v-8a8 8 0 0 1 8-8h8',*run(){const r=yield N('Radius',mem.rad);if(r==null||r<0)return;mem.rad=r;const a=yield PK('Erste Linie');if(!a.e)return;hlE=a.e;const b=yield PK('Zweite Linie');hlE=null;if(!b.e)return;doFillet(a,b,r,false)}},
  FA:{less:1,n:'Fasen',g:'A',i:'M4 20v-9l7-7h9',*run(){const r=yield N('Fasenlänge',mem.cha);if(r==null||r<0)return;mem.cha=r;const a=yield PK('Erste Linie');if(!a.e)return;hlE=a.e;const b=yield PK('Zweite Linie');hlE=null;if(!b.e)return;doFillet(a,b,r,true)}},
  ST:{n:'Stutzen',g:'A',i:'M3 12h7M14 12h7M12 3v4M12 17v4M8 8l8 8',*run(){for(;;){const r=yield PK('Teilstück zum Wegschneiden anklicken · Enter = fertig');if(!r.e)return;const e=r.e;if(e.t==='dim')continue;
-  pushUndo();let t=e;const ex=explode(e);if(ex){replace(e,ex);t=nearest(ex,r.p)}const res=trimEnt(t,r.p);if(!res){dropUndo();log('Keine Schnittkante gefunden.','e');render();continue}for(const n of res)for(const k of['ct','cd','tool'])if(t[k]!=null)n[k]=t[k];replace(t,res);afterChange()}}},
+  pushUndo();let t=e;const ex=explode(e);if(ex){replace(e,ex);t=nearest(ex,r.p)}const res=trimEnt(t,r.p);if(!res){dropUndo();log('Keine Schnittkante gefunden.','e');render();continue}for(const n of res)for(const k of['ct','cd','tool','th','src'])if(t[k]!=null)n[k]=t[k];replace(t,res);afterChange()}}},
  RK:{less:1,n:'Reihe kopieren',g:'A',i:'M3 9h5v6H3zM10 9h5v6h-5zM17 9h4v6h-4z',*run(){const es=yield* needSel();if(!es.length)return;const c=yield N('Anzahl Spalten (X)',mem.cols);if(!c||c<1)return;const rw=yield N('Anzahl Zeilen (Y)',mem.rows);if(!rw||rw<1)return;
-  mem.cols=Math.round(c);mem.rows=Math.round(rw);let dx=0,dy=0;if(mem.cols>1){dx=yield N('Abstand Spalten (X)',mem.dx);if(dx==null)return;mem.dx=dx}if(mem.rows>1){dy=yield N('Abstand Zeilen (Y)',mem.dy);if(dy==null)return;mem.dy=dy}
+  if(Math.round(c)*Math.round(rw)>5000){log('Höchstens 5000 Kopien auf einmal.','e');return}mem.cols=Math.round(c);mem.rows=Math.round(rw);let dx=0,dy=0;if(mem.cols>1){dx=yield N('Abstand Spalten (X)',mem.dx);if(dx==null)return;mem.dx=dx}if(mem.rows>1){dy=yield N('Abstand Zeilen (Y)',mem.dy);if(dy==null)return;mem.dy=dy}
   doCommit(()=>{for(let i=0;i<mem.cols;i++)for(let j=0;j<mem.rows;j++){if(!i&&!j)continue;es.forEach(e=>S.ents.push(realize(xf(e,mvF([i*dx,j*dy])),e.ly)))}})}},
  ZL:{less:1,n:'Zerlegen',g:'A',i:'M4 4h6v6H4zM14 14h6v6h-6zM14 4l6 6M4 14l6 6',*run(){const es=yield* needSel();let k=0;doCommit(()=>es.forEach(e=>{const x=explode(e);if(x){replace(e,x);k++}}));log(k+' Objekt(e) zerlegt.')}},
  E:{n:'Löschen',g:'A',i:'M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13',*run(){const es=yield* needSel();if(!es.length)return;doCommit(()=>{S.ents=S.ents.filter(e=>!es.includes(e))});log(es.length+' gelöscht – Strg+Z holt es zurück.')}},
@@ -410,7 +411,7 @@ function joinEnts(es,tol=0.05){const pc=[];
     if(front){ch.pts=[...add.pts.slice(0,-1),...ch.pts];ch.bl=[...add.bl,...ch.bl]}else{ch.pts=[...ch.pts,...add.pts.slice(1)];ch.bl=[...ch.bl,...add.bl]}grew=true;break}}
   let closed=false;if(ch.pts.length>2&&dist(ch.pts[0],ch.pts[ch.pts.length-1])<tol){ch.pts.pop();closed=true}
   if(parts.length<2&&!closed)continue;
-  const o={pts:ch.pts,closed};if(ch.bl.some(hasB))o.bl=ch.bl;fix2(o);const f=parts[0];const n=mk('pline',o,f.ly);for(const k of['ct','cd','tool'])if(f[k]!=null)n[k]=f[k];
+  const o={pts:ch.pts,closed};if(ch.bl.some(hasB))o.bl=ch.bl;fix2(o);const f=parts[0];const n=mk('pline',o,f.ly);for(const k of['ct','cd','tool','th','src'])if(f[k]!=null)n[k]=f[k];
   made.push(n);parts.forEach(x=>used.add(x))}
  return{used,made}}
 /* Formen kombinieren */
@@ -437,7 +438,7 @@ function doFillet(A,B,r,ch){const ok=e=>e.t==='line'||e.t==='pline';if(!ok(A.e)|
  L1.a=res.l1[0];L1.b=res.l1[1];L2.a=res.l2[0];L2.b=res.l2[1];let x=null;if(res.x){x=realize(res.x,L1.ly);S.ents.push(x)}
  if(src.length){/* zerlegte Polylinie wieder zusammensetzen, Fräs-Angaben behalten */
   const all=[...new Set([...pieces,L1,L2,...(x?[x]:[])])].filter(e=>S.ents.includes(e)&&!(e.t==='line'&&dist(e.a,e.b)<1e-9));S.ents=S.ents.filter(e=>!(pieces.includes(e)&&e.t==='line'&&dist(e.a,e.b)<1e-9));
-  const j=joinEnts(all,1e-6);if(j.made.length){S.ents=S.ents.filter(e=>!j.used.has(e));for(const n of j.made){for(const k of['ct','cd','tool'])if(src[0][k]!=null)n[k]=src[0][k];n.ly=src[0].ly;S.ents.push(n)}}}
+  const j=joinEnts(all,1e-6);if(j.made.length){S.ents=S.ents.filter(e=>!j.used.has(e));for(const n of j.made){for(const k of['ct','cd','tool','th','src'])if(src[0][k]!=null)n[k]=src[0][k];n.ly=src[0].ly;S.ents.push(n)}}}
  afterChange()}
 
 /* ---------- Ablauf ---------- */
@@ -665,7 +666,7 @@ function parsePt(t){const base=(REQ&&REQ.base)||lastPt;let rel=false;if(t[0]==='
  if(t.includes('<')){const[a,b]=t.split('<'),d=ev(a.replace(/,/g,'.')),w=ev((b||'').replace(/,/g,'.'));if(d==null||w==null)return null;const o=base||[0,0];return{p:pol(rel||base?o:[0,0],d,w*D2R)}}
  if(t.includes(';')){const[a,b]=t.split(';'),x=ev(a.replace(/,/g,'.')),y=ev((b||'').replace(/,/g,'.'));if(x==null||y==null)return null;if(rel){if(!base)return null;return{p:add(base,[x,y])}}return{p:[x,y]}}
  /* wird eine einzelne Zahl erwartet, ist „12,5“ eine Kommazahl (Punkte dann mit Strichpunkt: 12;5) */
- if(!rel&&REQ&&REQ.num&&!t.includes(';')&&(t.match(/,/g)||[]).length===1&&/\d,\d/.test(t)&&/[*\/()+]/.test(t)){const n=ev(t.replace(',','.'));if(n!=null){log(`„${t}“ gerechnet als ${fmtDE(n)}.`);return{n}}}
+ if(!rel&&REQ&&REQ.num&&!t.includes(';')&&t.includes(',')&&(t.match(/,/g)||[]).length===(t.match(/\d,\d/g)||[]).length&&/[*\/()+\-]/.test(t)){const n=ev(t.replace(/,/g,'.'));if(n!=null){log(`„${t}“ gerechnet als ${fmtDE(n)}.`);return{n}}}
  if(!rel&&REQ&&REQ.num&&/^[+-]?\d+,\d+$/.test(t)){const n=parseFloat(t.replace(',','.'));log(`„${t}“ als ${fmtDE(n)} gelesen – einen Punkt gibst du mit Strichpunkt ein, z. B. 12;5`);return{n}}
  if(/[,;]/.test(t)){const sp=t.split(/[,;]/);if(sp.length!==2){log(`„${t}“: zu viele Zahlen – ein Punkt ist X;Y, z. B. 12,5;30.`,'e');return{bad:1}}const[a,b]=sp,x=ev(a),y=ev(b);if(x==null||y==null)return null;if(!rel&&base&&/^[+-]?\d+,\d+$/.test(t))log(`„${t}“ als Punkt X ${fmtDE(x)} / Y ${fmtDE(y)} gelesen. Meintest du ${t} mm Länge? Dann ${t.replace(',','.')} eingeben.`);if(rel){if(!base)return null;return{p:add(base,[x,y])}}return{p:[x,y]}}
  const n=ev(t);if(n!=null&&!rel)return{n};return null}
@@ -679,7 +680,7 @@ function onEnter(){inp.dataset.raw=inp.value.trim();const t=inp.value.trim();inp
  if(REQ.k==='pick'){adv({});return}
  if(!t){adv({enter:true});return}
  const up=t.toUpperCase();if((REQ.opts||[]).includes(up)){adv({opt:up});return}
- const p=parsePt(t);if(p&&p.bad)return;if(p&&p.p&&!okP(p.p)){log('Dieser Punkt liegt zu weit weg (über 1 km).','e');return}if(p){if(p.n!=null){if(REQ.num){adv({n:p.n});return}if(!REQ.base){log('Erst einen Punkt setzen – oder X,Y eingeben.','e');return}
+ const p=parsePt(t);if(p&&p.bad)return;if(p&&p.p&&!okP(p.p)){log('Dieser Punkt liegt zu weit weg (über 1 km).','e');return}if(p){if(p.n!=null){if(REQ.num){adv({n:p.n});return}if(!REQ.base){log('Erst einen Punkt setzen – oder X;Y eingeben.','e');return}
    let dir=polarHit?polarHit.u:sub(orthoP(cursorW),REQ.base);if(len(dir)<1e-9)dir=[1,0];const q=add(REQ.base,mul(nrm(dir),p.n));lastPt=q;adv({p:q});return}
   lastPt=p.p;adv({p:p.p});return}
  const ex=['Punkt anklicken','X;Y (z. B. 100;50)'];if(REQ.base)ex.push('@dX;dY','Länge (z. B. 250)','Länge<Winkel (z. B. 250<30)');else if(REQ.num)ex.push('eine Zahl');if((REQ.opts||[]).length)ex.push('Buchstabe '+REQ.opts.join(' / '));
@@ -728,8 +729,11 @@ $('gstep').addEventListener('change',e=>{const v=ev(e.target.value.replace(',','
 let fileName='Zeichnung.json';
 function setFname(n){const el=$('fname');el.textContent=n;el.title=n+' · Maße in mm'}
 let saveWarned=false;
-function save(){let ok=false;try{const s=snapS();if(s.length<=3e6){localStorage.setItem('origincad.v1',s);ok=true}}catch(e){}
- if(ok){saveWarned=false;return}if(!saveWarned){saveWarned=true;log('Achtung: Die Zeichnung ist zu groß für den Speicher im Browser und wird nicht mehr automatisch gesichert – bitte mit Strg+S als Datei speichern.','e')}}
+function save(){let ok=false;try{const s=snapS();if(s.length<=1.5e6){localStorage.setItem('origincad.v1',s);ok=true;localStorage.removeItem('origincad.big')}}catch(e){}
+ if(ok){saveWarned=false;return}
+ /* zu groß: den älteren Stand entfernen und merken, damit beim nächsten Start nicht ein alter Stand als „letzte Zeichnung“ erscheint */
+ try{localStorage.removeItem('origincad.v1');localStorage.setItem('origincad.big',JSON.stringify({n:String(fileName).slice(0,120),t:Date.now()}))}catch(e){}
+ if(!saveWarned){saveWarned=true;log('Achtung: Die Zeichnung ist zu groß für den Speicher im Browser und wird nicht mehr automatisch gesichert – bitte mit Strg+S als Datei speichern.','e')}}
 function saveUI(){try{localStorage.setItem('origincad.ui',JSON.stringify({tg,gstep,pstep}))}catch(e){}}
 function afterChange(){updUndo();geoVer++;updDefs();updProps();updLayers();computeSnap();render();save()}
 $('copyB').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('saveT').value);$('copyB').textContent='Kopiert ✓'}catch(e){$('saveT').select();$('copyB').textContent='Mit Strg+C kopieren'}setTimeout(()=>$('copyB').textContent='Kopieren',2000)});
@@ -808,16 +812,21 @@ function buildSVG(es){const b=bbox(es);if(!b)return null;const M=0,x0=b[0]-M,y1=
 /* Plattenstärke je Objekt: Teile aus dem Korpusplaner bringen ihre eigene mit (th), sonst gilt die Plattenstärke der Zeichnung */
 const thk=e=>e.th||S.def.thick||19,flatOuts=es=>es.filter(e=>cutOf(e).eff==='outside'&&cutOf(e).d<thk(e)-1e-9);
 function exportInfo(es){const cnt={},warn=[];let open=0,fail=0,left=0,deep=0;
- for(const e of es){const c=cutOf(e);cnt[c.eff]=(cnt[c.eff]||0)+1;if(needsClosed(c.t)&&!isClosed(e))open++;if(c.eff!=='guide'&&es.length<=400){const m=camOf(e);if(m.fail)fail++;else if(m.left.length)left++}if(c.eff!=='guide'&&c.d>43)deep++}
+ /* Außenkonturen mit Umrissrechteck (schnelle Vorauswahl); Rechenaufwand begrenzt, damit große Dateien das Fenster nicht einfrieren */
+ const outs=es.filter(e=>cutOf(e).eff==='outside'&&isClosed(e)).map(e=>({P:pathsOf(e)[0].pts,b:bbox([e])}));let budget=2e7;
+ const inOuts=(q,m=0)=>{for(const o of outs){if(q[0]<o.b[0]-m||q[0]>o.b[2]+m||q[1]<o.b[1]-m||q[1]>o.b[3]+m)continue;budget-=o.P.length;if(inPoly(q,o.P))return o}return null};
+ const dEdge=(q,P)=>{let d=Infinity;for(let i=0;i<P.length;i++){const v=dSeg(q,P[i],P[(i+1)%P.length]);if(v<d)d=v}budget-=P.length;return d},cen=l=>{let x=0,y=0;for(const p of l){x+=p[0];y+=p[1]}return[x/l.length,y/l.length]};
+ for(const e of es){const c=cutOf(e);cnt[c.eff]=(cnt[c.eff]||0)+1;if(needsClosed(c.t)&&!isClosed(e))open++;if(c.eff!=='guide'&&es.length<=400){const m=camOf(e);if(m.fail)fail++;else if(m.left.length&&(c.eff==='outside'||!outs.length||m.left.some(L=>budget>0&&inOuts(cen(L)))))left++/* Ecken außerhalb des Teils (z. B. Nut über die Kante) zählen nicht */}if(c.eff!=='guide'&&c.d>43)deep++}
  if(open)warn.push(`${open} offene Kontur(en) mit Frästyp Außen/Innen/Tasche – sie werden als „Auf Linie“ ausgegeben. Vorher mit „Verbinden“ (VB) schließen.`);
  if(fail)warn.push(`Bei ${fail} Kontur(en) passt der Fräser gar nicht hinein.`);
  if(left)warn.push(`Bei ${left} Kontur(en) bleibt in Ecken Material stehen (rot in der Fräsvorschau).`);
  if(deep)warn.push(`${deep} Objekt(e) tiefer als 43 mm – so tief kommt die Origin nicht.`);
  const fl=flatOuts(es);if(fl.length){const ths=[...new Set(fl.map(thk).map(fmtDE))].join(' / ');warn.push(`${fl.length} Außenkontur(en) nur ${[...new Set(fl.map(e=>fmtDE(cutOf(e).d)))].join(' / ')} mm tief – die Platte ist ${ths} mm. Zum Heraustrennen die Tiefe auf die Plattenstärke oder etwas mehr stellen (Knopf oben).`)}
  /* Bohrungen/Taschen, die über die Außenkontur hinausragen (z. B. Topf auf der falschen Seite) */
- if(es.length<=3000){const outs=es.filter(e=>cutOf(e).eff==='outside'&&isClosed(e)).map(e=>pathsOf(e)[0].pts);if(outs.length){const inO=q=>outs.some(P=>inPoly(q,P)||P.some((a,i)=>dSeg(q,a,P[(i+1)%P.length])<0.05));
-  const over=es.filter(e=>{const c=cutOf(e).eff;if((c!=='inside'&&c!=='pocket')||!isClosed(e))return false;if(e.t==='circle')return!pathsOf(e)[0].pts.every(inO);const b=bbox([e]);return!inO([(b[0]+b[2])/2,(b[1]+b[3])/2])}).length;
-  if(over)warn.push(`${over} Bohrung(en)/Tasche(n) ragen über die Außenkontur hinaus – Lage prüfen (z. B. Topf auf der richtigen Seite?).`)}}
+ if(outs.length){let over=0;for(const e of es){if(budget<0)break;const c=cutOf(e).eff;if((c!=='inside'&&c!=='pocket')||!isClosed(e))continue;
+   /* Kreis: Mitte muss im Teil liegen; ein kleiner Überstand bis zum halben Radius ist gewollt (z. B. Verbindergehäuse am Rand) */
+   if(e.t==='circle'){const o=inOuts(e.c);if(!o||dEdge(e.c,o.P)<e.r/2-1e-6)over++;continue}const b=bbox([e]);if(!inOuts([(b[0]+b[2])/2,(b[1]+b[3])/2]))over++}
+  if(over)warn.push(`${over} Bohrung(en)/Tasche(n) ragen über die Außenkontur hinaus – Lage prüfen (z. B. Topf auf der richtigen Seite?).`)}
  const loose=es.filter(e=>(e.t==='line'||e.t==='arc')&&cutOf(e).eff==='online').length;if(loose>=3)warn.push(`${loose} einzelne Linien/Bögen – gehören sie zu einer Kontur, vorher „Verbinden“ (VB).`);
  return{cnt,warn}}
 function openExport(){const hasSel=[...sel].some(id=>{const e=byId(id);return e&&e.t!=='dim'});$('expSelRow').style.display=hasSel?'':'none';$('expSel').checked=false;updExport();$('dExp').classList.add('open')}
@@ -825,6 +834,10 @@ function updExport(){const only=$('expSel').checked&&$('expSelRow').style.displa
  const lst=(t,k)=>[...new Set(es.filter(e=>cutOf(e).eff===t).map(e=>cutOf(e)[k]))].sort((x,y)=>x-y).map(fmtDE).join(' / ');
  $('expT').innerHTML=es.length?'<tr><th>Frästyp</th><th>Anzahl</th><th>Tiefe mm</th><th>Fräser Ø</th></tr>'+Object.keys(CUTS).filter(k=>cnt[k]).map(k=>`<tr><td>${CUTS[k]}</td><td>${cnt[k]}</td><td>${k==='guide'?'–':lst(k,'d')}</td><td>${k==='guide'?'–':lst(k,'tool')}</td></tr>`).join('')+`<tr><td>Größe</td><td colspan="3">${fmtDE(b[2]-b[0])} × ${fmtDE(b[3]-b[1])} mm${only?` · <b>nur ${es.length} von ${all.length} Objekten</b>`:''}</td></tr>`:'<tr><td>Nichts zum Ausgeben – die Zeichnung ist leer.</td></tr>';
  $('expW').innerHTML=warn.map(esc).join('<br>');$('expW').style.display=warn.length?'':'none';$('expB').disabled=!es.length;
+ /* nur Umriss gewählt (z. B. angetippt)? Bohrungen und Linien, die in den gewählten Teilen liegen, anbieten */
+ {const ad=$('expAdd');let miss=[];if(only&&all.length<=50000){const so=es.filter(e=>cutOf(e).eff==='outside'&&isClosed(e)).slice(0,500).map(e=>({P:pathsOf(e)[0].pts,b:bbox([e])}));if(so.length){const ids=new Set(es.map(e=>e.id));
+   miss=all.filter(e=>{if(ids.has(e.id))return false;const b=bbox([e]);if(!b)return false;const c=[(b[0]+b[2])/2,(b[1]+b[3])/2];return so.some(o=>c[0]>=o.b[0]&&c[0]<=o.b[2]&&c[1]>=o.b[1]&&c[1]<=o.b[3]&&inPoly(c,o.P))})}}
+  ad.style.display=miss.length?'':'none';ad.textContent=`${miss.length} Bohrung(en)/Linie(n) in den gewählten Teilen mitnehmen`;ad.onclick=()=>{miss.forEach(e=>sel.add(e.id));updProps();render();updExport();log(`${miss.length} Objekte innerhalb der gewählten Teile dazugenommen.`,'ok')}}
  const flat=flatOuts(es),fx=$('expFix');if(document.activeElement!==$('expThick'))$('expThick').value=fmtDE(S.def.thick||19);
  fx.style.display=flat.length?'':'none';fx.textContent=`${flat.length} Außenkontur${flat.length>1?'en':''} auf Plattenstärke + 0,5 mm setzen`;fx.onclick=()=>{doCommit(()=>flat.forEach(e=>{e.cd=num2(thk(e)+0.5)}));log(`${flat.length} Außenkontur(en) auf Plattenstärke + 0,5 mm gesetzt (${[...new Set(flat.map(e=>fmtDE(e.cd)))].join(' / ')} mm).`,'ok');updProps();updExport()}}
 const num2=v=>Math.round(v*100)/100;
@@ -924,7 +937,7 @@ function importSVG(text){const doc=new DOMParser().parseFromString(text,'image/s
  return{ents,note:[note,skipped?skipped+' Element(e) übersprungen (Schrift, Bilder, Verweise – in Pfade umwandeln, dann klappt es).':''].filter(Boolean).join(' ')}}
 function segPtsTol(a,b,bu,tol){if(!hasB(bu))return[b];const q=bulgeArc(a,b,bu),sw=4*Math.atan(bu),st=2*Math.acos(clamp(1-tol/Math.max(q.r,tol),-1,1)),n=Math.min(4000,Math.max(2,Math.ceil(Math.abs(sw)/st)||2)),t0=ang(sub(a,q.c)),o=[];for(let i=1;i<n;i++)o.push(pol(q.c,q.r,t0+sw*i/n));o.push(b);return o}
 /* importierte Punktfolge in das passende Objekt umwandeln (ohne id/Ebene) */
-function tidyImported(e){const keep=o=>{for(const k of['ct','cd','tool'])if(e[k]!=null)o[k]=e[k];return o};let{pts,bl,closed}=e;
+function tidyImported(e){const keep=o=>{for(const k of['ct','cd','tool','th','src'])if(e[k]!=null)o[k]=e[k];return o};let{pts,bl,closed}=e;
  if(closed&&pts.length===2&&bl&&Math.abs(Math.abs(bl[0])-1)<1e-6&&Math.abs(bl[0]-bl[1])<1e-6)return keep({t:'circle',c:mid(pts[0],pts[1]),r:dist(pts[0],pts[1])/2});
  if(!bl&&pts.length>6){const f=fitArcs(pts,closed,{tol:0.006,rel:0.0006,sag:0.06});if(f.circle)return keep({t:'circle',...f.circle});pts=f.pts;bl=f.bl}
  if(!closed&&pts.length===2){if(bl&&hasB(bl[0])){const q=bulgeArc(pts[0],pts[1],bl[0]);return keep({t:'arc',c:q.c,r:q.r,a0:q.a0,a1:q.a1})}return keep({t:'line',a:pts[0],b:pts[1]})}
@@ -1004,17 +1017,17 @@ async function loadFile(f,mode){const name=f.name||'Datei',ext=(name.split('.').
   pushUndo();if(mode!=='import'){S={ents:[],layers:DEF_LAYERS(),cur:'Kontur',nid:1,def:{...S.def}};fileName=name.replace(/\.[^.]+$/,'')+'.json';setFname(name)}
   sel.clear();const made=addEnts(r.ents,isSvg?'Kontur':'0');if(mode==='import')made.forEach(e=>sel.add(e.id));afterChange();zoomAll();const b=bbox(made);
   log(`${mode==='import'?'Dazugeladen':'Geöffnet'}: ${name} – ${made.length} Objekte, ${fmtDE(b[2]-b[0])} × ${fmtDE(b[3]-b[1])} mm.${mode==='import'?' Sie sind gewählt – mit V verschieben.':''} ${r.note}`,'ok');
-  log('Stimmt die Größe nicht? Alles wählen (Strg+A) und mit SK skalieren.')}
+  log(mode==='import'?'Stimmt die Größe nicht? Die neuen Teile sind gewählt – mit SK skalieren.':'Stimmt die Größe nicht? Alles wählen (Strg+A) und mit SK skalieren.')}
  catch(err){log(`${name}: ${err&&err.message?err.message:'Datei konnte nicht gelesen werden.'}`,'e')}}
 $('file').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(f)loadFile(f,fileMode)});
 /* Datei aufs Fenster ziehen = öffnen */
-window.addEventListener('dragover',e=>{e.preventDefault()});window.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer&&e.dataTransfer.files[0];if(f)loadFile(f,docSummary().length?'import':'open')});
+window.addEventListener('dragover',e=>{e.preventDefault()});window.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer&&e.dataTransfer.files[0];if(f)loadFile(f,!pristine&&docSummary().length?'import':'open')});
 
 /* ---------- Vorlagen ---------- */
 const TPLKEY='origincad.tpl';
 function userTpls(){try{const a=JSON.parse(localStorage.getItem(TPLKEY)||'[]');if(!Array.isArray(a))return[];
  return a.slice(0,500).filter(t=>t&&typeof t==='object'&&Array.isArray(t.ents)).map(t=>({n:okStr(t.n,80)||'Vorlage',d:okStr(t.d,80),ents:t.ents.slice(0,20000).map(cleanEnt).filter(Boolean)})).filter(t=>t.ents.length)}catch(e){return[]}}
-function setUserTpls(a){try{localStorage.setItem(TPLKEY,JSON.stringify(a));return true}catch(e){log('Vorlage konnte nicht gespeichert werden (Speicher voll?).','e');return false}}
+function setUserTpls(a){try{const s=JSON.stringify(a);if(s.length>500000){log('Zu viele oder zu große eigene Vorlagen (Speicher im Browser) – bitte alte Vorlagen löschen.','e');return false}localStorage.setItem(TPLKEY,s);return true}catch(e){log('Vorlage konnte nicht gespeichert werden (Speicher voll?).','e');return false}}
 const HOLE=(c,d,t,x={})=>({t:'circle',ly:'Kontur',c,r:d/2,ct:'pocket',cd:t,...x});
 function builtinTpls(){const K='Kontur',row=(x,y0,n)=>Array.from({length:n},(_,i)=>HOLE([x,y0+i*32],5,13,{tool:3}));
  return[
@@ -1105,7 +1118,7 @@ function sample0(){const K='Kontur',B='Bemaßung';S.nid=1;S.ents=[
  mk('dim',{a:[400,0],b:[360,250],p:[440,125],m:'v'},B)]}
 let restored=false,dropped=0;try{const o=JSON.parse(localStorage.getItem('origincad.v1')||'null');if(o&&Array.isArray(o.ents)){S=cleanDoc(o);restored=true;dropped=o.ents.length-S.ents.length}const u=JSON.parse(localStorage.getItem('origincad.ui')||'null');if(u&&typeof u==='object'){if(u.tg&&typeof u.tg==='object')for(const k of Object.keys(tg))if(typeof u.tg[k]==='boolean')tg[k]=u.tg[k];if(okN(u.gstep,0.01,10000))gstep=u.gstep;if([90,45,30,15].includes(u.pstep))pstep=u.pstep}}catch(e){}
 $('gstep').value=gstep;$('pstep').value=pstep;
-if(!restored){sample0();pristine=true;log('Beispiel: Front 400 × 600 mit zwei Topfbändern Ø35 und Griffloch. Datei › Neu leert die Zeichnung.')}
+if(!restored){try{const g=JSON.parse(localStorage.getItem('origincad.big')||'null');if(g&&typeof g.n==='string')log(`Die letzte Zeichnung („${g.n}“) war zu groß für den Speicher im Browser und wurde nicht gesichert – bitte die gespeicherte Datei öffnen.`,'e')}catch(e){}sample0();pristine=true;log('Beispiel: Front 400 × 600 mit zwei Topfbändern Ø35 und Griffloch. Datei › Neu leert die Zeichnung.')}
 else{log('Letzte Zeichnung wiederhergestellt.');if(dropped>0)log(`${dropped} Objekt(e) waren ungültig (z. B. über 1 km entfernt) und wurden weggelassen.`,'e')}
 log('Tipp: L + Enter für Linie, R für Rechteck, K für Kreis. F1 zeigt alle Befehle.');
 buildTools();updTools();updUndo();updDefs();updProps();updLayers();updPrompt();

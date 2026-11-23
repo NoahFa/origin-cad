@@ -30,6 +30,8 @@ function clean(o){if(!o||typeof o!=='object'||!Array.isArray(o.cabs))return null
   n.mw=(Array.isArray(c.mw)?c.mw:[]).slice(0,20).filter(fin);n.fb=pts(c.fb);n.eb=pts(c.eb);n.ks=pts(c.ks);return n});if(!k.cabs.length)k.cabs=[newCab()];tidy(k);return k}
 const K=()=>{const s=S();if(!s.korpus)s.korpus=DEF();for(const f in BT)if(s.korpus[f]==null)s.korpus[f]=BT[f];for(const c of s.korpus.cabs){if(!c.ks)c.ks=[];if(c.zo==null)c.zo=0;if(c.sfh==null)c.sfh=140}return s.korpus};
 const num=v=>Math.round(v*100)/100,de=v=>String(num(v)).replace('.',',');
+/* Zahl aus einem Feld – wie in der Befehlszeile darf gerechnet werden (720-2*19) */
+const pnum=s=>{s=String(s).trim().replace(/,/g,'.');if(!s)return null;const v=A.ev?A.ev(s):parseFloat(s);return typeof v==='number'&&isFinite(v)?v:null};
 const clampN=(v,a,b)=>Math.max(a,Math.min(b,v));
 
 /* Unterkante des Korpus über dem Boden: eigener Wert (Hängeschrank) oder Sockelhöhe */
@@ -53,6 +55,7 @@ function tidy(k){for(const c of k.cabs){c.b=clampN(c.b,150,3000);c.h=clampN(c.h,
   c.mw=c.mw.map(x=>num(clampN(x,k.t+40,c.b-2*k.t-40))).sort((a,b)=>a-b);for(let i=1;i<c.mw.length;i++)c.mw[i]=Math.max(c.mw[i],num(c.mw[i-1]+k.t+40));c.mw=c.mw.filter(x=>x<=c.b-2*k.t-40);/* Mittelwände nie übereinander */
   if(!c.ks)c.ks=[];for(const l of[c.fb,c.eb])for(const s of l){s.y=num(clampN(s.y,k.t+20,c.h-2*k.t-20));s.x=clampN(s.x,k.t+1,c.b-k.t-1)}
   for(const s of c.ks){s.y=num(clampN(s.y,k.t+30,c.h-k.t-25));s.x=clampN(s.x,k.t+1,c.b-k.t-1)}
+  k.svO=clampN(k.svO,-(k.t/2-3),k.t/2-3);
   if(c.front==='s'){c.mw=[];c.nm=0;c.fb=[];c.eb=[];c.ks=[]}
   if(c.front[0]==='m'){c.mw=[];c.nm=0;c.sfh=clampN(c.sfh||140,80,Math.max(80,c.h-300));const top=c.h-c.sfh-2*k.fuge-40;for(const l of[c.fb,c.eb])for(const q of l)q.y=Math.min(q.y,num(top-k.t));for(const q of c.ks)q.y=Math.min(q.y,num(top));
    /* unter dem Schubkasten (und ohne Mittelwand) können Böden aufeinander liegen: doppelte entfernen */const dd=l=>l.filter((q,i)=>!l.slice(0,i).some(o=>Math.abs(o.y-q.y)<k.t));c.fb=dd(c.fb);c.eb=dd(c.eb).filter(q=>!c.fb.some(o=>Math.abs(o.y-q.y)<k.t));c.ks=dd(c.ks)}
@@ -104,20 +107,21 @@ function parts(k){k=k||K();const out=[],t=k.t;let x0=0;
   /* Fronten */
   const fg=k.fuge,FT=[1.1,1.07,1.02];
   /* Bügelgriff: zwei durchgehende Löcher Ø5 im Lochabstand, in 3D als Stab */
-  const grip=(p,quer,cx,cy,wx,wz)=>{if(k.griff!=='b')return;const a=k.grA/2,L=k.grA+20;for(const s of[-1,1])hole(p,quer?cx+s*a:cx,quer?cy:cy+s*a,5,p.T);
+  const grip=(p,quer,cx,cy,wx,wz)=>{if(k.griff!=='b')return;const a=k.grA/2,L=k.grA+20;if(quer?(cx-a<8||cx+a>p.W-8||cy<8||cy>p.H-8):(cy-a<8||cy+a>p.H-8||cx<8||cx>p.W-8))return;/* Griff passt nicht auf die Front */for(const s of[-1,1])hole(p,quer?cx+s*a:cx,quer?cy:cy+s*a,5,p.T);
    if(quer)mk(ci,'Griff '+de(k.grA),L,10,10,[wx-L/2,-t-22,wz-5],[1,0,0],[0,0,1],{rod:true,mat:'Griff',isFront:true,tint:[0.7,0.72,0.75]});
    else mk(ci,'Griff '+de(k.grA),L,10,10,[wx+5,-t-22,wz-L/2],[0,0,1],[-1,0,0],{rod:true,mat:'Griff',isFront:true,tint:[0.7,0.72,0.75]})};
   const door=f=>{const Wd=f.w,Hd=f.h,side=f.side,xR=f.x+f.w,p=mk(ci,'Tür '+(side==='l'?'links':'rechts'),Wd,Hd,t,[x0+xR,-t-2,z0+f.z],[-1,0,0],[0,0,1],{front:1,isFront:true,tint:FT});
    if(k.topf){const hx=side==='l'?Wd-21.5:21.5,sg=side==='l'?-1:1;
     const bz=c.fb.filter(s=>{const q=compAt(c,k,s.x);return side==='l'?Math.abs(q.x0-t)<1e-6:Math.abs(q.x1-(c.b-t))<1e-6}).map(s=>s.y+t/2-f.z);
-    const ys=hingeYs(Hd).map(y=>{for(const b of bz)if(Math.abs(y-b)<45){const up=b+45,dn=b-45,okU=up<=Hd-40&&!bz.some(o=>Math.abs(up-o)<45),okD=dn>=40&&!bz.some(o=>Math.abs(dn-o)<45);if(okU||okD)y=okU&&(!okD||Math.abs(up-y)<=Math.abs(dn-y))?up:dn}return num(y)});
+    /* ausweichen nach oben oder unten, aber nie auf ein anderes Band (mind. 60 mm Abstand) */
+    const y0=hingeYs(Hd),ys=[];for(let i=0;i<y0.length;i++){let y=y0[i];if(bz.some(b=>Math.abs(y-b)<45)){const oth=[...ys,...y0.slice(i+1)],ok=v=>v>=40&&v<=Hd-40&&!bz.some(o=>Math.abs(v-o)<45)&&!oth.some(o=>Math.abs(v-o)<60),cand=[];for(const b of bz)for(const s of[45,60,75,90,110])cand.push(b+s,b-s);const best=cand.filter(ok).sort((a,b)=>Math.abs(a-y)-Math.abs(b-y))[0];if(best!=null)y=best}ys.push(num(y))}
     for(const y of ys){hole(p,hx,y,TOPF_D,TOPF_T);hole(p,hx+sg*9.5,y+22.5,8,11);hole(p,hx+sg*9.5,y-22.5,8,11);
      for(const dz of[-16,16])side==='l'?hole(SL,37,f.z+y+dz,LR_D,LR_T):hole(SR,c.d-37,f.z+y+dz,LR_D,LR_T)}}
    /* Griff senkrecht an der Öffnungsseite; beim Hängeschrank unten, sonst oben */
    const gx=side==='l'?k.grR:Wd-k.grR,gy=c.zo>0?k.grO+k.grA/2:Hd-k.grO-k.grA/2;if(Hd>k.grA+2*k.grO)grip(p,false,gx,gy,x0+xR-gx,z0+f.z+gy)};
   /* Holzschubkasten auf Blum TANDEM (Vollauszug 560H): Innenbreite = lichte Weite − 42, Länge = Nennlänge − 10,
      Einbautiefe mind. Nennlänge + 3, Boden 13 zurückgesetzt, unten 14 und oben 7 Luft, Seitenstärke 16 */
-  const drawer=(f,lo,hi)=>{const Hf=f.h,LW=c.b-2*t,bw=LW-10,NL=[...TANDEM_NL].reverse().find(l=>l+3<=dE)||TANDEM_NL[0],bl=NL-10,GR=6,hS=Math.max(60,Math.floor(hi-lo-14-7-9)),bx=x0+t+5,bz=z0+lo+14;
+  const drawer=(f,lo,hi)=>{const Hf=f.h,LW=c.b-2*t,bw=LW-10,NL=[...TANDEM_NL].reverse().find(l=>l+3<=dE)||TANDEM_NL[0],bl=NL-10,GR=6,hS=Math.max(40,Math.floor(hi-lo-14-7-9)),bx=x0+t+5,bz=z0+lo+14;
     const fp=mk(ci,'Schubkastenfront',f.w,Hf,t,[x0+f.x+f.w,-t-2,z0+f.z],[-1,0,0],[0,0,1],{isFront:true,tint:FT});grip(fp,true,f.w/2,Hf/2,x0+f.x+f.w/2,z0+f.z+Hf/2);
     const gS={x:-4,y:13,w:bl+8,h:k.rw,depth:GR};
     mk(ci,'Schubkasten Seite',bl,hS,SK,[bx,0,bz],[0,1,0],[0,0,1],{box:true,nl:NL}).grooves.push(gS);mk(ci,'Schubkasten Seite',bl,hS,SK,[bx+bw,bl,bz],[0,-1,0],[0,0,1],{box:true,nl:NL}).grooves.push({...gS});
@@ -148,9 +152,9 @@ function parts(k){k=k||K();const out=[],t=k.t;let x0=0;
 function partEnts(p,qty){const es=[],tool=S().def.tool;
  es.push({t:'pline',ly:'Kontur',pts:[[0,0],[p.W,0],[p.W,p.H],[0,p.H]],closed:true,rect:true,ct:'outside',cd:p.T,th:p.T});
  for(const g of p.grooves)es.push({t:'pline',ly:'Kontur',pts:[[g.x,g.y],[g.x+g.w,g.y],[g.x+g.w,g.y+g.h],[g.x,g.y+g.h]],closed:true,rect:true,ct:'pocket',cd:g.depth,...(tool>Math.min(g.w,g.h)?{tool:Math.min(6,Math.min(g.w,g.h))}:{})});
- for(const h of p.holes){if(h.mark){es.push({t:'circle',ly:'Hilfslinien',c:[h.x,h.y],r:h.d/2,ct:'guide'},{t:'line',ly:'Hilfslinien',a:[h.x-h.d,h.y],b:[h.x+h.d,h.y]},{t:'line',ly:'Hilfslinien',a:[h.x,h.y-h.d],b:[h.x,h.y+h.d]});continue}
+ for(const h of p.holes){if(h.mark){es.push({t:'circle',ly:'Hilfslinien',c:[h.x,h.y],r:h.d/2,ct:'guide'},{t:'line',ly:'Hilfslinien',a:[h.x-h.d,h.y],b:[h.x+h.d,h.y],ct:'guide'},{t:'line',ly:'Hilfslinien',a:[h.x,h.y-h.d],b:[h.x,h.y+h.d],ct:'guide'});continue}
   if(h.back)es.push({t:'circle',ly:'Rückseite',c:[h.x,h.y],r:h.d/2,ct:'guide'});else es.push({t:'circle',ly:'Kontur',c:[h.x,h.y],r:h.d/2,ct:'pocket',cd:h.depth,...(tool<h.d-1e-9?{}:{tool:3})})}
- for(const k of p.ticks){const d={l:[14,0],r:[-14,0],b:[0,14],t:[0,-14]}[k.e];es.push({t:'line',ly:'Hilfslinien',a:[k.x,k.y],b:[k.x+d[0],k.y+d[1]]})}
+ for(const k of p.ticks){const d={l:[14,0],r:[-14,0],b:[0,14],t:[0,-14]}[k.e];es.push({t:'line',ly:'Hilfslinien',a:[k.x,k.y],b:[k.x+d[0],k.y+d[1]],ct:'guide'})}
  const th=clampN(Math.min(p.W,p.H)/12,6,16);es.push({t:'text',ly:'Hilfslinien',p:[Math.min(60,p.W*0.15),Math.min(70,p.H*0.3)],s:`${p.name} ${de(p.W)} x ${de(p.H)} x ${de(p.T)}${qty>1?'  ('+qty+' Stück)':''}`,h:th,a:0,ct:'guide'});
  if(typeof p.front==='string'){const m=p.front,hv=clampN(th*0.8,5,12),pos={x0:[4,p.H/2],xW:[p.W-4-hv,p.H/2],y0:[p.W/2,4],yH:[p.W/2,p.H-4-hv]}[m];es.push({t:'text',ly:'Hilfslinien',p:pos,s:'VORN',h:hv,a:m[0]==='x'?Math.PI/2:0,ct:'guide'});if(m[0]==='x')es[es.length-1].p=[pos[0]+hv,pos[1]]}
  if(p.holes.some(h=>h.back))es.push({t:'text',ly:'Hilfslinien',p:[Math.min(60,p.W*0.15),Math.min(70,p.H*0.3)+th*1.8],s:'Blaue Kreise: von der Rueckseite bohren',h:th*0.7,a:0,ct:'guide'});
@@ -175,7 +179,7 @@ function upd3(){clearTimeout(timer);timer=setTimeout(()=>{if(!isOpen())return;if
 const cv=()=>$('kpcv');
 function rowW(k){return k.cabs.reduce((s,c)=>s+c.b,0)}
 function cabX(k,i){let x=0;for(let j=0;j<i;j++)x+=k.cabs[j].b;return x}
-function fitView(){const c=cv(),k=K(),W=rowW(k),H=Math.max(...k.cabs.map(c=>c.h+cz(k,c))),w=c.clientWidth,h=c.clientHeight,ml=Math.min(110,w*0.16),mb=Math.min(105,h*0.16),mt=Math.max(Math.min(95,h*0.14),(document.querySelector('.kptools')?document.querySelector('.kptools').offsetHeight:0)+42);view.s=Math.min((w-2*ml)/W,(h-mb-mt)/H);view.ox=(w-W*view.s)/2;view.oy=h-mb-((h-mb-mt)-H*view.s)/2}
+function fitView(){const c=cv(),k=K(),W=rowW(k),H=Math.max(...k.cabs.map(c=>c.h+cz(k,c))),w=c.clientWidth,h=c.clientHeight,kh=(()=>{const q=document.querySelector('.kphint');return q&&q.offsetParent&&getComputedStyle(q).display!=='none'?q.offsetHeight:0})(),ml=Math.min(110,Math.max(72,w*0.16)),mb=Math.min(105,Math.max(72,h*0.16))+kh,mt=Math.max(Math.min(95,h*0.14),(document.querySelector('.kptools')?document.querySelector('.kptools').offsetHeight:0)+42);view.s=Math.min((w-2*ml)/W,(h-mb-mt)/H);view.ox=(w-W*view.s)/2;view.oy=h-mb-((h-mb-mt)-H*view.s)/2}
 const sx=x=>view.ox+x*view.s,sy=z=>view.oy-z*view.s;
 function items(k){/* anklickbare Dinge: {type:'fb'|'eb'|'mw', ci, i, rect:[x,z,w,h] in mm (Zeile)} */const o=[];
  k.cabs.forEach((c,ci)=>{const X=cabX(k,ci),z0=cz(k,c);c.mw.forEach((x,i)=>o.push({type:'mw',ci,i,rect:[X+x,z0+k.t,k.t,c.h-2*k.t]}));
@@ -281,12 +285,12 @@ function form(){const k=K(),c=k.cabs[cur],inp=(id,lab,val,x='')=>`<div class="pr
  ${sec('sock','Sockel',k.sockel?de(k.sh)+' mm hoch':'ohne',`${chk('kr_sockel','Sockel unter den stehenden Korpussen',k.sockel)}${k.sockel?inp('kr_sh','Sockelhöhe mm',k.sh)+inp('kr_sr','Rücksprung mm',k.sr):''}`)}`;
  $('kpform').querySelectorAll('details.kpsec').forEach(d=>d.addEventListener('toggle',()=>{d.open?openSec.add(d.dataset.sec):openSec.delete(d.dataset.sec)}));
  $('kpform').querySelectorAll('[data-kpcab]').forEach(bt=>bt.onclick=()=>{cur=+bt.dataset.kpcab;pick=null;refresh()});
- const val=el=>{const s=el.value.replace(/,/g,'.'),v=A.ev?A.ev(s):parseFloat(s);return typeof v==='number'&&isFinite(v)?v:null},on=(id,fn)=>{const el=$(id);if(!el)return;el.addEventListener('change',()=>{fn(el);refresh()});if(el.tagName==='INPUT'&&el.type==='text')el.addEventListener('keydown',e=>{if(e.key==='Enter')el.blur()})};
- const set=(obj,f,min,max,after)=>el=>{const v=val(el);if(v==null)return;A.commit(()=>{obj[f]=clampN(v,min,max);after&&after();tidy(k)})};
+ const val=el=>{const v=pnum(el.value);if(v==null&&el.value.trim())msg(`„${el.value}“ ist keine Zahl – der alte Wert bleibt.`);return v},on=(id,fn)=>{const el=$(id);if(!el)return;el.addEventListener('change',()=>{fn(el);refresh()});if(el.tagName==='INPUT'&&el.type==='text')el.addEventListener('keydown',e=>{if(e.key==='Enter')el.blur()})};
+ const set=(obj,f,min,max,after)=>el=>{const v=val(el);if(v==null)return;if(v<min||v>max)msg(`Erlaubt sind ${de(min)} bis ${de(max)} – auf ${de(clampN(v,min,max))} gesetzt.`);A.commit(()=>{obj[f]=clampN(v,min,max);after&&after();tidy(k)})};
  on('kc_b',set(c,'b',150,3000,()=>scaleX(c,k)));on('kc_h',set(c,'h',150,3000));on('kc_d',set(c,'d',120,1200));
  on('kc_front',el=>A.commit(()=>{c.front=el.value;tidy(k)}));on('kc_zo',set(c,'zo',0,2600));on('kc_sfh',set(c,'sfh',80,600));
  on('kc_typ',el=>{const t=TYPEN[+el.value];if(!t)return;A.commit(()=>{Object.assign(c,t[1]);if(t[2])t[2](c,k);else spreadWalls(c,k);tidy(k)});pick=null});on('kc_sn',set(c,'sn',1,8));
- for(const f of['nm','nf','ne'])on('kc_'+f,el=>{const v=val(el);if(v==null)return;A.commit(()=>{c[f]=clampN(Math.round(v),0,f==='nm'?6:12);spread(c,k);tidy(k)});pick=null});
+ for(const f of['nm','nf','ne'])on('kc_'+f,el=>{const v=val(el);if(v==null)return;A.commit(()=>{c[f]=clampN(Math.round(v),0,f==='nm'?6:12);spread(c,k);tidy(k)});if(f==='nm'&&v>0&&c.mw.length<Math.round(v))msg(c.front[0]==='m'||c.front==='s'?'Bei Schubkasten-Fronten sind keine Mittelwände möglich.':`Nur ${c.mw.length} Mittelwände passen in diese Breite.`);pick=null});
  const sp=$('kc_spread');if(sp)sp.onclick=()=>{A.commit(()=>{spread(c,k);tidy(k)});pick=null;refresh()};
  $('kc_add').onclick=()=>{A.commit(()=>{k.cabs.splice(cur+1,0,JSON.parse(JSON.stringify(c)))});cur++;pick=null;refresh()};
  $('kc_del').onclick=()=>{if(k.cabs.length<2)return;A.commit(()=>{k.cabs.splice(cur,1)});cur=Math.max(0,cur-1);pick=null;refresh()};
@@ -301,7 +305,7 @@ function fillPick(){const el=$('kppick');if(!el)return;const k=K();if(!pick||!k.
  const c=k.cabs[pick.ci],isW=pick.type==='mw',v=isW?c.mw[pick.i]:c[pick.type][pick.i].y,nm={mw:'Mittelwand',fb:'Fester Boden',eb:'Einlegeboden',ks:'Kleiderstange'}[pick.type];
  if(document.activeElement&&document.activeElement.id==='kp_pos')return;
  el.innerHTML=`<div class="kpsel"><b>${nm} gewählt</b><div class="pr"><label for="kp_pos">${isW?'Abstand von links':pick.type==='ks'?'Höhe Stangenmitte':'Höhe ab Unterkante'}</label><input id="kp_pos" type="text" inputmode="decimal" value="${de(v)}"></div><button class="btn" id="kp_rm">Löschen (Entf)</button></div>`;
- const p=$('kp_pos');{const box=el.querySelector('.kpsel');if(box&&box.scrollIntoView)box.scrollIntoView({block:'nearest'})}p.addEventListener('keydown',e=>{if(e.key==='Enter')p.blur()});p.addEventListener('change',()=>{const n=parseFloat(p.value.replace(',','.'));if(!isFinite(n))return;A.commit(()=>{if(isW)c.mw[pick.i]=n;else c[pick.type][pick.i].y=n;tidy(k)});refresh()});$('kp_rm').onclick=removePick}
+ const p=$('kp_pos');{const box=el.querySelector('.kpsel');if(box&&box.scrollIntoView)box.scrollIntoView({block:'nearest'})}p.addEventListener('keydown',e=>{if(e.key==='Enter')p.blur()});p.addEventListener('change',()=>{const n=pnum(p.value);if(n==null){msg(`„${p.value}“ ist keine Zahl.`);return}A.commit(()=>{if(isW)c.mw[pick.i]=n;else c[pick.type][pick.i].y=n;tidy(k)});refresh()});$('kp_rm').onclick=removePick}
 function removePick(){if(!pick)return;const k=K(),c=k.cabs[pick.ci];A.commit(()=>{if(pick.type==='mw')c.mw.splice(pick.i,1);else c[pick.type].splice(pick.i,1);tidy(k)});pick=null;refresh()}
 function setMode(m){mode=m;document.querySelectorAll('[data-kpm]').forEach(b=>b.classList.toggle('on',b.dataset.kpm===m));draw()}
 function msg(t){$('kpmsg').textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()=>$('kpmsg').textContent='',5000)}
@@ -320,10 +324,10 @@ function csv(sep,cut){let rows=list(K());if(cut)rows=rows.filter(r=>!r.p.rod);if
  return'﻿Nr;Teil;Länge;Breite;Stärke;Zuschnitt Länge;Zuschnitt Breite;Kante;Material;Stück;Korpus\n'+rows.map((r,i)=>[i+1,r.p.name,de(Math.max(r.p.W,r.p.H)),de(Math.min(r.p.W,r.p.H)),de(r.p.T),de(Math.max(r.p.cW,r.p.cH)),de(Math.min(r.p.cW,r.p.cH)),r.p.kbTxt,matTxt(r.p),r.n,[...r.cabs].join(' ')].join(sep)).join('\n')+'\n'}
 function printList(){const w=window.open('','_blank');if(!w){msg('Das Druckfenster wurde vom Browser blockiert.');return}
  w.document.write(`<!doctype html><meta charset="utf-8"><title>Stückliste</title><style>body{font:14px system-ui,sans-serif;margin:24px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:5px 8px;text-align:left}td:last-child,th:last-child{display:none}</style><h2>Stückliste ${A.esc(A.baseName())}</h2>${$('kplT').outerHTML}<p>${A.esc($('kplsum').textContent)}</p>`);w.document.close();w.focus();setTimeout(()=>w.print(),300)}
-function toDrawing(){const rows=list(K()).filter(r=>!r.p.rod),all=[];let x=0,y=0,rowH=0;const b=A.bbox(S().ents),bx=b?b[2]+150:0,by=b?b[1]:0;
+function toDrawing(){const rows=list(K()).filter(r=>!r.p.rod),all=[];let x=0,y=0,rowH=0;const b=A.bbox(S().ents.filter(e=>e.src!=='kp')),bx=b?b[2]+150:0,by=b?b[1]:0;
  for(const r of rows){if(r.p.rod)continue;if(x>0&&x+r.p.W>3200){x=0;y+=rowH+80;rowH=0}for(const e of partEnts(r.p,r.n)){const mv=p=>[p[0]+bx+x,p[1]+by+y],n=JSON.parse(JSON.stringify(e));
    if(n.pts)n.pts=n.pts.map(mv);if(n.c)n.c=mv(n.c);if(n.a&&n.b){n.a=mv(n.a);n.b=mv(n.b)}if(n.p)n.p=mv(n.p);all.push(n)}x+=r.p.W+80;rowH=Math.max(rowH,r.p.H)}
- A.commit(()=>{A.addEnts(all)});close();A.after();A.log(`Korpusplaner: ${rows.length} verschiedene Teile rechts neben die Zeichnung gelegt. Für die Origin: einen Rahmen um ein Teil ziehen (so sind die Bohrungen dabei), dann „SVG für Origin“ und „Nur die gewählten Objekte ausgeben“ anhaken – einfacher: im Planer in der Stückliste „SVG“ je Teil.`,'ok')}
+ const old=S().ents.filter(e=>e.src==='kp').length;A.commit(()=>{if(old)S().ents=S().ents.filter(e=>e.src!=='kp');A.addEnts(all.map(e=>({...e,src:'kp'})))});close();A.after();A.log(`Korpusplaner: ${rows.length} verschiedene Teile ${old?'neu gelegt – die Teile vom letzten Mal wurden ersetzt':'rechts neben die Zeichnung gelegt'}. Für die Origin: einen Rahmen um ein Teil ziehen (so sind die Bohrungen dabei), dann „SVG für Origin“ und „Nur die gewählten Objekte ausgeben“ anhaken – einfacher: im Planer in der Stückliste „SVG“ je Teil.`,'ok')}
 
 /* ----- Zuschnittplan: Teile in Streifen auf Platten verteilen (einfache, sägegerechte Aufteilung) ----- */
 function nest(k){k=k||K();const pieces=[];list(k).filter(r=>!r.p.rod).forEach((r,i)=>{const p=r.p;/* Länge (größeres Maß) läuft in Plattenlänge = Maserung längs */
@@ -360,7 +364,7 @@ function open(){A.cancel();K();$('kp').classList.add('open');if(!bound){bound=tr
   $('kp').addEventListener('click',e=>{const b=e.target.closest('[data-kp]');if(b){const a=b.dataset.kp;if(a==='close')close();else if(a==='list')openList();else if(a==='nest')openNest();else if(a==='draw')toDrawing();else if(a==='undo'){A.undo();refresh()}else if(a==='redo'){A.redo();refresh()}else if(V3)V3.view(a);return}
    const m=e.target.closest('[data-kpm]');if(m)setMode(m.dataset.kpm)});
   $('dKpn').addEventListener('click',e=>{const b=e.target.closest('[data-kpn]');if(b&&b.dataset.kpn==='print')printNest()});
-  for(const[f,min,max]of[['plL',500,6000],['plB',300,3000],['kerf',0,10],['rand',0,50]]){const el=$('kn_'+f);el.addEventListener('keydown',e=>{if(e.key==='Enter')el.blur()});el.addEventListener('change',()=>{const v=parseFloat(el.value.replace(',','.'));if(isFinite(v))A.commit(()=>{K()[f]=clampN(v,min,max)});openNest()})}
+  for(const[f,min,max]of[['plL',500,6000],['plB',300,3000],['kerf',0,10],['rand',0,50]]){const el=$('kn_'+f);el.addEventListener('keydown',e=>{if(e.key==='Enter')el.blur()});el.addEventListener('change',()=>{const v=pnum(el.value);if(v!=null)A.commit(()=>{K()[f]=clampN(v,min,max)});openNest()})}
   $('kpfront').addEventListener('change',e=>{showFront=e.target.checked;refresh(true)});
   $('dKpl').addEventListener('click',async e=>{const b=e.target.closest('[data-kpsvg],[data-kpl]');if(!b)return;
    if(b.dataset.kpsvg!=null){const r=list(K())[+b.dataset.kpsvg],svg=window.__cad.buildSVG(partEnts(r.p,r.n));const n=await A.saveBlob(`${r.p.name.replace(/[^A-Za-z0-9äöüÄÖÜß]+/g,'-')}-${de(r.p.W)}x${de(r.p.H)}.svg`,svg,'image/svg+xml','SVG für Shaper Origin');if(n)msg('Gespeichert: '+n);return}
