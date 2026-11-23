@@ -636,6 +636,13 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  r=await p.evaluate(()=>{const S=RAUM.state;RAUM.addPrim('box');const c=S.bodies[1];c.o=[5000,0,0];RAUM.refresh();RAUM.select(S.bodies[0].id);RAUM.startBool('intersect');RAUM.doBool(c.id);return[S.bodies.length,document.getElementById('rmstat').textContent]});ok(r[0]===2&&/überschneiden sich nicht/.test(r[1]),'Schnittmenge ohne Überschneidung: Meldung, nichts gelöscht',r.join(' | '));
  await p.keyboard.press('Control+z');await p.click('[data-rm="close"]');await fresh();
 
+ console.log('In Einzelteile zerlegen (v34)');
+ {const cube=(x,y,z,s)=>{const P=(a,b,c)=>[x+a*s,y+b*s,z+c*s],q=[[P(0,0,0),P(0,1,0),P(1,1,0),P(1,0,0)],[P(0,0,1),P(1,0,1),P(1,1,1),P(0,1,1)],[P(0,0,0),P(1,0,0),P(1,0,1),P(0,0,1)],[P(0,1,0),P(0,1,1),P(1,1,1),P(1,1,0)],[P(0,0,0),P(0,0,1),P(0,1,1),P(0,1,0)],[P(1,0,0),P(1,1,0),P(1,1,1),P(1,0,1)]];return q.flatMap(f=>[[f[0],f[1],f[2]],[f[0],f[2],f[3]]])};
+  const tri=[...cube(0,0,0,100),...cube(300,0,0,50)],buf=Buffer.alloc(84+50*tri.length);buf.writeUInt32LE(tri.length,80);tri.forEach((t,i)=>t.flat().forEach((v,j)=>buf.writeFloatLE(v,84+50*i+12+4*j)));
+  await fresh();await p.setInputFiles('#file',{name:'Zwei.stl',mimeType:'model/stl',buffer:buf});await p.waitForTimeout(500);await p.click('#rs_split');
+  r=await p.evaluate(()=>RAUM.state.bodies.map(b=>[b.L,b.B,b.H,b.o[0]].join('/')).join(' | '));ok(r==='100/100/100/0 | 50/50/50/300','STL mit zwei getrennten Würfeln: in 2 Körper zerlegt, Lage bleibt',r);
+  await p.click('[data-rm="close"]');await fresh()}
+
  console.log('Sicherheit');
  r=await p.evaluate(async()=>{await document.fonts.ready;return{sans:document.fonts.check('500 14px "IBM Plex Sans"'),mono:document.fonts.check('14px "IBM Plex Mono"'),csp:!!document.querySelector('meta[http-equiv="Content-Security-Policy"]'),ext:[...document.querySelectorAll('link[href^="http"],script[src^="http"]')].length}});
  ok(r.sans&&r.mono&&r.csp&&r.ext===0,'Schrift aus dem Projekt geladen, nichts von fremden Servern, Sicherheitsregel gesetzt',JSON.stringify(r));

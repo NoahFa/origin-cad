@@ -164,6 +164,9 @@ Eigener Bereich (Knopf „3D-Modus“), Datei `raum.js`, Daten in `S.raum = {bod
 ## Boolesche Operationen im 3D-Modus (v33, 23.11.2026)
 - Objektinfo: „Vereinigen …“, „Abziehen …“, „Schnittmenge …“, dann zweiten Körper anklicken (`startBool`/`doBool` in raum.js, Rechnung in `csg.js`, BSP-Verfahren ohne Rekursion). Jeder Körper wird mit `worldTris` zu Dreiecken in Weltkoordinaten (Quader/Zylinder/Formteil über earcut + Seitenflächen). Ergebnis: Körper `mesh` (Freiform), beide Ausgangskörper werden ersetzt. Grenzen: zusammen 12 000 Dreiecke Eingabe, Ergebnis höchstens 20 000, Rechenaufwand begrenzt. Freiform-Körper: nicht im Zuschnittplan, Drücken/Ziehen nur über die Objektinfo.
 
+## In Einzelteile zerlegen (v34, 23.11.2026)
+- Objektinfo eines Freiform-Körpers: „In Einzelteile zerlegen“ (`splitSel`): Dreiecke mit gemeinsamen Ecken (auf 0,01 mm) bilden ein Teil; jedes Teil wird ein eigener Körper (`meshFromWorld`), Name „… – Teil n“, nach Größe sortiert, höchstens 500 Teile. Noahs Box mit Einlage → Korpus, Deckel, Einlage, 2 Klötze.
+
 ## Ideen / offen
 - **Entscheidung Noah:** Außenkonturen aus dem Korpusplaner mit Tiefe = Plattenstärke (jetzt) oder Stärke + 0,5 mm?
 - iPad ohne Tastatur im 3D-Modus: Knöpfe Rot/Grün/Blau für Verschiebe-Richtung und Drehachse (bisher Pfeiltasten).

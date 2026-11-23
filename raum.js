@@ -73,6 +73,19 @@ function worldTris(b){const w=wOf(b),W=p=>[b.o[0]+b.u[0]*p[0]+b.v[0]*p[1]+w[0]*p
  for(let i=0;i<idx.length;i+=3){const a=pts[idx[i]],c=pts[idx[i+1]],d=pts[idx[i+2]];out.push(fix([a[0],a[1],H],[c[0],c[1],H],[d[0],d[1],H],[0,0,1]).map(W));out.push(fix([a[0],a[1],0],[c[0],c[1],0],[d[0],d[1],0],[0,0,-1]).map(W))}
  for(const r of rings)for(let i=0;i<r.length;i++){const p=r[i],q=r[(i+1)%r.length],n=[q[1]-p[1],-(q[0]-p[0]),0];const a=[p[0],p[1],0],c=[q[0],q[1],0],d=[q[0],q[1],H],e=[p[0],p[1],H];out.push(fix(a,c,d,n).map(W),fix(a,d,e,n).map(W))}
  return out}
+/* Freiform-Körper (STL, Boolesche Operation) in seine getrennten Teile zerlegen: Dreiecke mit gemeinsamen Ecken gehören zusammen */
+function meshFromWorld(tris,base){const mn=[Infinity,Infinity,Infinity],mx=[-Infinity,-Infinity,-Infinity];for(const t of tris)for(const p of t)for(let i=0;i<3;i++){if(p[i]<mn[i])mn[i]=p[i];if(p[i]>mx[i])mx[i]=p[i]}
+ const L0=num(mx[0]-mn[0])||0.01,B0=num(mx[1]-mn[1])||0.01,H0=num(mx[2]-mn[2])||0.01,v=[];for(const t of tris)for(const p of t)for(let i=0;i<3;i++)v.push(num(p[i]-mn[i]));
+ return newBody({...base,kind:'mesh',L:L0,B:B0,H:H0,o:mn.map(num),u:[1,0,0],v:[0,1,0],mesh:{v,L0,B0,H0}})}
+function splitSel(){const b=body(selId);if(!b||b.kind!=='mesh'){status('Zerlegen geht bei Freiform-Körpern (STL oder Ergebnis einer Booleschen Operation).');return}
+ const T=worldTris(b),par=T.map((_,i)=>i),f=x=>{while(par[x]!==x){par[x]=par[par[x]];x=par[x]}return x},seen=new Map();
+ T.forEach((t,i)=>{for(const p of t){const k=p.map(x=>Math.round(x*100)).join(',');if(seen.has(k)){const a=f(i),c=f(seen.get(k));if(a!==c)par[a]=c}else seen.set(k,i)}});
+ const g=new Map();T.forEach((t,i)=>{const r=f(i);if(!g.has(r))g.set(r,[]);g.get(r).push(t)});
+ if(g.size<2){status('Dieser Körper besteht nur aus einem zusammenhängenden Teil – zum Aufteilen „Abziehen …“ oder „Schnittmenge …“ verwenden.');return}
+ if(g.size>500){status(`Das wären ${g.size} Teile – zu viele (höchstens 500).`);return}
+ const groups=[...g.values()].sort((a,c)=>c.length-a.length);let first=null;
+ A.commit(()=>{const r=R();r.bodies=r.bodies.filter(x=>x!==b);groups.forEach((tr,i)=>{const n=meshFromWorld(tr,{name:`${b.name} – Teil ${i+1}`.slice(0,60),mat:b.mat||''});if(!first)first=n})});
+ selId=first.id;refresh();status(`In ${groups.length} Einzelteile zerlegt – jedes ist jetzt ein eigener Körper (Gliederung rechts). Rückgängig mit Strg+Z.`)}
 const BOOLN={union:'Vereinigen',subtract:'Abziehen',intersect:'Schnittmenge'};
 function startBool(mode){if(selId==null){status('Erst einen Körper wählen.');return}cancelOp();setTool('sel');op={t:'bool',mode,a:selId};status(mode==='subtract'?'Körper anklicken, der vom gewählten abgezogen wird · Esc = abbrechen':`Zweiten Körper anklicken (${BOOLN[mode]}) · Esc = abbrechen`);drawOver()}
 function doBool(bId){const o=op;op=null;const A0=body(o.a),B0=body(bId);if(!A0||!B0||A0===B0){status('Bitte einen anderen Körper anklicken.');return}
@@ -301,7 +314,7 @@ const addBox=()=>addPrim('box');
 function fillSel(){const el=$('rmsel'),b=body(selId);if(!el)return;if(!b){el.innerHTML='<p class="muted">Nichts gewählt. Körper anklicken (Auswählen, Leertaste).</p>';return}if(el.contains(document.activeElement)&&document.activeElement.tagName==='INPUT'&&op)return;
  const m=box(b),inp=(id,lab,v,ro)=>`<div class="pr"><label for="${id}">${lab}</label><input id="${id}" type="text" inputmode="decimal" value="${typeof v==='number'?de(v):A.esc(v)}" ${ro?'readonly':''}></div>`,MATS=window.KORPUS.MATS;
  el.innerHTML=`<div class="pr"><label for="rs_name">Name</label><input id="rs_name" type="text" value="${A.esc(b.name)}" style="text-align:left"></div>
-  ${{box:()=>inp('rs_L','Länge',b.L)+inp('rs_B','Breite',b.B)+inp('rs_H','Höhe / Stärke',b.H),plane:()=>inp('rs_L','Länge',b.L)+inp('rs_B','Breite',b.B),sph:()=>inp('rs_D','Durchmesser',b.L),cyl:()=>inp('rs_D','Durchmesser',b.L)+inp('rs_H','Höhe',b.H),cone:()=>inp('rs_D','Durchmesser unten',b.L)+inp('rs_D2','Durchmesser oben',b.D2||0)+inp('rs_H','Höhe',b.H),tor:()=>inp('rs_D','Außendurchmesser',b.L)+inp('rs_H','Rohrdurchmesser',b.H),ext:()=>inp('rs_LB','Grundfläche',de(b.L)+' × '+de(b.B),true)+inp('rs_H','Höhe',b.H),mesh:()=>inp('rs_L','Länge',b.L)+inp('rs_B','Breite',b.B)+inp('rs_H','Höhe',b.H)+'<p class="muted kpnote">Freiform-Körper (STL oder Boolesche Operation) – Länge, Breite und Höhe strecken ihn.</p>'}[b.kind]()}
+  ${{box:()=>inp('rs_L','Länge',b.L)+inp('rs_B','Breite',b.B)+inp('rs_H','Höhe / Stärke',b.H),plane:()=>inp('rs_L','Länge',b.L)+inp('rs_B','Breite',b.B),sph:()=>inp('rs_D','Durchmesser',b.L),cyl:()=>inp('rs_D','Durchmesser',b.L)+inp('rs_H','Höhe',b.H),cone:()=>inp('rs_D','Durchmesser unten',b.L)+inp('rs_D2','Durchmesser oben',b.D2||0)+inp('rs_H','Höhe',b.H),tor:()=>inp('rs_D','Außendurchmesser',b.L)+inp('rs_H','Rohrdurchmesser',b.H),ext:()=>inp('rs_LB','Grundfläche',de(b.L)+' × '+de(b.B),true)+inp('rs_H','Höhe',b.H),mesh:()=>inp('rs_L','Länge',b.L)+inp('rs_B','Breite',b.B)+inp('rs_H','Höhe',b.H)+'<p class="muted kpnote">Freiform-Körper (STL oder Boolesche Operation) – Länge, Breite und Höhe strecken ihn.</p><button class="btn" id="rs_split" style="width:100%;margin-bottom:6px">In Einzelteile zerlegen</button>'}[b.kind]()}
   <div class="rm3"><label>Lage (linke vordere untere Ecke)</label><input id="rs_x" type="text" inputmode="decimal" value="${de(m[0])}" aria-label="X"><input id="rs_y" type="text" inputmode="decimal" value="${de(m[1])}" aria-label="Y"><input id="rs_z" type="text" inputmode="decimal" value="${de(m[2])}" aria-label="Z"><span style="color:light-dark(#c2381f,#ff7a5c)">X</span><span style="color:light-dark(#1a7f37,#3fb950)">Y</span><span style="color:light-dark(#1f5fd1,#6aa6ff)">Z</span></div>
   <div class="pr"><label for="rs_mat">Material</label><select id="rs_mat">${MATS.map(q=>`<option value="${q[0]}" ${(b.mat||'')===q[0]?'selected':''}>${q[0]?q[0]+' '+q[1]:q[1]}</option>`).join('')}</select></div>
   <div class="rmrow" title="Boolesche Operationen: gewählten Körper mit einem zweiten verrechnen"><button class="btn" data-bool="union">Vereinigen …</button><button class="btn" data-bool="subtract">Abziehen …</button><button class="btn" data-bool="intersect">Schnittmenge …</button></div>
@@ -314,6 +327,7 @@ function fillSel(){const el=$('rmsel'),b=body(selId);if(!el)return;if(!b){el.inn
  on('rs_D',x=>{const v=nv(x);if(!(v>0)){bad(x);return}A.commit(()=>{const c0=box(b);b.L=b.B=num(Math.min(v,10000));if(b.kind==='sph')b.H=b.L;if(b.kind==='tor')b.H=Math.min(b.H,num(b.L/2));if(b.kind==='cone')b.D2=Math.min(b.D2||0,b.L);const n=box(b);moveBy(b,[c0[0]-n[0],c0[1]-n[1],c0[2]-n[2]])})});
  on('rs_D2',x=>{const v=nv(x);if(v!=null&&v>=0)A.commit(()=>{b.D2=num(Math.min(v,b.L))})});
  on('rs_mat',x=>A.commit(()=>{b.mat=x.value}));
+ {const sp=$('rs_split');if(sp)sp.onclick=splitSel}
  $('rmside').querySelectorAll('[data-bool]').forEach(bt=>bt.onclick=()=>startBool(bt.dataset.bool));
  $('rs_floor').onclick=()=>{A.commit(()=>moveBy(b,[0,0,-box(b)[2]]));refresh(true)};$('rs_copy').onclick=copySel;$('rs_del').onclick=removeSel}
 function copySel(){const b=body(selId);if(!b)return;if(roundFull(b.kind)){msg('Höchstens 500 runde Körper (Kugel, Zylinder, Kegel, Torus).');return}let n;A.commit(()=>{n=newBody(JSON.parse(JSON.stringify({...b,id:undefined})));n.id=R().nid-1;const m2=box(b);moveBy(n,[m2[3]-m2[0]+50,0,0]);selId=n.id});refresh();ensureVisible(n)}
@@ -366,6 +380,6 @@ function key(e){const t=e.target,inField=t&&t.closest&&t.closest('#rm,#dRml')&&(
  const b=body(selId);if(!b)return;
  if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();removeSel();return}
  const st=e.shiftKey?10:1,mv={ArrowLeft:[-st,0,0],ArrowRight:[st,0,0],ArrowUp:[0,st,0],ArrowDown:[0,-st,0],PageUp:[0,0,st],PageDown:[0,0,-st]}[e.key];if(mv&&tool==='sel'){e.preventDefault();A.commit(()=>moveBy(b,mv));refresh(true)}}
-return{startBool,doBool,worldTris,addSTL,clean,addPrim,setTool,resize,vcbEnter,get tool(){return tool},get op(){return op},get tapeRes(){return tapeRes},pickPoint,open,close,isOpen,key,refresh,list,nest,box,get state(){return R()},get sel(){return selId},select:id=>{selId=id;refresh(true)},addBox,addFromDrawing,addFromKorpus,rotate:(id,ax)=>{A.commit(()=>rotate(body(id),ax));refresh(true)},get viewer(){return V},hooks}})();
+return{splitSel,startBool,doBool,worldTris,addSTL,clean,addPrim,setTool,resize,vcbEnter,get tool(){return tool},get op(){return op},get tapeRes(){return tapeRes},pickPoint,open,close,isOpen,key,refresh,list,nest,box,get state(){return R()},get sel(){return selId},select:id=>{selId=id;refresh(true)},addBox,addFromDrawing,addFromKorpus,rotate:(id,ax)=>{A.commit(()=>rotate(body(id),ax));refresh(true)},get viewer(){return V},hooks}})();
 /* wiederhergestelltes 3D-Modell aus dem Browserspeicher prüfen */
 {const s=window.__cad.S;if(s.raum)s.raum=window.RAUM.clean(s.raum)||undefined}
