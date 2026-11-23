@@ -54,3 +54,7 @@ SHALL THE COPYRIGHT HOLDERS OR ANYONE DISTRIBUTING THE SOFTWARE BE LIABLE
 FOR ANY DAMAGES OR OTHER LIABILITY, WHETHER IN CONTRACT, TORT OR OTHERWISE,
 ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
+
+
+## Boolesche Operationen (csg.js im Projekt)
+Eigene Umsetzung des BSP-Verfahrens nach dem Vorbild von „csg.js“ von Evan Wallace (MIT-Lizenz, https://github.com/evanw/csg.js). Copyright (c) 2011 Evan Wallace. Die MIT-Lizenz erlaubt Nutzung, Änderung und Weitergabe, sofern dieser Hinweis erhalten bleibt.

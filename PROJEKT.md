@@ -161,6 +161,9 @@ Eigener Bereich (Knopf „3D-Modus“), Datei `raum.js`, Daten in `S.raum = {bod
 ## STL-Import (v32, 23.11.2026)
 - 3D-Modus › Einfügen › „STL-Datei einfügen …“, oder Datei › Öffnen / aufs Fenster ziehen (öffnet den 3D-Modus). Binär- und Text-STL, Maße in mm, bis 20 000 Dreiecke je Modell, 40 000 zusammen. Neuer Körpertyp `mesh` (`b.mesh={v,L0,B0,H0}`, Dreiecke in eigenen Maßen, über L/B/H gestreckt). Drücken/Ziehen geht nicht (Maße in der Objektinfo), nicht im Zuschnittplan.
 
+## Boolesche Operationen im 3D-Modus (v33, 23.11.2026)
+- Objektinfo: „Vereinigen …“, „Abziehen …“, „Schnittmenge …“, dann zweiten Körper anklicken (`startBool`/`doBool` in raum.js, Rechnung in `csg.js`, BSP-Verfahren ohne Rekursion). Jeder Körper wird mit `worldTris` zu Dreiecken in Weltkoordinaten (Quader/Zylinder/Formteil über earcut + Seitenflächen). Ergebnis: Körper `mesh` (Freiform), beide Ausgangskörper werden ersetzt. Grenzen: zusammen 12 000 Dreiecke Eingabe, Ergebnis höchstens 20 000, Rechenaufwand begrenzt. Freiform-Körper: nicht im Zuschnittplan, Drücken/Ziehen nur über die Objektinfo.
+
 ## Ideen / offen
 - **Entscheidung Noah:** Außenkonturen aus dem Korpusplaner mit Tiefe = Plattenstärke (jetzt) oder Stärke + 0,5 mm?
 - iPad ohne Tastatur im 3D-Modus: Knöpfe Rot/Grün/Blau für Verschiebe-Richtung und Drehachse (bisher Pfeiltasten).

@@ -627,6 +627,15 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
   r=await p.evaluate(()=>RAUM.clean({bodies:[{kind:'mesh',L:1,B:1,H:1,o:[0,0,0],u:[1,0,0],v:[0,1,0],mesh:{v:[0,0,'x',1,0,0,0,1,0],L0:1,B0:1,H0:1}}]}).bodies.length);ok(r===0,'Präpariertes STL-Modell in einer Datei wird verworfen');
   await p.click('[data-rm="close"]');await fresh()}
 
+ console.log('Boolesche Operationen (v33)');
+ await fresh();await p.click('.mbtn[data-a="raum"]');
+ r=await p.evaluate(()=>{const S=RAUM.state;RAUM.addPrim('box');RAUM.addPrim('cyl');const a=S.bodies[0],c=S.bodies[1];a.o=[0,0,0];c.o=[200,100,-50];c.L=c.B=150;c.H=200;RAUM.refresh();RAUM.select(a.id);RAUM.startBool('subtract');RAUM.doBool(c.id);const m=S.bodies[0];
+  /* Volumen des Ergebnisses: Platte minus Zylinderstück */let V=0;const T=RAUM.worldTris(m);for(const[t0,t1,t2]of T)V+=(t0[0]*(t1[1]*t2[2]-t1[2]*t2[1])-t0[1]*(t1[0]*t2[2]-t1[2]*t2[0])+t0[2]*(t1[0]*t2[1]-t1[1]*t2[0]))/6;return{n:S.bodies.length,kind:m.kind,V:Math.round(V)}});
+ const Vsoll=600*400*19-Math.PI*75*75*19*Math.sin(2*Math.PI/48)*48/(2*Math.PI);ok(r.n===1&&r.kind==='mesh'&&Math.abs(r.V-Vsoll)/Vsoll<0.002,'Zylinder von Platte abziehen: Loch, Volumen stimmt',JSON.stringify(r)+' soll '+Math.round(Vsoll));
+ r=await p.evaluate(()=>{const S=RAUM.state;S.bodies.length=0;RAUM.addPrim('box');RAUM.addPrim('box');const a=S.bodies[0],c=S.bodies[1];a.o=[0,0,0];c.o=[300,0,0];RAUM.refresh();RAUM.select(a.id);RAUM.startBool('union');RAUM.doBool(c.id);const m=S.bodies[0];return[S.bodies.length,m.L,m.B,m.H].join()});ok(r==='1,900,400,19','Zwei Quader vereinigen: 900 × 400 × 19',r);
+ r=await p.evaluate(()=>{const S=RAUM.state;RAUM.addPrim('box');const c=S.bodies[1];c.o=[5000,0,0];RAUM.refresh();RAUM.select(S.bodies[0].id);RAUM.startBool('intersect');RAUM.doBool(c.id);return[S.bodies.length,document.getElementById('rmstat').textContent]});ok(r[0]===2&&/überschneiden sich nicht/.test(r[1]),'Schnittmenge ohne Überschneidung: Meldung, nichts gelöscht',r.join(' | '));
+ await p.keyboard.press('Control+z');await p.click('[data-rm="close"]');await fresh();
+
  console.log('Sicherheit');
  r=await p.evaluate(async()=>{await document.fonts.ready;return{sans:document.fonts.check('500 14px "IBM Plex Sans"'),mono:document.fonts.check('14px "IBM Plex Mono"'),csp:!!document.querySelector('meta[http-equiv="Content-Security-Policy"]'),ext:[...document.querySelectorAll('link[href^="http"],script[src^="http"]')].length}});
  ok(r.sans&&r.mono&&r.csp&&r.ext===0,'Schrift aus dem Projekt geladen, nichts von fremden Servern, Sicherheitsregel gesetzt',JSON.stringify(r));
