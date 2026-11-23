@@ -55,7 +55,7 @@ function tidy(k){for(const c of k.cabs){c.b=clampN(c.b,150,3000);c.h=clampN(c.h,
   c.mw=c.mw.map(x=>num(clampN(x,k.t+40,c.b-2*k.t-40))).sort((a,b)=>a-b);for(let i=1;i<c.mw.length;i++)c.mw[i]=Math.max(c.mw[i],num(c.mw[i-1]+k.t+40));c.mw=c.mw.filter(x=>x<=c.b-2*k.t-40);/* Mittelwände nie übereinander */
   if(!c.ks)c.ks=[];for(const l of[c.fb,c.eb])for(const s of l){s.y=num(clampN(s.y,k.t+20,c.h-2*k.t-20));s.x=clampN(s.x,k.t+1,c.b-k.t-1)}
   for(const s of c.ks){s.y=num(clampN(s.y,k.t+30,c.h-k.t-25));s.x=clampN(s.x,k.t+1,c.b-k.t-1)}
-  k.svO=clampN(k.svO,-(k.t/2-3),k.t/2-3);
+  {const lim=Math.max(0,k.t/2-3);k.svO=clampN(k.svO,-lim,lim)}
   if(c.front==='s'){c.mw=[];c.nm=0;c.fb=[];c.eb=[];c.ks=[]}
   if(c.front[0]==='m'){c.mw=[];c.nm=0;c.sfh=clampN(c.sfh||140,80,Math.max(80,c.h-300));const top=c.h-c.sfh-2*k.fuge-40;for(const l of[c.fb,c.eb])for(const q of l)q.y=Math.min(q.y,num(top-k.t));for(const q of c.ks)q.y=Math.min(q.y,num(top));
    /* unter dem Schubkasten (und ohne Mittelwand) können Böden aufeinander liegen: doppelte entfernen */const dd=l=>l.filter((q,i)=>!l.slice(0,i).some(o=>Math.abs(o.y-q.y)<k.t));c.fb=dd(c.fb);c.eb=dd(c.eb).filter(q=>!c.fb.some(o=>Math.abs(o.y-q.y)<k.t));c.ks=dd(c.ks)}
@@ -65,7 +65,7 @@ function tidy(k){for(const c of k.cabs){c.b=clampN(c.b,150,3000);c.h=clampN(c.h,
 function dubPos(len){const steps=Math.floor((len-64)/32);if(steps<1)return[num(len/2)];const n=Math.max(2,Math.round(steps*32/192)+1),o=[];for(let i=0;i<n;i++)o.push(32+32*Math.round(i*steps/(n-1)));return[...new Set(o)]}
 function dubSv(len){/* Dübel zwischen den Verbindern: 64 hinter dem vorderen und vor dem hinteren, ab 300 mm Abstand einer in der Mitte */const a=101,b=len-101;if(b-a<32)return[num(len/2)];const o=[a];if(b-a>300)o.push(a+32*Math.round((b-a)/64));o.push(num(b));return o}
 function hingeYs(H){const n=H>1600?4:H>900?3:H>=150?2:1;if(n===1)return[num(H/2)];/* bei niedrigen Türen näher an die Kanten, aber mind. 40 mm */const m=Math.min(100,Math.max(40,(H-80)/2)),o=[];for(let i=0;i<n;i++)o.push(num(m+(H-2*m)*i/(n-1)));return o}
-function parts(k){k=k||K();const out=[],t=k.t;let x0=0;
+function parts(k){k=k||K();const out=[],t=k.t;let x0=0;out.warn=[];
  const mk=(ci,name,W,H,T,o,u,v,x={})=>{const p=Object.assign({ci,name,W:num(W),H:num(H),T,o,u,v,holes:[],grooves:[],ticks:[],tint:[1,1,1]},x);p.matId=p.rod?'':p.isFront?k.matF:p.mat==='Rückwand'?k.matR:k.matK;if(p.matId)p.tint=p.name.startsWith('Sockel')?[0.8,0.8,0.8]:[1,1,1];out.push(p);return p};
  k.cabs.forEach((c,ci)=>{const z0=cz(k,c),dE=k.nut?c.d-k.na-k.rw:c.d,svs=k.sv&&dE>=140?[37,dE-37]:[],xs=!k.dub?[]:svs.length?dubSv(dE):dubPos(dE),xs0=xs,svs0=svs;
   const SL=mk(ci,'Seite links',c.d,c.h,t,[x0,0,z0],[0,1,0],[0,0,1],{front:'x0'}),SR=mk(ci,'Seite rechts',c.d,c.h,t,[x0+c.b,c.d,z0],[0,-1,0],[0,0,1],{front:'xW'});
@@ -121,7 +121,7 @@ function parts(k){k=k||K();const out=[],t=k.t;let x0=0;
    const gx=side==='l'?k.grR:Wd-k.grR,gy=c.zo>0?k.grO+k.grA/2:Hd-k.grO-k.grA/2;if(Hd>k.grA+2*k.grO)grip(p,false,gx,gy,x0+xR-gx,z0+f.z+gy)};
   /* Holzschubkasten auf Blum TANDEM (Vollauszug 560H): Innenbreite = lichte Weite − 42, Länge = Nennlänge − 10,
      Einbautiefe mind. Nennlänge + 3, Boden 13 zurückgesetzt, unten 14 und oben 7 Luft, Seitenstärke 16 */
-  const drawer=(f,lo,hi)=>{const Hf=f.h,LW=c.b-2*t,bw=LW-10,NL=[...TANDEM_NL].reverse().find(l=>l+3<=dE)||TANDEM_NL[0],bl=NL-10,GR=6,hS=Math.max(40,Math.floor(hi-lo-14-7-9)),bx=x0+t+5,bz=z0+lo+14;
+  const drawer=(f,lo,hi)=>{if(Math.floor(hi-lo-14-7-9)<40)out.warn.push(`Korpus ${ci+1}: Schubkastenfach zu niedrig (${de(hi-lo)} mm) – die Zarge passt nicht hinein.`);const Hf=f.h,LW=c.b-2*t,bw=LW-10,NL=[...TANDEM_NL].reverse().find(l=>l+3<=dE)||TANDEM_NL[0],bl=NL-10,GR=6,hS=Math.max(40,Math.floor(hi-lo-14-7-9)),bx=x0+t+5,bz=z0+lo+14;
     const fp=mk(ci,'Schubkastenfront',f.w,Hf,t,[x0+f.x+f.w,-t-2,z0+f.z],[-1,0,0],[0,0,1],{isFront:true,tint:FT});grip(fp,true,f.w/2,Hf/2,x0+f.x+f.w/2,z0+f.z+Hf/2);
     const gS={x:-4,y:13,w:bl+8,h:k.rw,depth:GR};
     mk(ci,'Schubkasten Seite',bl,hS,SK,[bx,0,bz],[0,1,0],[0,0,1],{box:true,nl:NL}).grooves.push(gS);mk(ci,'Schubkasten Seite',bl,hS,SK,[bx+bw,bl,bz],[0,-1,0],[0,0,1],{box:true,nl:NL}).grooves.push({...gS});
@@ -179,7 +179,7 @@ function upd3(){clearTimeout(timer);timer=setTimeout(()=>{if(!isOpen())return;if
 const cv=()=>$('kpcv');
 function rowW(k){return k.cabs.reduce((s,c)=>s+c.b,0)}
 function cabX(k,i){let x=0;for(let j=0;j<i;j++)x+=k.cabs[j].b;return x}
-function fitView(){const c=cv(),k=K(),W=rowW(k),H=Math.max(...k.cabs.map(c=>c.h+cz(k,c))),w=c.clientWidth,h=c.clientHeight,kh=(()=>{const q=document.querySelector('.kphint');return q&&q.offsetParent&&getComputedStyle(q).display!=='none'?q.offsetHeight:0})(),ml=Math.min(110,Math.max(72,w*0.16)),mb=Math.min(105,Math.max(72,h*0.16))+kh,mt=Math.max(Math.min(95,h*0.14),(document.querySelector('.kptools')?document.querySelector('.kptools').offsetHeight:0)+42);view.s=Math.min((w-2*ml)/W,(h-mb-mt)/H);view.ox=(w-W*view.s)/2;view.oy=h-mb-((h-mb-mt)-H*view.s)/2}
+function fitView(){const c=cv(),k=K(),W=rowW(k),H=Math.max(...k.cabs.map(c=>c.h+cz(k,c))),w=c.clientWidth,h=c.clientHeight,kh=(()=>{const q=document.querySelector('.kphint');return q&&q.offsetParent&&getComputedStyle(q).display!=='none'?q.offsetHeight:0})(),ml=Math.min(110,Math.max(w<420?44:72,w*0.16)),mb=Math.min(105,Math.max(h<330?44:72,h*0.16))+kh,mt=Math.max(Math.min(95,h*0.14),(document.querySelector('.kptools')?document.querySelector('.kptools').offsetHeight:0)+42);view.s=Math.max(0.005,Math.min((w-2*ml)/W,(h-mb-mt)/H));view.ox=(w-W*view.s)/2;view.oy=h-mb-((h-mb-mt)-H*view.s)/2}
 const sx=x=>view.ox+x*view.s,sy=z=>view.oy-z*view.s;
 function items(k){/* anklickbare Dinge: {type:'fb'|'eb'|'mw', ci, i, rect:[x,z,w,h] in mm (Zeile)} */const o=[];
  k.cabs.forEach((c,ci)=>{const X=cabX(k,ci),z0=cz(k,c);c.mw.forEach((x,i)=>o.push({type:'mw',ci,i,rect:[X+x,z0+k.t,k.t,c.h-2*k.t]}));
@@ -204,16 +204,16 @@ function draw(){const c=cv(),k=K();if(!c.clientWidth)return;const dpr=window.dev
   else R(x,z,w,h,it.type==='eb'?'rgba(201,168,119,.55)':wood,sel?'#e5482d':woodD,sel?2:1,it.type==='eb'?[5,3]:null);
   if(sel){const c=k.cabs[it.ci];if(it.type==='mw')T(de(c.mw[it.i])+' von links',sx(x+w/2),sy(z+h)-34,'#ffb020');else T(de(c[it.type][it.i].y)+(it.type==='ks'?' Stangenmitte':' ab Unterkante'),sx(x+w/2),sy(z+h)-12,'#ffb020')}}
  dims(g,k,T);
- $('kphint').textContent={sel:'Korpus anklicken = bearbeiten · Boden oder Mittelwand ziehen = verschieben · anklicken + Entf = löschen',fb:'In ein Fach klicken: fester Boden auf dieser Höhe',eb:'In ein Fach klicken: Einlegeboden auf dieser Höhe',ks:'In ein Fach klicken: Kleiderstange auf dieser Höhe',mw:'In einen Korpus klicken: Mittelwand an dieser Stelle'}[mode]}
+ $('kphint').textContent={sel:matchMedia('(pointer:coarse)').matches?'Korpus antippen = bearbeiten · Boden oder Mittelwand ziehen = verschieben · antippen, dann „Löschen“':'Korpus anklicken = bearbeiten · Boden oder Mittelwand ziehen = verschieben · anklicken + Entf = löschen',fb:'In ein Fach klicken: fester Boden auf dieser Höhe',eb:'In ein Fach klicken: Einlegeboden auf dieser Höhe',ks:'In ein Fach klicken: Kleiderstange auf dieser Höhe',mw:'In einen Korpus klicken: Mittelwand an dieser Stelle'}[mode]}
 /* Maßketten: immer sichtbar. Unten Korpusbreiten + Gesamtbreite, links Höhen, in jedem Fach lichte Breite und lichte Höhen */
 function dims(g,k,T){const de=v=>String(Math.round(v*10)/10).replace('.',',');const W=rowW(k),top=c=>cz(k,c)+c.h,Hm=Math.max(...k.cabs.map(top)),col='#5ad1e8',t=k.t;
  const line=(x1,y1,x2,y2)=>{g.beginPath();g.moveTo(x1,y1);g.lineTo(x2,y2);g.stroke()},tick=(x,y)=>{line(x-4,y+4,x+4,y-4)};
  g.strokeStyle=col;g.lineWidth=1;g.setLineDash([]);
  /* Innenmaße werden weggelassen, wenn ihr Text auf einem anderen Maß landen würde (schmale Fächer) */
  const used=[],free=r=>!used.some(u=>r[0]<u[0]+u[2]&&u[0]<r[0]+r[2]&&r[1]<u[1]+u[3]&&u[1]<r[1]+r[3]),tw=s=>s.length*7.4+8;
- const dH=(xa,xb,py,txt,ext,inner)=>{const a=sx(xa),b=sx(xb),show=b-a>=30||(txt.length<4&&b-a>=18),r=[(a+b)/2-tw(txt)/2,py-17,tw(txt),16];if(inner&&(!show||!free(r)))return;line(a,py,b,py);tick(a,py);tick(b,py);if(ext){line(a,ext,a,py+5);line(b,ext,b,py+5)}if(show){used.push(r);if(inner)bg(r);T(txt,(a+b)/2,py-9,col)}};
+ const dH=(xa,xb,py,txt,ext,inner)=>{const a=sx(xa),b=sx(xb),r=[(a+b)/2-tw(txt)/2,py-17,tw(txt),16],show=b-a>=tw(txt)-4&&free(r);if(inner&&!show)return;line(a,py,b,py);tick(a,py);tick(b,py);if(ext){line(a,ext,a,py+5);line(b,ext,b,py+5)}if(show){used.push(r);if(inner)bg(r);T(txt,(a+b)/2,py-9,col)}};
  const bg=r=>{g.fillStyle='#16191dd9';g.fillRect(r[0]+2,r[1]+1,r[2]-4,r[3]-2)};
- const dV=(za,zb,px,txt,ext,side=-1,inner)=>{const a=sy(za),b=sy(zb),show=a-b>=30,r=[px+side*9-8,(a+b)/2-tw(txt)/2,16,tw(txt)];if(inner&&(!show||!free(r)||!free([px-3,b,6,a-b])))return;line(px,a,px,b);tick(px,a);tick(px,b);if(ext!=null){line(ext,a,px+side*5,a);line(ext,b,px+side*5,b)}if(show){used.push(r);if(inner)bg(r);T(txt,px+side*9,(a+b)/2,col,'center',-Math.PI/2)}};
+ const dV=(za,zb,px,txt,ext,side=-1,inner)=>{const a=sy(za),b=sy(zb),r=[px+side*9-8,(a+b)/2-tw(txt)/2,16,tw(txt)],show=a-b>=Math.max(30,tw(txt)-4)&&free(r);if(inner&&(!show||!free([px-3,b,6,a-b])))return;line(px,a,px,b);tick(px,a);tick(px,b);if(ext!=null){line(ext,a,px+side*5,a);line(ext,b,px+side*5,b)}if(show){used.push(r);if(inner)bg(r);T(txt,px+side*9,(a+b)/2,col,'center',-Math.PI/2)}};
  /* unten: Korpusbreiten, darunter Gesamtbreite */
  const y1=sy(0)+26,y2=sy(0)+54;let X=0;k.cabs.forEach(c=>{dH(X,X+c.b,y1,de(c.b),sy(0)+4);X+=c.b});if(k.cabs.length>1)dH(0,W,y2,de(W),y1+4);
  /* links: Abstand zum Boden (Sockel oder Hängehöhe) + Korpus, außen Gesamthöhe */
@@ -285,12 +285,12 @@ function form(){const k=K(),c=k.cabs[cur],inp=(id,lab,val,x='')=>`<div class="pr
  ${sec('sock','Sockel',k.sockel?de(k.sh)+' mm hoch':'ohne',`${chk('kr_sockel','Sockel unter den stehenden Korpussen',k.sockel)}${k.sockel?inp('kr_sh','Sockelhöhe mm',k.sh)+inp('kr_sr','Rücksprung mm',k.sr):''}`)}`;
  $('kpform').querySelectorAll('details.kpsec').forEach(d=>d.addEventListener('toggle',()=>{d.open?openSec.add(d.dataset.sec):openSec.delete(d.dataset.sec)}));
  $('kpform').querySelectorAll('[data-kpcab]').forEach(bt=>bt.onclick=()=>{cur=+bt.dataset.kpcab;pick=null;refresh()});
- const val=el=>{const v=pnum(el.value);if(v==null&&el.value.trim())msg(`„${el.value}“ ist keine Zahl – der alte Wert bleibt.`);return v},on=(id,fn)=>{const el=$(id);if(!el)return;el.addEventListener('change',()=>{fn(el);refresh()});if(el.tagName==='INPUT'&&el.type==='text')el.addEventListener('keydown',e=>{if(e.key==='Enter')el.blur()})};
+ const val=el=>{const v=pnum(el.value);if(v==null&&el.value.trim())msg(`„${el.value}“ ist keine Zahl – der alte Wert bleibt.`);return v},on=(id,fn)=>{const el=$(id);if(!el)return;el.addEventListener('change',()=>{$('kpmsg').textContent='';fn(el);refresh()});if(el.tagName==='INPUT'&&el.type==='text')el.addEventListener('keydown',e=>{if(e.key==='Enter')el.blur()})};
  const set=(obj,f,min,max,after)=>el=>{const v=val(el);if(v==null)return;if(v<min||v>max)msg(`Erlaubt sind ${de(min)} bis ${de(max)} – auf ${de(clampN(v,min,max))} gesetzt.`);A.commit(()=>{obj[f]=clampN(v,min,max);after&&after();tidy(k)})};
  on('kc_b',set(c,'b',150,3000,()=>scaleX(c,k)));on('kc_h',set(c,'h',150,3000));on('kc_d',set(c,'d',120,1200));
- on('kc_front',el=>A.commit(()=>{c.front=el.value;tidy(k)}));on('kc_zo',set(c,'zo',0,2600));on('kc_sfh',set(c,'sfh',80,600));
+ on('kc_front',el=>{const had=c.mw.length;A.commit(()=>{c.front=el.value;tidy(k)});if(had&&!c.mw.length)msg('Bei Schubkasten-Fronten gibt es keine Mittelwände – sie wurden entfernt.')});on('kc_zo',set(c,'zo',0,2600));on('kc_sfh',set(c,'sfh',80,600));
  on('kc_typ',el=>{const t=TYPEN[+el.value];if(!t)return;A.commit(()=>{Object.assign(c,t[1]);if(t[2])t[2](c,k);else spreadWalls(c,k);tidy(k)});pick=null});on('kc_sn',set(c,'sn',1,8));
- for(const f of['nm','nf','ne'])on('kc_'+f,el=>{const v=val(el);if(v==null)return;A.commit(()=>{c[f]=clampN(Math.round(v),0,f==='nm'?6:12);spread(c,k);tidy(k)});if(f==='nm'&&v>0&&c.mw.length<Math.round(v))msg(c.front[0]==='m'||c.front==='s'?'Bei Schubkasten-Fronten sind keine Mittelwände möglich.':`Nur ${c.mw.length} Mittelwände passen in diese Breite.`);pick=null});
+ for(const f of['nm','nf','ne'])on('kc_'+f,el=>{const v=val(el);if(v==null)return;if(v!==Math.round(v))msg(`Nur ganze Zahlen – auf ${Math.round(v)} gerundet.`);if(f==='nm'&&v>6)msg('Höchstens 6 Mittelwände je Korpus.');else if(f!=='nm'&&v>12)msg('Höchstens 12 je Fach.');A.commit(()=>{c[f]=clampN(Math.round(v),0,f==='nm'?6:12);spread(c,k);tidy(k)});if(f==='nm'&&v>0&&v<=6&&c.mw.length<Math.round(v))msg(c.front[0]==='m'||c.front==='s'?'Bei Schubkasten-Fronten sind keine Mittelwände möglich.':`Nur ${c.mw.length} Mittelwände passen in diese Breite.`);pick=null});
  const sp=$('kc_spread');if(sp)sp.onclick=()=>{A.commit(()=>{spread(c,k);tidy(k)});pick=null;refresh()};
  $('kc_add').onclick=()=>{A.commit(()=>{k.cabs.splice(cur+1,0,JSON.parse(JSON.stringify(c)))});cur++;pick=null;refresh()};
  $('kc_del').onclick=()=>{if(k.cabs.length<2)return;A.commit(()=>{k.cabs.splice(cur,1)});cur=Math.max(0,cur-1);pick=null;refresh()};
@@ -305,11 +305,12 @@ function fillPick(){const el=$('kppick');if(!el)return;const k=K();if(!pick||!k.
  const c=k.cabs[pick.ci],isW=pick.type==='mw',v=isW?c.mw[pick.i]:c[pick.type][pick.i].y,nm={mw:'Mittelwand',fb:'Fester Boden',eb:'Einlegeboden',ks:'Kleiderstange'}[pick.type];
  if(document.activeElement&&document.activeElement.id==='kp_pos')return;
  el.innerHTML=`<div class="kpsel"><b>${nm} gewählt</b><div class="pr"><label for="kp_pos">${isW?'Abstand von links':pick.type==='ks'?'Höhe Stangenmitte':'Höhe ab Unterkante'}</label><input id="kp_pos" type="text" inputmode="decimal" value="${de(v)}"></div><button class="btn" id="kp_rm">Löschen (Entf)</button></div>`;
- const p=$('kp_pos');{const box=el.querySelector('.kpsel');if(box&&box.scrollIntoView)box.scrollIntoView({block:'nearest'})}p.addEventListener('keydown',e=>{if(e.key==='Enter')p.blur()});p.addEventListener('change',()=>{const n=pnum(p.value);if(n==null){msg(`„${p.value}“ ist keine Zahl.`);return}A.commit(()=>{if(isW)c.mw[pick.i]=n;else c[pick.type][pick.i].y=n;tidy(k)});refresh()});$('kp_rm').onclick=removePick}
+ const p=$('kp_pos');{const box=el.querySelector('.kpsel');if(box&&box.scrollIntoView)box.scrollIntoView({block:'nearest'})}p.addEventListener('keydown',e=>{if(e.key==='Enter')p.blur()});p.addEventListener('change',()=>{const n=pnum(p.value);if(n==null){msg(`„${p.value}“ ist keine Zahl.`);return}A.commit(()=>{if(isW)c.mw[pick.i]=n;else c[pick.type][pick.i].y=n;tidy(k)});{const got=isW?c.mw[pick.i]:(c[pick.type][pick.i]||{}).y;if(got!=null&&Math.abs(got-n)>0.01)msg(`Dort geht es nicht – auf ${de(got)} gesetzt.`)}refresh()});$('kp_rm').onclick=removePick}
 function removePick(){if(!pick)return;const k=K(),c=k.cabs[pick.ci];A.commit(()=>{if(pick.type==='mw')c.mw.splice(pick.i,1);else c[pick.type].splice(pick.i,1);tidy(k)});pick=null;refresh()}
 function setMode(m){mode=m;document.querySelectorAll('[data-kpm]').forEach(b=>b.classList.toggle('on',b.dataset.kpm===m));draw()}
 function msg(t){$('kpmsg').textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()=>$('kpmsg').textContent='',5000)}
-function refresh(light){const k=K();cur=clampN(cur,0,k.cabs.length-1);if(!light)form();else fillPick();draw();upd3();
+let lastWarn='';
+function refresh(light){const k=K();cur=clampN(cur,0,k.cabs.length-1);if(!light)form();else fillPick();draw();upd3();{const w=(parts(k).warn||[]).join(' ');if(w&&w!==lastWarn)msg(w);lastWarn=w}
  const ps=parts(k),W=rowW(k);$('kpinfo').textContent=`${k.cabs.length} Korpus${k.cabs.length>1?'se':''} · ${de(W)} mm breit · ${ps.length} Teile`}
 
 /* ----- Stückliste ----- */
@@ -324,10 +325,15 @@ function csv(sep,cut){let rows=list(K());if(cut)rows=rows.filter(r=>!r.p.rod);if
  return'﻿Nr;Teil;Länge;Breite;Stärke;Zuschnitt Länge;Zuschnitt Breite;Kante;Material;Stück;Korpus\n'+rows.map((r,i)=>[i+1,r.p.name,de(Math.max(r.p.W,r.p.H)),de(Math.min(r.p.W,r.p.H)),de(r.p.T),de(Math.max(r.p.cW,r.p.cH)),de(Math.min(r.p.cW,r.p.cH)),r.p.kbTxt,matTxt(r.p),r.n,[...r.cabs].join(' ')].join(sep)).join('\n')+'\n'}
 function printList(){const w=window.open('','_blank');if(!w){msg('Das Druckfenster wurde vom Browser blockiert.');return}
  w.document.write(`<!doctype html><meta charset="utf-8"><title>Stückliste</title><style>body{font:14px system-ui,sans-serif;margin:24px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:5px 8px;text-align:left}td:last-child,th:last-child{display:none}</style><h2>Stückliste ${A.esc(A.baseName())}</h2>${$('kplT').outerHTML}<p>${A.esc($('kplsum').textContent)}</p>`);w.document.close();w.focus();setTimeout(()=>w.print(),300)}
-function toDrawing(){const rows=list(K()).filter(r=>!r.p.rod),all=[];let x=0,y=0,rowH=0;const b=A.bbox(S().ents.filter(e=>e.src!=='kp')),bx=b?b[2]+150:0,by=b?b[1]:0;
+/* Fingerabdruck der Planer-Teile in der Zeichnung (erkennt Verschieben, Ändern, Kopieren) */
+const kpSig=es=>{const s=JSON.stringify(es.map(({id,...r})=>r));let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return(h>>>0)+':'+es.length};
+function toDrawing(how){const rows=list(K()).filter(r=>!r.p.rod),all=[];let x=0,y=0,rowH=0;const b=A.pristine?null:A.bbox(S().ents.filter(e=>e.src!=='kp'||how==='add')),bx=b?b[2]+150:0,by=b?b[1]:0;
  for(const r of rows){if(r.p.rod)continue;if(x>0&&x+r.p.W>3200){x=0;y+=rowH+80;rowH=0}for(const e of partEnts(r.p,r.n)){const mv=p=>[p[0]+bx+x,p[1]+by+y],n=JSON.parse(JSON.stringify(e));
    if(n.pts)n.pts=n.pts.map(mv);if(n.c)n.c=mv(n.c);if(n.a&&n.b){n.a=mv(n.a);n.b=mv(n.b)}if(n.p)n.p=mv(n.p);all.push(n)}x+=r.p.W+80;rowH=Math.max(rowH,r.p.H)}
- const old=S().ents.filter(e=>e.src==='kp').length;A.commit(()=>{if(old)S().ents=S().ents.filter(e=>e.src!=='kp');A.addEnts(all.map(e=>({...e,src:'kp'})))});close();A.after();A.log(`Korpusplaner: ${rows.length} verschiedene Teile ${old?'neu gelegt – die Teile vom letzten Mal wurden ersetzt':'rechts neben die Zeichnung gelegt'}. Für die Origin: einen Rahmen um ein Teil ziehen (so sind die Bohrungen dabei), dann „SVG für Origin“ und „Nur die gewählten Objekte ausgeben“ anhaken – einfacher: im Planer in der Stückliste „SVG“ je Teil.`,'ok')}
+ const oldE=S().ents.filter(e=>e.src==='kp'),old=oldE.length;
+ if(old&&!how&&kpSig(oldE)!==S().kpSig){$('dKpRep').classList.add('open');return}
+ const pr=A.pristine;A.commit(()=>{if(pr)S().ents=[];/* unverändertes Beispiel wird ersetzt */if(old){if(how==='add')oldE.forEach(e=>{delete e.src});else S().ents=S().ents.filter(e=>e.src!=='kp')}A.addEnts(all.map(e=>({...e,src:'kp'})),null,true);S().kpSig=kpSig(S().ents.filter(e=>e.src==='kp'))});close();A.after();
+ A.log(`Korpusplaner: ${rows.length} verschiedene Teile ${old&&how!=='add'?'neu gelegt – die Teile vom letzten Mal wurden ersetzt':'in die Zeichnung gelegt'}. Für die Origin: ein Teil antippen, „SVG für Origin“, „Nur die gewählten Objekte ausgeben“ anhaken und „Bohrungen … mitnehmen“ – einfacher: im Planer in der Stückliste „SVG“ je Teil.`,'ok')}
 
 /* ----- Zuschnittplan: Teile in Streifen auf Platten verteilen (einfache, sägegerechte Aufteilung) ----- */
 function nest(k){k=k||K();const pieces=[];list(k).filter(r=>!r.p.rod).forEach((r,i)=>{const p=r.p;/* Länge (größeres Maß) läuft in Plattenlänge = Maserung längs */
@@ -350,7 +356,7 @@ function nestSVG(n,sh){const s=v=>Math.round(v*100)/100;let b=`<rect x="0" y="0"
  return`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 ${n.plL+8} ${n.plB+8}" style="width:100%;height:auto;display:block">${b}</svg>`}
 function nestHTML(){return nestHTMLOf(nest(K()))}
 function nestHTMLOf(n){let h='';
- for(const g of n.groups){h+=`<h4>${A.esc(g.kind)} ${de(g.T)} mm${g.matId?' · '+A.esc(matName(g.matId)):''} – ${g.sheets.length} Platte${g.sheets.length>1?'n':''}, Verschnitt ${Math.round(g.waste*100)} %</h4>`;g.sheets.forEach((sh,i)=>{h+=`<div class="kpsheet"><div class="muted">Platte ${i+1} von ${g.sheets.length} · ${sh.parts.length} Teile</div>${nestSVG(n,sh)}</div>`})}
+ for(const g of n.groups){h+=`<h4>${A.esc(g.kind)} ${de(g.T)} mm${g.matId?' · '+A.esc(matName(g.matId)):''} – ${g.sheets.length} Platte${g.sheets.length>1?'n':''}, Verschnitt ${Math.round(g.waste*100)} %</h4>`;g.sheets.forEach((sh,i)=>{h+=`<div class="kpsheet"><div class="muted">Platte ${i+1} von ${g.sheets.length} · ${sh.parts.length} Teil${sh.parts.length===1?'':'e'}</div>${nestSVG(n,sh)}</div>`})}
  if(n.misfit.length)h+=`<div class="warn">Passt auf keine Platte: ${[...new Set(n.misfit.map(q=>`${A.esc(q.name)} ${de(q.w)} × ${de(q.h)}`))].join(', ')}</div>`;
  return h||'<p class="muted">Keine Teile.</p>'}
 function openNest(){const k=K();for(const f of['plL','plB','kerf','rand'])$('kn_'+f).value=de(k[f]);$('kpnBody').innerHTML=nestHTML();$('dKpn').classList.add('open')}
@@ -363,8 +369,10 @@ let bound=false;
 function open(){A.cancel();K();$('kp').classList.add('open');if(!bound){bound=true;bindCanvas();
   $('kp').addEventListener('click',e=>{const b=e.target.closest('[data-kp]');if(b){const a=b.dataset.kp;if(a==='close')close();else if(a==='list')openList();else if(a==='nest')openNest();else if(a==='draw')toDrawing();else if(a==='undo'){A.undo();refresh()}else if(a==='redo'){A.redo();refresh()}else if(V3)V3.view(a);return}
    const m=e.target.closest('[data-kpm]');if(m)setMode(m.dataset.kpm)});
+  $('kpRepOk').onclick=()=>{$('dKpRep').classList.remove('open');toDrawing('replace')};$('kpRepAdd').onclick=()=>{$('dKpRep').classList.remove('open');toDrawing('add')};
+  if(matchMedia('(pointer:coarse)').matches)$('kp3dmsg').textContent='3D · ziehen = drehen · zwei Finger = Zoom';
   $('dKpn').addEventListener('click',e=>{const b=e.target.closest('[data-kpn]');if(b&&b.dataset.kpn==='print')printNest()});
-  for(const[f,min,max]of[['plL',500,6000],['plB',300,3000],['kerf',0,10],['rand',0,50]]){const el=$('kn_'+f);el.addEventListener('keydown',e=>{if(e.key==='Enter')el.blur()});el.addEventListener('change',()=>{const v=pnum(el.value);if(v!=null)A.commit(()=>{K()[f]=clampN(v,min,max)});openNest()})}
+  for(const[f,min,max]of[['plL',500,6000],['plB',300,3000],['kerf',0,10],['rand',0,50]]){const el=$('kn_'+f);el.addEventListener('keydown',e=>{if(e.key==='Enter')el.blur()});el.addEventListener('change',()=>{const v=pnum(el.value);if(v!=null)A.commit(()=>{K()[f]=clampN(v,min,max)});openNest();$('kpnNote').textContent=v==null?`„${el.value}“ ist keine Zahl.`:v<min||v>max?`Erlaubt sind ${de(min)} bis ${de(max)} – auf ${de(clampN(v,min,max))} gesetzt.`:''})}
   $('kpfront').addEventListener('change',e=>{showFront=e.target.checked;refresh(true)});
   $('dKpl').addEventListener('click',async e=>{const b=e.target.closest('[data-kpsvg],[data-kpl]');if(!b)return;
    if(b.dataset.kpsvg!=null){const r=list(K())[+b.dataset.kpsvg],svg=window.__cad.buildSVG(partEnts(r.p,r.n));const n=await A.saveBlob(`${r.p.name.replace(/[^A-Za-z0-9äöüÄÖÜß]+/g,'-')}-${de(r.p.W)}x${de(r.p.H)}.svg`,svg,'image/svg+xml','SVG für Shaper Origin');if(n)msg('Gespeichert: '+n);return}
@@ -376,7 +384,8 @@ function key(e){const t=e.target,inField=t&&(t.tagName==='INPUT'||t.tagName==='S
  if(e.key==='F1'){e.preventDefault();A.help('k');return}
  if(e.key==='Escape'){e.preventDefault();if($('dKpn').classList.contains('open'))$('dKpn').classList.remove('open');else if($('dKpl').classList.contains('open'))$('dKpl').classList.remove('open');else if(mode!=='sel')setMode('sel');else if(pick){pick=null;refresh(true)}return}
  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();A.save();return}
- if((e.ctrlKey||e.metaKey)&&!inField){const k=e.key.toLowerCase();if(k==='z'){e.preventDefault();e.shiftKey?A.redo():A.undo();refresh()}else if(k==='y'){e.preventDefault();A.redo();refresh()}return}
+ if((e.ctrlKey||e.metaKey)&&!inField){const k=e.key.toLowerCase();if(k==='z'){e.preventDefault();e.shiftKey?A.redo():A.undo();refresh()}else if(k==='y'){e.preventDefault();A.redo();refresh()}
+  /* andere Strg-Buchstaben nicht an den Browser geben (Strg+R lädt sonst die Seite neu) */else if(/^[a-z]$/.test(k)&&!e.altKey){e.preventDefault();msg(k==='p'?'Drucken: Stückliste oder Zuschnittplan öffnen und dort „Drucken“.':'Dieses Strg-Kürzel gibt es im Korpusplaner nicht – F1 zeigt die Bedienung.')}return}
  if((e.key==='Delete'||e.key==='Backspace')&&!inField&&pick){e.preventDefault();removePick()}}
 return{nestOf,nestHTMLOf,matName,mat,openAll:()=>{['cab','in','mat','verb','besch','sock'].forEach(x=>openSec.add(x));refresh()},clean,select:i=>{cur=i;pick=null;refresh()},fronts,nest,MATS,open,close,isOpen,key,parts,list,partEnts,model3,get state(){return K()},refresh,get view(){return view},hitAt,csv,DEF}})();
 /* wiederhergestellte Planung aus dem Browserspeicher prüfen */

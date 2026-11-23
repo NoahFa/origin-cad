@@ -553,7 +553,7 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  await fresh();await C('L','0;0','2000000');await p.keyboard.press('Escape');r=await p.evaluate(()=>({n:__cad.S.ents.length,m:document.getElementById('hist').textContent}));ok(r.n===0&&/über 1 km/.test(r.m),'Linie über 1 km wird zurückgenommen, mit Meldung',String(r.n));
  // SVG-Fenster: Bohrungen eines angetippten Teils mitnehmen
  await fresh();await C('R','0;0','300;200');await C('K','50;50','10','K','250;150','10');await p.keyboard.press('Escape');await p.evaluate(()=>{__cad.sel.clear();__cad.sel.add(__cad.S.ents[0].id)});await p.evaluate(()=>__cad.act('exportSvg'));await p.check('#expSel');
- r=await p.evaluate(()=>getComputedStyle(document.getElementById('expAdd')).display!=='none'&&document.getElementById('expAdd').textContent);ok(/^2 Bohrung/.test(r||''),'Nur Umriss gewählt: Knopf „2 Bohrungen … mitnehmen“',String(r));
+ r=await p.evaluate(()=>getComputedStyle(document.getElementById('expAdd')).display!=='none'&&document.getElementById('expAdd').textContent);ok(/^2 Objekte/.test(r||''),'Nur Umriss gewählt: Knopf „2 Objekte … mitnehmen“',String(r));
  await p.click('#expAdd');r=await p.evaluate(()=>document.getElementById('expT').textContent);ok(/nur 3 von 3/.test(r)||!/nur/.test(r),'Nach dem Knopf sind die Bohrungen dabei',r.slice(-40));await p.keyboard.press('Escape');
  // Ziehen aufs unveränderte Beispiel öffnet
  {const q=await b.newPage({viewport:{width:1200,height:800}});await q.goto(url);await q.waitForFunction(()=>window.__cad);await q.evaluate(()=>{const dt=new DataTransfer();dt.items.add(new File(['<svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="50mm" viewBox="0 0 100 50"><rect x="0" y="0" width="100" height="50"/></svg>'],'teil.svg',{type:'image/svg+xml'}));window.dispatchEvent(new DragEvent('drop',{dataTransfer:dt,bubbles:true,cancelable:true}))});await q.waitForTimeout(300);
@@ -575,6 +575,46 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  {const q=await b.newPage({viewport:{width:768,height:1024}});await q.goto(url);await q.waitForFunction(()=>window.__cad);r=await q.evaluate(()=>{const t=document.getElementById('tools').getBoundingClientRect();return[...document.querySelectorAll('#tools .tb')].filter(x=>x.getBoundingClientRect().bottom>t.bottom+1).length});ok(r===0,'iPad hochkant: alle Werkzeuge links sichtbar',String(r));await q.close()}
  {const q=await b.newPage({viewport:{width:844,height:390}});await q.goto(url);await q.waitForFunction(()=>window.__cad);await q.evaluate(()=>__cad.act('raum'));await q.waitForTimeout(200);r=await q.evaluate(()=>Math.round(document.querySelector('.rmmain').getBoundingClientRect().height));ok(r>=250,'Handy quer: 3D-Bildfläche groß genug ('+r+' px)');await q.close()}
  {const q=await b.newPage({viewport:{width:390,height:844}});await q.goto(url);await q.waitForFunction(()=>window.__cad);r=await q.evaluate(()=>{const u=document.querySelector('.ur').getBoundingClientRect().left;return['.mbtn[data-a="raum"]','.dd.help>button'].map(s=>document.querySelector(s).getBoundingClientRect().right<=u+1)});ok(r.every(Boolean),'Handy: „3D“ und „Hilfe“ in der Menüleiste sichtbar',r.join());await q.close()}
+ await fresh();
+
+ console.log('Nachprüfung (v31)');
+ // Abrunden fast paralleler Linien wird abgelehnt und sperrt nichts
+ await fresh();await C('L','0;0','100;0','','L','0;10','100;10,0005','');await p.keyboard.press('Escape');await C('AR','0');await p.evaluate(()=>{const S=__cad.S;__cad.adv({e:S.ents[0],p:[50,0]});__cad.adv({e:S.ents[1],p:[50,10]})});await p.keyboard.press('Escape');
+ r=await p.evaluate(()=>({x:Math.min(...__cad.S.ents.flatMap(e=>[e.a[0],e.b[0]])),m:document.getElementById('hist').textContent}));ok(r.x>=-1e-6&&/zu weit weg/.test(r.m),'Abrunden fast paralleler Linien: abgelehnt statt 2 km Verlängerung',String(r.x));
+ await C('R','200;0','@50;50');await p.keyboard.press('Escape');ok((await p.evaluate(()=>__cad.S.ents.length))===3,'Danach geht Zeichnen normal weiter');
+ // altes ungültiges Objekt sperrt keine neuen Änderungen
+ await p.evaluate(()=>{__cad.S.ents.push({id:999,t:'line',ly:'0',a:[0,0],b:[5e6,0]})});await C('K','0;0','10');await p.keyboard.press('Escape');r=await p.evaluate(()=>__cad.S.ents.filter(e=>e.t==='circle').length);ok(r===1,'Ein altes ungültiges Objekt sperrt neue Änderungen nicht',String(r));
+ // Formen kombinieren behält Plattenstärke
+ await fresh();await p.evaluate(()=>__cad.kp.commit(()=>__cad.kp.addEnts([{t:'pline',ly:'Kontur',pts:[[0,0],[400,0],[400,300],[0,300]],closed:true,rect:true,ct:'outside',cd:8,th:8}])));await C('R','350;250','450;350');await p.keyboard.press('Escape');
+ await p.evaluate(()=>{__cad.sel.clear();__cad.sel.add(__cad.S.ents[0].id)});await C('AB');await p.evaluate(()=>{__cad.sel.clear();__cad.sel.add(__cad.S.ents[1].id)});await C('');await p.keyboard.press('Escape');r=await p.evaluate(()=>__cad.S.ents.map(e=>e.th).join());ok(/8/.test(r),'Abziehen behält die Plattenstärke 8',r);
+ // Topf knapp über der Kante wird gemeldet, Planer-Verbinder nicht
+ await fresh();await C('R','0;0','560;720');await p.keyboard.press('Escape');await p.evaluate(()=>__cad.kp.commit(()=>__cad.kp.addEnts([{t:'circle',ly:'Kontur',c:[548,100],r:17.5,ct:'pocket',cd:13}])));await p.evaluate(()=>__cad.act('exportSvg'));r=await p.evaluate(()=>document.getElementById('expW').textContent);ok(/ragen über/.test(r),'Topf 5,5 mm über der Türkante wird gemeldet',r);await p.keyboard.press('Escape');
+ // Kopien von Planer-Teilen bleiben, Rückfrage bei veränderten Teilen, Beispiel wird ersetzt
+ {const q=await b.newPage({viewport:{width:1300,height:850}});await q.goto(url);await q.waitForFunction(()=>window.__cad);await q.click('.mbtn[data-a="korpus"]');await q.click('[data-kp="draw"]');
+  r=await q.evaluate(()=>__cad.S.ents.some(e=>e.t==='slot'));ok(!r,'„In die Zeichnung“ ersetzt das unveränderte Beispiel');
+  const n1=await q.evaluate(()=>__cad.S.ents.length);await q.evaluate(()=>{const e=__cad.S.ents.find(x=>x.src==='kp'&&x.t==='pline');__cad.sel.clear();__cad.sel.add(e.id);__cad.inp.value='KO';__cad.onEnter();__cad.inp.value='0;0';__cad.onEnter();__cad.inp.value='0;-2000';__cad.onEnter()});await q.keyboard.press('Escape');
+  r=await q.evaluate(()=>{const c=__cad.S.ents[__cad.S.ents.length-1];return{src:c.src||'',n:__cad.S.ents.length}});ok(!r.src&&r.n===n1+1,'Kopie eines Planer-Teils ist kein Planer-Teil mehr',JSON.stringify(r));
+  await q.evaluate(()=>{__cad.kp.commit(()=>{const e=__cad.S.ents.find(x=>x.src==='kp'&&x.t==='pline');e.pts=e.pts.map(p=>[p[0]+5,p[1]])})});
+  await q.click('.mbtn[data-a="korpus"]');await q.click('[data-kp="draw"]');r=await q.evaluate(()=>document.getElementById('dKpRep').classList.contains('open'));ok(r,'Zweites „In die Zeichnung“ nach Verschieben eines Planer-Teils: Rückfrage');
+  await q.click('#kpRepOk');r=await q.evaluate(()=>__cad.S.ents.length);ok(r===n1+1,'„Ersetzen“ lässt die eigene Kopie liegen',String(r));
+  await q.click('.mbtn[data-a="korpus"]');await q.click('[data-kp="draw"]');r=await q.evaluate(()=>({dlg:document.getElementById('dKpRep').classList.contains('open'),n:__cad.S.ents.length}));ok(!r.dlg&&r.n===n1+1,'Unverändert: ersetzt ohne Rückfrage',JSON.stringify(r));await q.close()}
+ // Strg+R im Planer und 3D lädt nicht neu
+ {const q=await b.newPage({viewport:{width:1300,height:850}});await q.goto(url);await q.waitForFunction(()=>window.__cad);await q.evaluate(()=>{window.__mark=1});await q.click('.mbtn[data-a="korpus"]');await q.keyboard.press('Control+r');await q.waitForTimeout(300);
+  r=await q.evaluate(()=>window.__mark===1&&KORPUS.isOpen());ok(r,'Strg+R im Korpusplaner lädt die Seite nicht neu');await q.click('[data-kp="close"]');await q.click('.mbtn[data-a="raum"]');await q.keyboard.press('Control+r');await q.waitForTimeout(300);
+  r=await q.evaluate(()=>window.__mark===1&&RAUM.isOpen()&&RAUM.tool);ok(r==='rect','Strg+R im 3D-Modus = Rechteck, kein Neuladen',String(r));await q.close()}
+ // Planer: Meldungen
+ await fresh();await p.click('.mbtn[data-a="korpus"]');await p.evaluate(()=>{const k=KORPUS.state,c=k.cabs[0];Object.assign(c,{front:'2',b:1000,h:720,mw:[490],nm:1,fb:[],eb:[]});KORPUS.refresh()});await p.selectOption('#kc_front','m2');r=await p.evaluate(()=>document.getElementById('kpmsg').textContent);ok(/Mittelwände/.test(r),'Wechsel auf Schubkasten-Front meldet entfernte Mittelwände',r);
+ r=await p.evaluate(()=>{const k=KORPUS.state,c=k.cabs[0];Object.assign(c,{front:'s',sn:8,h:400,b:600,mw:[],nm:0});return(KORPUS.parts().warn||[]).join()});ok(/zu niedrig/.test(r),'Zu niedriges Schubkastenfach wird gemeldet',r);
+ await p.evaluate(()=>{const c=KORPUS.state.cabs[0];Object.assign(c,{front:'2',sn:3,h:720});KORPUS.refresh()});await p.click('[data-kp="close"]');await fresh();
+ // 3D: Strichpunkt-Zahlen, Objektinfo
+ await p.click('.mbtn[data-a="raum"]');{const rb=await p.locator('#rm3d').boundingBox(),P3=w=>p.evaluate(w=>RAUM.viewer.project(w),w),clk=async w=>{const s=await P3(w);await p.mouse.move(rb.x+s[0],rb.y+s[1]);await p.mouse.click(rb.x+s[0],rb.y+s[1])};
+  await p.keyboard.press('r');await clk([0,0,0]);await p.keyboard.type('600;400;10');await p.keyboard.press('Enter');r=await p.evaluate(()=>({n:RAUM.state.bodies.length,s:document.getElementById('rmstat').textContent}));ok(r.n===0&&/zu viele Zahlen/.test(r.s),'3D: „600;400;10“ wird gemeldet',JSON.stringify(r));await p.keyboard.press('Escape');await p.keyboard.press('Escape');
+  await p.click('#rmside [data-prim="box"]');await p.fill('#rs_L','abc');await p.keyboard.press('Enter');r=await p.evaluate(()=>document.getElementById('rmstat').textContent);ok(/geht nicht/.test(r),'Objektinfo: „abc“ wird gemeldet',r);
+  await p.fill('#rs_x','2000000');await p.keyboard.press('Enter');r=await p.evaluate(()=>RAUM.box(RAUM.state.bodies[0])[0]);ok(Math.abs(r)<1e6,'Objektinfo: Lage über 1 km abgelehnt',String(r));await p.click('[data-rm="close"]')}
+ r=await p.evaluate(()=>{const bodies=[];for(let i=0;i<700;i++)bodies.push({kind:'tor',L:100,B:100,H:20,o:[i*120,0,0],u:[1,0,0],v:[0,1,0]});return RAUM.clean({bodies}).bodies.length});ok(r===500,'3D: höchstens 500 runde Körper',String(r));
+ // Darstellung
+ {const q=await b.newPage({viewport:{width:430,height:932}});await q.goto(url);await q.waitForFunction(()=>window.__cad);r=await q.evaluate(()=>({cv:document.getElementById('cv').clientHeight,help:document.querySelector('.dd.help>button').getBoundingClientRect().right<=document.querySelector('.ur').getBoundingClientRect().left+1}));ok(r.cv>400&&r.help,'Großes iPhone hochkant: Zeichenfläche groß, „Hilfe“ sichtbar',JSON.stringify(r));await q.close()}
+ {const q=await b.newPage({viewport:{width:390,height:844}});await q.goto(url);await q.waitForFunction(()=>window.__cad);await q.evaluate(()=>__cad.act('korpus'));await q.waitForTimeout(200);r=await q.evaluate(()=>KORPUS.view.s);ok(r>0.1,'Handy hochkant: Vorderansicht im Planer groß genug (Maßstab '+r.toFixed(3)+')');await q.close()}
  await fresh();
 
  console.log('Sicherheit');

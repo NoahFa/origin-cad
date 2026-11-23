@@ -52,7 +52,7 @@ function cleanDoc(o){const ents=[],seen=new Set();let id=1;for(const e of(Array.
  for(const e of ents){if(!e.id){while(seen.has(id))id++;e.id=id;seen.add(id)}}id=1;for(const e of ents)if(e.id+1>id)id=e.id+1;
  const layers=cleanLayers(o.layers),lyN=new Set(layers.map(l=>l.n));for(const e of ents){if(lyN.has(e.ly))continue;if(layers.length<MAXLY){layers.push({n:e.ly,c:'#c9ced6',v:true});lyN.add(e.ly)}else e.ly=layers[0].n}
  const d=o.def||{},def=DEF_CUT();for(const k of Object.keys(def))if(okN(d[k],0.01,1000))def[k]=d[k];
- const r={ents,layers,cur:layers.some(l=>l.n===o.cur)?o.cur:(layers.some(l=>l.n==='Kontur')?'Kontur':layers[0].n),nid:id,def};
+ const r={ents,layers,cur:layers.some(l=>l.n===o.cur)?o.cur:(layers.some(l=>l.n==='Kontur')?'Kontur':layers[0].n),nid:id,def};if(typeof o.kpSig==='string')r.kpSig=o.kpSig.slice(0,40);
  if(o.korpus)r.korpus=window.KORPUS?window.KORPUS.clean(o.korpus):o.korpus;if(o.raum)r.raum=window.RAUM?window.RAUM.clean(o.raum):o.raum;return r}
 const DEF_LAYERS=()=>[{n:'0',c:'#c9ced6',v:true},{n:'Kontur',c:'#f4f6f8',v:true},{n:'Hilfslinien',c:'#6f9cff',v:true},{n:'Bemaßung',c:'#5ad1e8',v:true}];
 const DEF_CUT=()=>({tool:6,depth:6,thick:19});
@@ -65,12 +65,12 @@ let lastPt=null,mem={gap:0,pg:6,off:10,rad:5,cha:5,cols:3,rows:1,dx:100,dy:100,d
  rowD:5,rowN:5,rowS:32,rowT:13,dwD:8,dwN:2,dwS:32,dwT:12,cupD:35,cupT:13,lkN:6,lkD:5,lkT:10};
 const lyr=n=>S.layers.find(l=>l.n===n);
 const byId=id=>S.ents.find(e=>e.id===id);
-const vis=e=>{const l=lyr(e.ly);return!l||l.v};
+let LVC={ver:-2};const vis=e=>{if(LVC.ver!==geoVer||LVC.L!==S.layers||LVC.n!==S.layers.length)LVC={ver:geoVer,L:S.layers,n:S.layers.length,m:new Map(S.layers.map(l=>[l.n,l.v]))};const v=LVC.m.get(e.ly);return v===undefined||!!v};
 const geomEnts=()=>S.ents.filter(e=>e.t!=='dim'&&vis(e));
 const dimLayer=()=>lyr('Bemaßung')?'Bemaßung':S.cur;
 function mk(t,p,ly){return Object.assign({id:S.nid++,t,ly:ly||S.cur},p)}
 function tmp(t,p){return Object.assign({t,ly:S.cur},p)}
-function realize(o,ly){o.id=S.nid++;o.ly=ly||o.ly||S.cur;return o}
+function realize(o,ly){o.id=S.nid++;o.ly=ly||o.ly||S.cur;delete o.src;return o}
 function replace(e,list){const i=S.ents.indexOf(e);if(i<0)return;S.ents=S.ents.slice(0,i).concat(list,S.ents.slice(i+1))}
 const pushAll=(a,l)=>{for(const x of l)a.push(x);return a};
 const clone=o=>JSON.parse(JSON.stringify(o));
@@ -162,7 +162,10 @@ const needsClosed=t=>t==='outside'||t==='inside'||t==='pocket';
 let geoVer=0,CC={ver:-1};
 function cache(){if(CC.ver===geoVer)return CC;CC={ver:geoVer,paths:new Map(),auto:new Map(),cam:new Map()};
  const closed=[];for(const e of S.ents){if(e.t==='dim')continue;const ps=toPaths(e);CC.paths.set(e.id,ps);if(isClosed(e)&&ps[0])closed.push([e,ps[0].pts,bbox([e])])}
- for(const[e,pts,b]of closed){let inside=false;for(const[f,q,fb]of closed){if(f===e||!vis(f)||f.ly==='Hilfslinien'||f.ct==='guide'||f.ct==='online')continue;
+ const cont=closed.filter(([f])=>vis(f)&&f.ly!=='Hilfslinien'&&f.ct!=='guide'&&f.ct!=='online');let gx0=Infinity,gy0=Infinity,gx1=-Infinity,gy1=-Infinity;for(const c of cont){const b=c[2];if(b[0]<gx0)gx0=b[0];if(b[1]<gy0)gy0=b[1];if(b[2]>gx1)gx1=b[2];if(b[3]>gy1)gy1=b[3]}
+ const GN=Math.max(1,Math.min(64,Math.ceil(Math.sqrt(cont.length)))),cw=(gx1-gx0)/GN||1,chh=(gy1-gy0)/GN||1,cell=(x,y)=>[clamp(Math.floor((x-gx0)/cw),0,GN-1),clamp(Math.floor((y-gy0)/chh),0,GN-1)],grid=new Map();
+ for(const c of cont){const[a0,b0]=cell(c[2][0],c[2][1]),[a1,b1]=cell(c[2][2],c[2][3]);for(let i=a0;i<=a1;i++)for(let j=b0;j<=b1;j++){const k=i*GN+j;let l=grid.get(k);if(!l)grid.set(k,l=[]);l.push(c)}}
+ for(const[e,pts,b]of closed){if(e.ct)continue;let inside=false;const[ci,cj]=cell(b[0],b[1]);for(const[f,q,fb]of grid.get(ci*GN+cj)||[]){if(f===e)continue;
    if(b[0]>=fb[0]-1e-6&&b[1]>=fb[1]-1e-6&&b[2]<=fb[2]+1e-6&&b[3]<=fb[3]+1e-6&&(b[2]-b[0])*(b[3]-b[1])<(fb[2]-fb[0])*(fb[3]-fb[1])&&inPoly(pts[0],q)){inside=true;break}}
   CC.auto.set(e.id,inside?'inside':'outside')}
  return CC}
@@ -254,7 +257,9 @@ let chg=0,pristine=false;
 function pushUndo(){chg++;pristine=false;undoS.push(snapS());if(undoS.length>200)undoS.shift();redoS=[];updUndo()}
 function dropUndo(){chg++;S=JSON.parse(undoS.pop());updUndo()}
 /* nach jeder Änderung prüfen, ob alles gültig bleibt (z. B. nichts über 1 km) – sonst zurücknehmen, statt es beim nächsten Laden zu verlieren */
-function doCommit(fn){pushUndo();fn();if(S.ents.length<=60000&&S.ents.some(e=>!cleanEnt(e))){chg++;S=JSON.parse(undoS.pop());updUndo();log('Das Ergebnis läge über 1 km oder wäre ungültig – Änderung zurückgenommen.','e');afterChange();return false}afterChange();return true}
+const nBad=()=>{if(S.ents.length>60000)return 0;let n=0;for(const e of S.ents)if(!cleanEnt(e))n++;return n};
+function doCommit(fn){const b0=nBad(),r0=redoS;pushUndo();fn();return finishCommit(b0,r0)}
+function finishCommit(b0,r0){if(nBad()>b0){chg++;S=JSON.parse(undoS.pop());if(r0)redoS=r0;updUndo();log('Das Ergebnis läge über 1 km oder wäre ungültig – Änderung zurückgenommen.','e');afterChange();return false}afterChange();return true}
 function undo(){if(G)cancel(true);if(!undoS.length){log('Nichts rückgängig zu machen.');return}chg++;redoS.push(snapS());S=JSON.parse(undoS.pop());sel.clear();log('Rückgängig.');afterChange()}
 function redo(){if(G)cancel(true);if(!redoS.length){log('Nichts zu wiederholen.');return}chg++;undoS.push(snapS());S=JSON.parse(redoS.pop());sel.clear();afterChange()}
 
@@ -330,7 +335,7 @@ const CMDS={
   let t,tE;for(;;){const r2=yield PK('Zielkante anklicken, an die es angelegt werden soll',{edge:true});if(!r2.e){hlSeg=null;return}tE=r2.e;if(r2.e===e){log('Bitte eine Kante eines anderen Objekts anklicken.','e');continue}t=edgeAt(r2.e,r2.p);if(t)break;log('Die Zielkante muss gerade sein – bitte nochmal.','e')}hlSeg=null;
   const gap=yield N('Abstand zur Zielkante (0 = bündig)',mem.gap||0);if(gap==null)return;mem.gap=gap;
   const es=(sel.has(e.id)?[...sel].map(byId).filter(x=>x&&x.t!=='dim'||x===e):[e]).filter(x=>x!==tE);
-  const orig=es.map(clone),res=alignTo(es,s,t,gap);doCommit(()=>es.forEach((x,i)=>setAll(x,res[i])));log(`Angelegt: um ${fmtDE(deg(res.rot))}° gedreht${gap?`, ${fmtDE(gap)} mm Abstand`:', bündig'}.`,'ok');
+  const orig=es.map(clone),res=alignTo(es,s,t,gap);if(!doCommit(()=>es.forEach((x,i)=>setAll(x,res[i]))))return;log(`Angelegt: um ${fmtDE(deg(res.rot))}° gedreht${gap?`, ${fmtDE(gap)} mm Abstand`:', bündig'}.`,'ok');
   const r3=yield P('Angelegt. [A]ndere Seite der Zielkante · Enter = fertig',{opts:['A'],free:true});if(r3.opt!=='A')return;
   const res2=alignTo(orig,s,t,gap,true);doCommit(()=>es.forEach((x,i)=>setAll(x,res2[i])));log(`Auf die andere Seite gelegt (um ${fmtDE(deg(res2.rot))}° gedreht).`,'ok')}},
  SP:{n:'Spiegeln',g:'A',i:'M12 3v18M9 7L4 17h5zM15 7l5 10h-5z',*run(){const es=yield* needSel();if(!es.length)return;const a=(yield P('Erster Punkt der Spiegelachse')).p;if(!a)return;
@@ -343,9 +348,9 @@ const CMDS={
  AR:{n:'Abrunden',g:'A',i:'M4 20v-8a8 8 0 0 1 8-8h8',*run(){const r=yield N('Radius',mem.rad);if(r==null||r<0)return;mem.rad=r;const a=yield PK('Erste Linie');if(!a.e)return;hlE=a.e;const b=yield PK('Zweite Linie');hlE=null;if(!b.e)return;doFillet(a,b,r,false)}},
  FA:{less:1,n:'Fasen',g:'A',i:'M4 20v-9l7-7h9',*run(){const r=yield N('Fasenlänge',mem.cha);if(r==null||r<0)return;mem.cha=r;const a=yield PK('Erste Linie');if(!a.e)return;hlE=a.e;const b=yield PK('Zweite Linie');hlE=null;if(!b.e)return;doFillet(a,b,r,true)}},
  ST:{n:'Stutzen',g:'A',i:'M3 12h7M14 12h7M12 3v4M12 17v4M8 8l8 8',*run(){for(;;){const r=yield PK('Teilstück zum Wegschneiden anklicken · Enter = fertig');if(!r.e)return;const e=r.e;if(e.t==='dim')continue;
-  pushUndo();let t=e;const ex=explode(e);if(ex){replace(e,ex);t=nearest(ex,r.p)}const res=trimEnt(t,r.p);if(!res){dropUndo();log('Keine Schnittkante gefunden.','e');render();continue}for(const n of res)for(const k of['ct','cd','tool','th','src'])if(t[k]!=null)n[k]=t[k];replace(t,res);afterChange()}}},
+  const b0=nBad(),r0=redoS;pushUndo();let t=e;const ex=explode(e);if(ex){replace(e,ex);t=nearest(ex,r.p)}const res=trimEnt(t,r.p);if(!res){dropUndo();log('Keine Schnittkante gefunden.','e');render();continue}for(const n of res)for(const k of['ct','cd','tool','th','src'])if(t[k]!=null)n[k]=t[k];replace(t,res);finishCommit(b0,r0)}}},
  RK:{less:1,n:'Reihe kopieren',g:'A',i:'M3 9h5v6H3zM10 9h5v6h-5zM17 9h4v6h-4z',*run(){const es=yield* needSel();if(!es.length)return;const c=yield N('Anzahl Spalten (X)',mem.cols);if(!c||c<1)return;const rw=yield N('Anzahl Zeilen (Y)',mem.rows);if(!rw||rw<1)return;
-  if(Math.round(c)*Math.round(rw)>5000){log('Höchstens 5000 Kopien auf einmal.','e');return}mem.cols=Math.round(c);mem.rows=Math.round(rw);let dx=0,dy=0;if(mem.cols>1){dx=yield N('Abstand Spalten (X)',mem.dx);if(dx==null)return;mem.dx=dx}if(mem.rows>1){dy=yield N('Abstand Zeilen (Y)',mem.dy);if(dy==null)return;mem.dy=dy}
+  if(Math.round(c)*Math.round(rw)>5000||Math.round(c)*Math.round(rw)*es.length>100000){log('Zu viele Kopien auf einmal (höchstens 5000 Kopien bzw. 100 000 Objekte).','e');return}mem.cols=Math.round(c);mem.rows=Math.round(rw);let dx=0,dy=0;if(mem.cols>1){dx=yield N('Abstand Spalten (X)',mem.dx);if(dx==null)return;mem.dx=dx}if(mem.rows>1){dy=yield N('Abstand Zeilen (Y)',mem.dy);if(dy==null)return;mem.dy=dy}
   doCommit(()=>{for(let i=0;i<mem.cols;i++)for(let j=0;j<mem.rows;j++){if(!i&&!j)continue;es.forEach(e=>S.ents.push(realize(xf(e,mvF([i*dx,j*dy])),e.ly)))}})}},
  ZL:{less:1,n:'Zerlegen',g:'A',i:'M4 4h6v6H4zM14 14h6v6h-6zM14 4l6 6M4 14l6 6',*run(){const es=yield* needSel();let k=0;doCommit(()=>es.forEach(e=>{const x=explode(e);if(x){replace(e,x);k++}}));log(k+' Objekt(e) zerlegt.')}},
  E:{n:'Löschen',g:'A',i:'M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13',*run(){const es=yield* needSel();if(!es.length)return;doCommit(()=>{S.ents=S.ents.filter(e=>!es.includes(e))});log(es.length+' gelöscht – Strg+Z holt es zurück.')}},
@@ -418,28 +423,28 @@ function joinEnts(es,tol=0.05){const pc=[];
 function* boolRun(type){const ok=e=>isClosed(e);const name={ctUnion:'Vereinigen',ctDifference:'Abziehen',ctIntersection:'Schnittmenge'}[type];
  let A=yield* needSel();const skipped=A.filter(e=>!ok(e)).length;A=A.filter(ok);if(skipped)log(skipped+' offene Objekt(e) übersprungen – erst Verbinden (VB).','e');
  let B=[];if(type==='ctDifference'){if(!A.length){log('Erst die Grundform wählen (geschlossene Kontur).','e');return}A.forEach(e=>hlSet.add(e.id));
-  B=((yield{k:'sel',prompt:'Formen zum Abziehen wählen, dann Enter'})||[]).filter(e=>ok(e)&&!A.includes(e));hlSet.clear();sel.clear();if(!B.length){log('Nichts zum Abziehen gewählt.','e');return}}
+  B=(r=>Array.isArray(r)?r:[])(yield{k:'sel',prompt:'Formen zum Abziehen wählen, dann Enter'}).filter(e=>ok(e)&&!A.includes(e));hlSet.clear();sel.clear();if(!B.length){log('Nichts zum Abziehen gewählt.','e');return}}
  else if(A.length<2){log(name+' braucht mindestens 2 geschlossene Konturen.','e');return}
  const poly=e=>ccw(toPaths(e)[0].pts);let res;
  if(type==='ctDifference')res=clBool(type,A.map(poly),B.map(poly));else if(type==='ctUnion')res=clBool(type,A.map(poly),[]);
  else{res=[poly(A[0])];for(const e of A.slice(1))res=clBool(type,res,[poly(e)])}
  res=res.filter(q=>Math.abs(area(q))>1e-4);
- const f=A[0],made=res.map(q=>{const n=polyEnt(area(q)<0?[...q].reverse():q,f.ly);if(f.ct&&area(q)>0)n.ct=f.ct;for(const k of['cd','tool'])if(f[k]!=null)n[k]=f[k];return n});
+ const f=A[0],made=res.map(q=>{const n=polyEnt(area(q)<0?[...q].reverse():q,f.ly);if(f.ct&&area(q)>0)n.ct=f.ct;for(const k of['cd','tool','th','src'])if(f[k]!=null)n[k]=f[k];return n});
  doCommit(()=>{S.ents=S.ents.filter(e=>!A.includes(e)&&!B.includes(e));pushAll(S.ents,made)});made.forEach(e=>sel.add(e.id));updProps();
  log(made.length?`${name}: ${made.length} Kontur(en) entstanden.`:`${name}: Ergebnis ist leer – die Formen überlappen nicht.`,made.length?'ok':'e')}
 const hlSet=new Set();
 function doFillet(A,B,r,ch){const ok=e=>e.t==='line'||e.t==='pline';if(!ok(A.e)||!ok(B.e)){log('Geht nur mit Linien, Polylinien und Rechtecken.','e');return}
- pushUndo();let L1=A.e,L2=B.e;const pieces=[],src=[];
+ const b0=nBad(),r0=redoS;pushUndo();let L1=A.e,L2=B.e;const pieces=[],src=[];
  const ex=(e,p,not)=>{const ls=explode(e);replace(e,ls);pushAll(pieces,ls);src.push(e);const cand=ls.filter(l=>l.t==='line'&&l!==not);return cand.length?nearest(cand,p):null};
  if(L1.t==='pline'){const same=B.e===A.e;L1=ex(L1,A.p);if(same)L2=L1?nearest(pieces.filter(l=>l.t==='line'&&l!==L1),B.p):null}
  if(L2&&L2.t==='pline')L2=ex(L2,B.p,L1);
  if(!L1||!L2||L1===L2){dropUndo();log('Zwei verschiedene gerade Stücke wählen.','e');return}
- const res=fillet(L1,A.p,L2,B.p,r,ch);if(typeof res==='string'){dropUndo();log(res,'e');return}
+ const res=fillet(L1,A.p,L2,B.p,r,ch);if(typeof res==='string'){dropUndo();log(res,'e');return}if(![...res.l1,...res.l2].every(okP)){dropUndo();log('Der Schnittpunkt liegt zu weit weg (die Linien sind fast parallel).','e');return}
  L1.a=res.l1[0];L1.b=res.l1[1];L2.a=res.l2[0];L2.b=res.l2[1];let x=null;if(res.x){x=realize(res.x,L1.ly);S.ents.push(x)}
  if(src.length){/* zerlegte Polylinie wieder zusammensetzen, Fräs-Angaben behalten */
   const all=[...new Set([...pieces,L1,L2,...(x?[x]:[])])].filter(e=>S.ents.includes(e)&&!(e.t==='line'&&dist(e.a,e.b)<1e-9));S.ents=S.ents.filter(e=>!(pieces.includes(e)&&e.t==='line'&&dist(e.a,e.b)<1e-9));
   const j=joinEnts(all,1e-6);if(j.made.length){S.ents=S.ents.filter(e=>!j.used.has(e));for(const n of j.made){for(const k of['ct','cd','tool','th','src'])if(src[0][k]!=null)n[k]=src[0][k];n.ly=src[0].ly;S.ents.push(n)}}}
- afterChange()}
+ finishCommit(b0,r0)}
 
 /* ---------- Ablauf ---------- */
 let G=null,REQ=null,lastCmd=null,curCmd=null;
@@ -509,7 +514,7 @@ function camProps(es){es=es.filter(e=>e.t!=='dim'&&e.t!=='xline');if(!es.length)
  const num=(id,lab,k,dk)=>`<div class="pr"><label for="${id}">${lab}</label><input id="${id}" type="text" inputmode="decimal" value="${same(k)?fmt(cs[0][k],2):''}" placeholder="${same(k)?'':'gemischt'}" title="Leer lassen = Standard (${fmt(S.def[dk])} mm)"></div>`;
  h+=num('c_d','Tiefe mm','d','depth')+num('c_tool','Fräser Ø mm','tool','tool');
  const warn=[];if(es.some(e=>e.ct&&needsClosed(e.ct)&&!isClosed(e)))warn.push('Außen, Innen und Tasche gehen nur mit geschlossener Kontur – offene Teile erst mit „Verbinden“ (VB) schließen.');
- if(es.length<=40){let bad=0,fail=0;for(const e of es){const m=camOf(e);if(m.fail)fail++;else if(m.left.length)bad++}
+ if(es.length<=40){let bad=0,fail=0;for(const e of es){const m=camOf(e);if(m.fail)fail++;else if(m.left.length&&leftMatters(e,m,outerAll()))bad++}
   if(fail)warn.push(`Fräser zu dick: passt bei ${fail===1&&es.length===1?'dieser Kontur':fail+' Kontur(en)'} gar nicht hinein.`);
   if(bad)warn.push(`In ${bad===1&&es.length===1?'dieser Kontur':bad+' Kontur(en)'} bleibt in Ecken Material stehen (Fräser zu dick) – rot in der Fräsvorschau (F6).`)}
  if(warn.length)h+=`<div class="warn">${warn.map(esc).join('<br>')}</div>`;
@@ -668,6 +673,7 @@ function parsePt(t){const base=(REQ&&REQ.base)||lastPt;let rel=false;if(t[0]==='
  /* wird eine einzelne Zahl erwartet, ist „12,5“ eine Kommazahl (Punkte dann mit Strichpunkt: 12;5) */
  if(!rel&&REQ&&REQ.num&&!t.includes(';')&&t.includes(',')&&(t.match(/,/g)||[]).length===(t.match(/\d,\d/g)||[]).length&&/[*\/()+\-]/.test(t)){const n=ev(t.replace(/,/g,'.'));if(n!=null){log(`„${t}“ gerechnet als ${fmtDE(n)}.`);return{n}}}
  if(!rel&&REQ&&REQ.num&&/^[+-]?\d+,\d+$/.test(t)){const n=parseFloat(t.replace(',','.'));log(`„${t}“ als ${fmtDE(n)} gelesen – einen Punkt gibst du mit Strichpunkt ein, z. B. 12;5`);return{n}}
+ if(!rel&&base&&!t.includes(';')&&/\d,\d/.test(t)&&/[*\/()+]|\d-/.test(t)){log(`„${t}“: Kommazahl mit Rechnung – für einen Punkt X;Y mit Strichpunkt schreiben, für eine Länge den Dezimalpunkt (z. B. 12.5-2).`,'e');return{bad:1}}
  if(/[,;]/.test(t)){const sp=t.split(/[,;]/);if(sp.length!==2){log(`„${t}“: zu viele Zahlen – ein Punkt ist X;Y, z. B. 12,5;30.`,'e');return{bad:1}}const[a,b]=sp,x=ev(a),y=ev(b);if(x==null||y==null)return null;if(!rel&&base&&/^[+-]?\d+,\d+$/.test(t))log(`„${t}“ als Punkt X ${fmtDE(x)} / Y ${fmtDE(y)} gelesen. Meintest du ${t} mm Länge? Dann ${t.replace(',','.')} eingeben.`);if(rel){if(!base)return null;return{p:add(base,[x,y])}}return{p:[x,y]}}
  const n=ev(t);if(n!=null&&!rel)return{n};return null}
 function onEnter(){inp.dataset.raw=inp.value.trim();const t=inp.value.trim();inp.value='';
@@ -728,12 +734,15 @@ $('gstep').addEventListener('change',e=>{const v=ev(e.target.value.replace(',','
 /* ---------- Dateien ---------- */
 let fileName='Zeichnung.json';
 function setFname(n){const el=$('fname');el.textContent=n;el.title=n+' · Maße in mm'}
-let saveWarned=false;
-function save(){let ok=false;try{const s=snapS();if(s.length<=1.5e6){localStorage.setItem('origincad.v1',s);ok=true;localStorage.removeItem('origincad.big')}}catch(e){}
- if(ok){saveWarned=false;return}
+let saveWarned=false,unsaved=false,fileChg=-1;
+/* Marke „nicht gesichert“ und Rückfrage beim Schließen, solange die Zeichnung weder im Browser noch als Datei gesichert ist */
+function setUnsaved(v){unsaved=v;const m=$('unsaved');if(m)m.hidden=!v}
+window.addEventListener('beforeunload',e=>{if(unsaved&&chg!==fileChg){e.preventDefault();e.returnValue=''}});
+function save(){let ok=false,full=false;try{const s=snapS();if(s.length<=1.5e6){localStorage.setItem('origincad.v1',s);ok=true;localStorage.removeItem('origincad.big')}}catch(e){full=true}
+ if(ok){saveWarned=false;setUnsaved(false);return}setUnsaved(true);
  /* zu groß: den älteren Stand entfernen und merken, damit beim nächsten Start nicht ein alter Stand als „letzte Zeichnung“ erscheint */
- try{localStorage.removeItem('origincad.v1');localStorage.setItem('origincad.big',JSON.stringify({n:String(fileName).slice(0,120),t:Date.now()}))}catch(e){}
- if(!saveWarned){saveWarned=true;log('Achtung: Die Zeichnung ist zu groß für den Speicher im Browser und wird nicht mehr automatisch gesichert – bitte mit Strg+S als Datei speichern.','e')}}
+ try{localStorage.removeItem('origincad.v1');localStorage.setItem('origincad.big',JSON.stringify({full,t:Date.now()}))}catch(e){}
+ if(!saveWarned){saveWarned=true;log(full?'Achtung: Der Speicher im Browser ist voll (er wird mit anderen Apps dieser Adresse geteilt) – die Zeichnung wird nicht automatisch gesichert. Bitte mit Strg+S als Datei speichern.':'Achtung: Die Zeichnung ist zu groß für den Speicher im Browser und wird nicht mehr automatisch gesichert – bitte mit Strg+S als Datei speichern.','e')}}
 function saveUI(){try{localStorage.setItem('origincad.ui',JSON.stringify({tg,gstep,pstep}))}catch(e){}}
 function afterChange(){updUndo();geoVer++;updDefs();updProps();updLayers();computeSnap();render();save()}
 $('copyB').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('saveT').value);$('copyB').textContent='Kopiert ✓'}catch(e){$('saveT').select();$('copyB').textContent='Mit Strg+C kopieren'}setTimeout(()=>$('copyB').textContent='Kopieren',2000)});
@@ -786,7 +795,7 @@ async function saveBlob(name,data,mime,desc){const ext='.'+name.split('.').pop()
  const url=URL.createObjectURL(new Blob([data],{type:mime})),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);return name}
 const baseName=()=>fileName.replace(/\.(json|svg|dxf)$/i,'')||'Zeichnung';
 async function saveFile(){const data=JSON.stringify({app:'OriginCAD',v:3,...S});
- try{const n=await saveBlob(baseName()+'.json',data,'application/json','Origin-CAD-Zeichnung');if(!n){log('Speichern abgebrochen.');return}fileName=n;setFname(n);log('Gespeichert: '+n,'ok')}
+ try{const n=await saveBlob(baseName()+'.json',data,'application/json','Origin-CAD-Zeichnung');if(!n){log('Speichern abgebrochen.');return}fileName=n;setFname(n);fileChg=chg;log('Gespeichert: '+n,'ok')}
  catch(err){$('saveT').value=data;$('dSave').classList.add('open')}}
 
 /* ---------- SVG für die Shaper Origin ---------- */
@@ -811,12 +820,18 @@ function buildSVG(es){const b=bbox(es);if(!b)return null;const M=0,x0=b[0]-M,y1=
  return`<?xml version="1.0" encoding="UTF-8"?>\n<!-- Origin CAD: Maße in mm, 1 Einheit = 1 mm -->\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:shaper="http://www.shapertools.com/namespaces/shaper" version="1.1" width="${n(W)}mm" height="${n(H)}mm" viewBox="0 0 ${n(W)} ${n(H)}">\n${body}</svg>\n`}
 /* Plattenstärke je Objekt: Teile aus dem Korpusplaner bringen ihre eigene mit (th), sonst gilt die Plattenstärke der Zeichnung */
 const thk=e=>e.th||S.def.thick||19,flatOuts=es=>es.filter(e=>cutOf(e).eff==='outside'&&cutOf(e).d<thk(e)-1e-9);
+let OUTC={ver:-1};
+/* alle sichtbaren Außenkonturen (für „bleibt in Ecken Material“: Ecken außerhalb der Teile zählen nicht) */
+function outerAll(){if(OUTC.ver!==geoVer)OUTC={ver:geoVer,l:S.ents.length>20000?[]:S.ents.filter(e=>e.t!=='dim'&&vis(e)&&isClosed(e)&&cutOf(e).eff==='outside').map(e=>({P:pathsOf(e)[0].pts,b:bbox([e])}))};return OUTC.l}
+const cenP=l=>{let x=0,y=0;for(const p of l){x+=p[0];y+=p[1]}return[x/l.length,y/l.length]},inAnyOut=(q,outs)=>outs.some(o=>q[0]>=o.b[0]&&q[0]<=o.b[2]&&q[1]>=o.b[1]&&q[1]<=o.b[3]&&inPoly(q,o.P));
+function leftMatters(e,m,outs){return cutOf(e).eff==='outside'||!outs.length||m.left.some(L=>inAnyOut(cenP(L),outs))}
 function exportInfo(es){const cnt={},warn=[];let open=0,fail=0,left=0,deep=0;
  /* Außenkonturen mit Umrissrechteck (schnelle Vorauswahl); Rechenaufwand begrenzt, damit große Dateien das Fenster nicht einfrieren */
  const outs=es.filter(e=>cutOf(e).eff==='outside'&&isClosed(e)).map(e=>({P:pathsOf(e)[0].pts,b:bbox([e])}));let budget=2e7;
  const inOuts=(q,m=0)=>{for(const o of outs){if(q[0]<o.b[0]-m||q[0]>o.b[2]+m||q[1]<o.b[1]-m||q[1]>o.b[3]+m)continue;budget-=o.P.length;if(inPoly(q,o.P))return o}return null};
  const dEdge=(q,P)=>{let d=Infinity;for(let i=0;i<P.length;i++){const v=dSeg(q,P[i],P[(i+1)%P.length]);if(v<d)d=v}budget-=P.length;return d},cen=l=>{let x=0,y=0;for(const p of l){x+=p[0];y+=p[1]}return[x/l.length,y/l.length]};
- for(const e of es){const c=cutOf(e);cnt[c.eff]=(cnt[c.eff]||0)+1;if(needsClosed(c.t)&&!isClosed(e))open++;if(c.eff!=='guide'&&es.length<=400){const m=camOf(e);if(m.fail)fail++;else if(m.left.length&&(c.eff==='outside'||!outs.length||m.left.some(L=>budget>0&&inOuts(cen(L)))))left++/* Ecken außerhalb des Teils (z. B. Nut über die Kante) zählen nicht */}if(c.eff!=='guide'&&c.d>43)deep++}
+ let pts=0;for(const e of es){if(e.pts)pts+=e.pts.length;else pts+=8}const camOk=es.length<=400&&pts<=20000;
+ for(const e of es){const c=cutOf(e);cnt[c.eff]=(cnt[c.eff]||0)+1;if(needsClosed(c.t)&&!isClosed(e))open++;if(c.eff!=='guide'&&camOk){const m=camOf(e);if(m.fail)fail++;else if(m.left.length&&(c.eff==='outside'||!outs.length||m.left.some(L=>budget>0&&inOuts(cen(L)))))left++/* Ecken außerhalb des Teils (z. B. Nut über die Kante) zählen nicht */}if(c.eff!=='guide'&&c.d>43)deep++}
  if(open)warn.push(`${open} offene Kontur(en) mit Frästyp Außen/Innen/Tasche – sie werden als „Auf Linie“ ausgegeben. Vorher mit „Verbinden“ (VB) schließen.`);
  if(fail)warn.push(`Bei ${fail} Kontur(en) passt der Fräser gar nicht hinein.`);
  if(left)warn.push(`Bei ${left} Kontur(en) bleibt in Ecken Material stehen (rot in der Fräsvorschau).`);
@@ -825,8 +840,8 @@ function exportInfo(es){const cnt={},warn=[];let open=0,fail=0,left=0,deep=0;
  /* Bohrungen/Taschen, die über die Außenkontur hinausragen (z. B. Topf auf der falschen Seite) */
  if(outs.length){let over=0;for(const e of es){if(budget<0)break;const c=cutOf(e).eff;if((c!=='inside'&&c!=='pocket')||!isClosed(e))continue;
    /* Kreis: Mitte muss im Teil liegen; ein kleiner Überstand bis zum halben Radius ist gewollt (z. B. Verbindergehäuse am Rand) */
-   if(e.t==='circle'){const o=inOuts(e.c);if(!o||dEdge(e.c,o.P)<e.r/2-1e-6)over++;continue}const b=bbox([e]);if(!inOuts([(b[0]+b[2])/2,(b[1]+b[3])/2]))over++}
-  if(over)warn.push(`${over} Bohrung(en)/Tasche(n) ragen über die Außenkontur hinaus – Lage prüfen (z. B. Topf auf der richtigen Seite?).`)}
+   if(e.t==='circle'){const o=inOuts(e.c);if(!o){over++;continue}const d=dEdge(e.c,o.P);if(e.src==='kp'?d<e.r/2-1e-6:d<e.r-2.5-1e-6)over++;continue}const b=bbox([e]);if(!inOuts([(b[0]+b[2])/2,(b[1]+b[3])/2]))over++}
+  if(over)warn.push(`${over} Bohrung(en)/Tasche(n) ragen über die Außenkontur hinaus – Lage prüfen (z. B. Topf auf der richtigen Seite?).`);if(budget<0)warn.push('Die Zeichnung ist sehr groß – nicht alle Bohrungen konnten auf Überstand geprüft werden.')}
  const loose=es.filter(e=>(e.t==='line'||e.t==='arc')&&cutOf(e).eff==='online').length;if(loose>=3)warn.push(`${loose} einzelne Linien/Bögen – gehören sie zu einer Kontur, vorher „Verbinden“ (VB).`);
  return{cnt,warn}}
 function openExport(){const hasSel=[...sel].some(id=>{const e=byId(id);return e&&e.t!=='dim'});$('expSelRow').style.display=hasSel?'':'none';$('expSel').checked=false;updExport();$('dExp').classList.add('open')}
@@ -836,8 +851,8 @@ function updExport(){const only=$('expSel').checked&&$('expSelRow').style.displa
  $('expW').innerHTML=warn.map(esc).join('<br>');$('expW').style.display=warn.length?'':'none';$('expB').disabled=!es.length;
  /* nur Umriss gewählt (z. B. angetippt)? Bohrungen und Linien, die in den gewählten Teilen liegen, anbieten */
  {const ad=$('expAdd');let miss=[];if(only&&all.length<=50000){const so=es.filter(e=>cutOf(e).eff==='outside'&&isClosed(e)).slice(0,500).map(e=>({P:pathsOf(e)[0].pts,b:bbox([e])}));if(so.length){const ids=new Set(es.map(e=>e.id));
-   miss=all.filter(e=>{if(ids.has(e.id))return false;const b=bbox([e]);if(!b)return false;const c=[(b[0]+b[2])/2,(b[1]+b[3])/2];return so.some(o=>c[0]>=o.b[0]&&c[0]<=o.b[2]&&c[1]>=o.b[1]&&c[1]<=o.b[3]&&inPoly(c,o.P))})}}
-  ad.style.display=miss.length?'':'none';ad.textContent=`${miss.length} Bohrung(en)/Linie(n) in den gewählten Teilen mitnehmen`;ad.onclick=()=>{miss.forEach(e=>sel.add(e.id));updProps();render();updExport();log(`${miss.length} Objekte innerhalb der gewählten Teile dazugenommen.`,'ok')}}
+   let bud=2e7;miss=all.filter(e=>{if(bud<0||ids.has(e.id))return false;const b=bbox([e]);if(!b)return false;const c=[(b[0]+b[2])/2,(b[1]+b[3])/2];return so.some(o=>{if(!(c[0]>=o.b[0]&&c[0]<=o.b[2]&&c[1]>=o.b[1]&&c[1]<=o.b[3]))return false;bud-=o.P.length;return inPoly(c,o.P)})})}}
+  ad.style.display=miss.length?'':'none';ad.textContent=`${miss.length} ${miss.length===1?'Objekt':'Objekte'} (Bohrungen, Linien) in den gewählten Teilen mitnehmen`;ad.onclick=()=>{miss.forEach(e=>sel.add(e.id));updProps();render();updExport();$('expB').focus();log(`${miss.length} Objekte innerhalb der gewählten Teile dazugenommen.`,'ok')}}
  const flat=flatOuts(es),fx=$('expFix');if(document.activeElement!==$('expThick'))$('expThick').value=fmtDE(S.def.thick||19);
  fx.style.display=flat.length?'':'none';fx.textContent=`${flat.length} Außenkontur${flat.length>1?'en':''} auf Plattenstärke + 0,5 mm setzen`;fx.onclick=()=>{doCommit(()=>flat.forEach(e=>{e.cd=num2(thk(e)+0.5)}));log(`${flat.length} Außenkontur(en) auf Plattenstärke + 0,5 mm gesetzt (${[...new Set(flat.map(e=>fmtDE(e.cd)))].join(' / ')} mm).`,'ok');updProps();updExport()}}
 const num2=v=>Math.round(v*100)/100;
@@ -993,15 +1008,15 @@ function importDXF(text){const ln=text.split(/\r\n|\r|\n/),pairs=[];for(let i=0;
  expand(top,0,e=>e);
  const ents=flat.map(({ly,e})=>{const n=unit===1?e:scaleEnt(e,[0,0],unit);n.ly=ly;return n}).filter(e=>!(e.t==='circle'&&!(e.r>0))&&!(e.t==='line'&&dist(e.a,e.b)<1e-9));
  const DN={HATCH:'Schraffur (HATCH)',DIMENSION:'Bemaßung (DIMENSION)',SOLID:'Füllfläche (SOLID)',IMAGE:'Bild (IMAGE)',MTEXT:'Text',INSERT:'Block (INSERT)',LEADER:'Hinweispfeil (LEADER)',POINT:'Punkt'},sk=Object.entries(skipped).filter(([k])=>!['POINT','VIEWPORT','ATTDEF','ATTRIB','SEQEND','VERTEX'].includes(k)).map(([k,n])=>n+' × '+(DN[k]||k)).join(', ');
- return{ents,note:(unit!==1?`Einheit der Datei umgerechnet (× ${unit}). `:'')+(sk?'Übersprungen: '+sk+'.':'')}}
+ return{ents,note:(unit!==1?`Einheit der Datei umgerechnet (× ${fmtDE(unit)}). `:'')+(sk?'Übersprungen: '+sk+'.':'')}}
 
 /* ---------- Öffnen / Importieren ---------- */
 const LYCOLS=['#ff9f43','#ff6b9a','#b388ff','#7bd88f','#ffd166','#5ad1e8'];
 /* neue Ebenen höchstens bis MAXLY – darüber landen die Objekte auf der ersten Ebene (z. B. DXF mit einer Ebene je Objekt) */
-function addEnts(list,defLy){const made=[],names=new Set(S.layers.map(l=>l.n));let over=0;
+function addEnts(list,defLy,keepSrc){const made=[],names=new Set(S.layers.map(l=>l.n));let over=0;
  for(const e0 of list){const n=cleanEnt({...e0,ly:e0.ly||defLy||S.cur});if(!n)continue;n.ly=n.ly||defLy||S.cur;
   if(!names.has(n.ly)){if(S.layers.length<MAXLY){S.layers.push({n:n.ly,c:LYCOLS[S.layers.length%LYCOLS.length],v:true});names.add(n.ly)}else{n.ly=S.layers[0].n;over++}}
-  n.id=S.nid++;S.ents.push(n);made.push(n)}
+  if(!keepSrc)delete n.src;n.id=S.nid++;S.ents.push(n);made.push(n)}
  if(over)log(`Mehr als ${MAXLY} Ebenen: ${over} Objekte liegen auf Ebene „${S.layers[0].n}“.`,'e');return made}
 let fileMode='open';
 async function loadFile(f,mode){const name=f.name||'Datei',ext=(name.split('.').pop()||'').toLowerCase();let text;try{text=await f.text()}catch(err){log('Datei konnte nicht gelesen werden.','e');return}
@@ -1118,12 +1133,12 @@ function sample0(){const K='Kontur',B='Bemaßung';S.nid=1;S.ents=[
  mk('dim',{a:[400,0],b:[360,250],p:[440,125],m:'v'},B)]}
 let restored=false,dropped=0;try{const o=JSON.parse(localStorage.getItem('origincad.v1')||'null');if(o&&Array.isArray(o.ents)){S=cleanDoc(o);restored=true;dropped=o.ents.length-S.ents.length}const u=JSON.parse(localStorage.getItem('origincad.ui')||'null');if(u&&typeof u==='object'){if(u.tg&&typeof u.tg==='object')for(const k of Object.keys(tg))if(typeof u.tg[k]==='boolean')tg[k]=u.tg[k];if(okN(u.gstep,0.01,10000))gstep=u.gstep;if([90,45,30,15].includes(u.pstep))pstep=u.pstep}}catch(e){}
 $('gstep').value=gstep;$('pstep').value=pstep;
-if(!restored){try{const g=JSON.parse(localStorage.getItem('origincad.big')||'null');if(g&&typeof g.n==='string')log(`Die letzte Zeichnung („${g.n}“) war zu groß für den Speicher im Browser und wurde nicht gesichert – bitte die gespeicherte Datei öffnen.`,'e')}catch(e){}sample0();pristine=true;log('Beispiel: Front 400 × 600 mit zwei Topfbändern Ø35 und Griffloch. Datei › Neu leert die Zeichnung.')}
+if(!restored){try{const g=JSON.parse(localStorage.getItem('origincad.big')||'null');if(g&&typeof g==='object'){log(g.full?'Beim letzten Mal war der Speicher im Browser voll – die Zeichnung wurde nicht automatisch gesichert. Bitte die als Datei gespeicherte Zeichnung öffnen.':'Die letzte Zeichnung war zu groß für den Speicher im Browser und wurde nicht automatisch gesichert. Bitte die als Datei gespeicherte Zeichnung öffnen.','e');localStorage.removeItem('origincad.big')}}catch(e){}sample0();pristine=true;log('Beispiel: Front 400 × 600 mit zwei Topfbändern Ø35 und Griffloch. Datei › Neu leert die Zeichnung.')}
 else{log('Letzte Zeichnung wiederhergestellt.');if(dropped>0)log(`${dropped} Objekt(e) waren ungültig (z. B. über 1 km entfernt) und wurden weggelassen.`,'e')}
 log('Tipp: L + Enter für Linie, R für Rechteck, K für Kreis. F1 zeigt alle Befehle.');
 buildTools();updTools();updUndo();updDefs();updProps();updLayers();updPrompt();
 new ResizeObserver(()=>{const first=!W;resize();if(first)zoomAll()}).observe($('cvw'));
 if(matchMedia('(pointer:fine)').matches)inp.focus();
-window.__cad={buildPrintSVG,kp:{get chg(){return chg},ev,save:()=>saveFile(),help:t=>openHelp(t),contours,sectionsOf,commit:doCommit,undo,redo,addEnts,saveBlob,baseName,log,fmtDE,bbox,esc,cancel:()=>cancel(true),after:()=>{sel.clear();afterChange();zoomAll()},select:es=>{sel.clear();es.forEach(e=>sel.add(e.id));updProps();render()}},build3D,open3D,get curP(){return curP},setMouse:sp=>{mouse.sp=sp;mouse.in=true;computeSnap();render()},buildSVG,buildDXF,importSVG,importDXF,loadFile,exportList,fitArcs,userTpls,w2s,get S(){return S},run,onEnter,inp,adv,get REQ(){return REQ},sel,zoomAll,cutOf,camOf,act,tg,updProps,bbox,
+window.__cad={buildPrintSVG,kp:{get chg(){return chg},get pristine(){return pristine},ev,save:()=>saveFile(),help:t=>openHelp(t),contours,sectionsOf,commit:doCommit,undo,redo,addEnts,saveBlob,baseName,log,fmtDE,bbox,esc,cancel:()=>cancel(true),after:()=>{sel.clear();afterChange();zoomAll()},select:es=>{sel.clear();es.forEach(e=>sel.add(e.id));updProps();render()}},build3D,open3D,get curP(){return curP},setMouse:sp=>{mouse.sp=sp;mouse.in=true;computeSnap();render()},buildSVG,buildDXF,importSVG,importDXF,loadFile,exportList,fitArcs,userTpls,w2s,get S(){return S},run,onEnter,inp,adv,get REQ(){return REQ},sel,zoomAll,cutOf,camOf,act,tg,updProps,bbox,
  areaOf:(id,off)=>{const P=[ccw(toPaths(byId(id))[0].pts)];return(off?clOffset(P,off):P).reduce((s,q)=>s+area(q),0)}};
 }

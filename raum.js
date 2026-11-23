@@ -9,13 +9,17 @@ const AXV=v=>Array.isArray(v)&&v.length===3&&v.every(x=>x===0||x===1||x===-1)&&M
 function clean(o){if(!o||typeof o!=='object'||!Array.isArray(o.bodies))return null;const fin=(v,lo=-1e6,hi=1e6)=>typeof v==='number'&&Number.isFinite(v)&&v>=lo&&v<=hi,P2=p=>Array.isArray(p)&&p.length===2&&fin(p[0])&&fin(p[1]);
  const KND=['box','sph','cyl','cone','tor','plane','ext'],MATS=window.KORPUS?window.KORPUS.MATS:[['']],out=[];let id=1;
  let gpts=100000;/* Punkte aller Formteile zusammen – mehr macht den 3D-Modus zäh */
- for(const b of o.bodies.slice(0,5000)){if(!b||typeof b!=='object'||!KND.includes(b.kind))continue;if(![b.L,b.B,b.H].every(v=>fin(v,0,1e5)))continue;if(!(Array.isArray(b.o)&&b.o.length===3&&b.o.every(v=>fin(v))))continue;
+ let round=0,holesCut=0;const ROUND=['sph','cyl','cone','tor'];
+ for(const b of o.bodies.slice(0,5000)){if(!b||typeof b!=='object'||!KND.includes(b.kind))continue;if(ROUND.includes(b.kind)&&++round>MAXROUND)continue;if(![b.L,b.B,b.H].every(v=>fin(v,0,1e5)))continue;if(!(Array.isArray(b.o)&&b.o.length===3&&b.o.every(v=>fin(v))))continue;
   const u=AXV(b.u)?[...b.u]:[1,0,0],v=AXV(b.v)&&Math.abs(u[0]*b.v[0]+u[1]*b.v[1]+u[2]*b.v[2])<0.5?[...b.v]:(u[2]?[1,0,0]:[0,0,1]);
   const n={id:id++,name:typeof b.name==='string'&&b.name.trim()?b.name.slice(0,60):'Körper',kind:b.kind,L:b.L,B:b.B,H:b.H,o:[...b.o],u,v,mat:MATS.some(m=>m[0]===b.mat)?b.mat:''};
   if(fin(b.D2,0,1e5))n.D2=b.D2;if(b.rod)n.rod=1;if(Array.isArray(b.tint)&&b.tint.length===3&&b.tint.every(x=>fin(x,0,2)))n.tint=[...b.tint];
-  if(b.kind==='ext'){const pl=b.poly;if(!pl||!Array.isArray(pl.outer)||pl.outer.length<3||pl.outer.length>Math.min(50000,gpts)||!pl.outer.every(P2))continue;let bud=Math.min(50000,gpts)-pl.outer.length;n.poly={outer:pl.outer.map(p=>[...p]),holes:(Array.isArray(pl.holes)?pl.holes:[]).slice(0,300).filter(h=>Array.isArray(h)&&h.length>2&&h.length<=bud&&h.every(P2)&&(bud-=h.length)>=0).map(h=>h.map(p=>[...p]))};gpts-=n.poly.outer.length+n.poly.holes.reduce((s,h)=>s+h.length,0)}
+  if(b.kind==='ext'){const pl=b.poly;if(!pl||!Array.isArray(pl.outer)||pl.outer.length<3||pl.outer.length>Math.min(50000,gpts)||!pl.outer.every(P2))continue;let bud=Math.min(50000,gpts)-pl.outer.length;n.poly={outer:pl.outer.map(p=>[...p]),holes:(Array.isArray(pl.holes)?pl.holes:[]).slice(0,300).filter(h=>Array.isArray(h)&&h.length>2&&h.length<=bud&&h.every(P2)&&(bud-=h.length)>=0).map(h=>h.map(p=>[...p]))};holesCut+=(Array.isArray(pl.holes)?pl.holes.length:0)-n.poly.holes.length;gpts-=n.poly.outer.length+n.poly.holes.reduce((s,h)=>s+h.length,0)}
   out.push(n)}
+ {const lost=o.bodies.length-out.length;if(lost>0||holesCut>0)setTimeout(()=>A.log(`3D-Modus: ${lost>0?lost+' Körper':''}${lost>0&&holesCut>0?' und ':''}${holesCut>0?holesCut+' Löcher':''} weggelassen (zu viele oder fehlerhaft).`,'e'),0)}
  return{bodies:out,nid:id}}
+/* Obergrenzen, damit der 3D-Modus flüssig bleibt (gleich beim Anlegen und beim Laden) */
+const MAXROUND=500,MAXHOLES=300,MAXPTS=50000,MAXALL=100000,extPts=b=>b.poly.outer.length+b.poly.holes.reduce((s,h)=>s+h.length,0);
 const R=()=>{const s=S();if(!s.raum)s.raum={bodies:[],nid:1};return s.raum};
 const num=v=>Math.round(v*100)/100,de=v=>String(num(v)).replace('.',',');
 /* Zahl aus einem Feld – rechnen wie in der Befehlszeile (720-2*19), Komma als Dezimalzeichen */
@@ -115,15 +119,15 @@ function drawOver0(){const c=$('rmov'),cv=$('rm3d');if(!c||!V)return;const dpr=w
    const mx=seg([x0,y0-off,z0],[x1,y0-off,z0]);seg([x0,y0,z0],[x0,y0-off-8,z0]);seg([x1,y0,z0],[x1,y0-off-8,z0]);
    const my=seg([x1+off,y0,z0],[x1+off,y1,z0]);seg([x1,y0,z0],[x1+off+8,y0,z0]);seg([x1,y1,z0],[x1+off+8,y1,z0]);
    const flat=z1-z0<0.01;let mz=null;if(!flat){mz=seg([x0-off,y0,z0],[x0-off,y0,z1]);seg([x0,y0,z0],[x0-off-8,y0,z0]);seg([x0,y0,z1],[x0-off-8,y0,z1])}
-   /* Zahlen erst nach allen Linien, damit keine Linie sie durchstreicht */label(mx,de(x1-x0),col);label(my,de(y1-y0),col);if(mz)label(mz,de(z1-z0),col)};
-  dimBox(all,'#5ad1e8',sz*0.07);if(b&&r.bodies.length>1)dimBox(box(b),'#ffb020',sz*0.025)}}
+   /* Zahlen erst nach allen Linien, damit keine Linie sie durchstreicht */pend.push(()=>{label(mx,de(x1-x0),col);label(my,de(y1-y0),col);if(mz)label(mz,de(z1-z0),col)})};const pend=[];
+  dimBox(all,'#5ad1e8',sz*0.07);if(b&&r.bodies.length>1)dimBox(box(b),'#ffb020',sz*0.025);pend.forEach(f=>f())}}
 /* Rechteck aus zwei Punkten auf einer Ebene */
 function rectOf(p0,p1,n){const fi=n.findIndex(v=>Math.abs(v)>0.5),[u,v]=UV[fi+','+Math.sign(n[fi])],d=sub(p1,p0),a=dot(d,u),c=dot(d,v);return{o:add(add(p0,mul(u,Math.min(a,0))),mul(v,Math.min(c,0))).map(num),u,v,L:num(Math.abs(a)),B:num(Math.abs(c)),sa:Math.sign(a)||1,sb:Math.sign(c)||1}}
 /* ----- Werkzeuge ----- */
 function setTool(t){if(TOOLS[t]&&TOOLS[t].now){if(t==='zall'&&V)V.fit();return}cancelOp();if(t!==tool)lastPush=null;tool=t;tapeRes=null;$('rmvcb').value='';document.querySelectorAll('#rmtools [data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
  $('rm3d').style.cursor=t==='orbit'||t==='sel'?'default':t==='pan'?'grab':'crosshair';status();drawOver()}
 function cancelOp(){if(op&&op.orig){const b=body(op.id);if(b){for(const k of Object.keys(b))delete b[k];Object.assign(b,JSON.parse(op.orig))}show()}op=null;lock=null;infer=null;status();drawOver()}
-function status(txt){const T=TOOLS[tool];let s=txt||T.st;if(!txt){if(op&&op.t==='rect')s='Gegenüberliegende Ecke setzen – oder Maße eintippen, z. B. 600;400 und Enter';else if(op&&op.t==='circ')s='Radius ziehen – oder eintippen und Enter';else if(op&&op.t==='push')s='Maus bewegen und klicken – oder Abstand eintippen und Enter';else if(op&&op.t==='move')s='Ziel anklicken · Pfeiltasten sperren die Richtung (→ rot · ← grün · ↑ blau) · Strg = Kopie · Abstand eintippen und Enter';else if(op&&op.t==='tape')s='Zweiten Punkt anklicken';else if(tool==='rot')s=`Körper anklicken = 90° um die ${AXN[rotAx]} drehen · Achse wechseln mit → ← ↑`;else if(tool==='push'&&lastPush)s+=' · oder jetzt einen neuen Abstand eintippen, um den letzten Zug zu ändern'}
+function status(txt){const T=TOOLS[tool];let s=txt||T.st;if(!txt){if(op&&op.t==='rect')s='Gegenüberliegende Ecke setzen – oder Maße eintippen, z. B. 600;400 und Enter';else if(op&&op.t==='circ')s='Radius ziehen – oder eintippen und Enter';else if(op&&op.t==='push')s=matchMedia('(pointer:coarse)').matches?'Mit dem Finger ziehen – oder Abstand ins Feld „Maße“ tippen':'Maus bewegen und klicken – oder Abstand eintippen und Enter';else if(op&&op.t==='move')s='Ziel anklicken · Pfeiltasten sperren die Richtung (→ rot · ← grün · ↑ blau) · Strg = Kopie · Abstand eintippen und Enter';else if(op&&op.t==='tape')s='Zweiten Punkt anklicken';else if(tool==='rot')s=`Körper anklicken = 90° um die ${AXN[rotAx]} drehen · Achse wechseln mit → ← ↑`;else if(tool==='push'&&lastPush)s+=' · oder jetzt einen neuen Abstand eintippen, um den letzten Zug zu ändern'}
  $('rmstat').textContent=s;$('rmvcbl').textContent=(op&&op.t==='move'&&op.copy?'Kopie: ':'')+(T.vl||'Maße');$('rmvcb').disabled=!T.vl&&tool!=='sel'}
 function setVcb(t){const el=$('rmvcb');if(document.activeElement!==el)el.value=t}
 function hooksDown(e){const[x,y]=pos(e);
@@ -172,7 +176,7 @@ function finishRect(){const q=rectOf(op.p0,op.p1,op.n);if(q.L<1||q.B<1){status('
 function finishCirc(){if(!(op.r>=1)){status('Der Kreis ist zu klein.');return}const[u,v]=UV[op.face.i+','+op.face.sign],r=op.r,o=sub(sub(op.c,mul(u,r)),mul(v,r)).map(num);op=null;infer=null;let b;A.commit(()=>{b=newBody({name:'Kreisfläche',kind:'cyl',L:num(2*r),B:num(2*r),H:0,o,u,v})});selId=b.id;refresh();status('Kreis gezeichnet. Mit Drücken/Ziehen (P) hochziehen.')}
 /* Eingabe im Feld „Maße“ */
 /* Rechteck braucht zwei Maße: ein einzelnes Komma trennt dann Breite und Tiefe (600,40 = 600 × 40); Kommazahlen mit Strichpunkt: 600,5;400 */
-function vcbEnter(){const raw=$('rmvcb').value.trim();if(!raw)return;const list=op&&op.t==='rect'&&!/[;x×\s]/.test(raw)&&(raw.match(/,/g)||[]).length===1?raw.split(','):raw.split(/[;x×\s]+/),nums=list.filter(q=>q.trim()).map(pnum);if(!nums.length||nums.some(v=>v==null)){status(`„${raw}“ nicht verstanden – Zahl oder Rechnung wie 720-2*19, zwei Maße mit Strichpunkt: 600;400`);return}if(nums.some(q=>Math.abs(q)>1e5)){status('Zu groß – höchstens 100 m (100000 mm).');return}const v=nums[0];
+function vcbEnter(){const raw=$('rmvcb').value.trim();if(!raw)return;const list=op&&op.t==='rect'&&!/[;x×\s]/.test(raw)&&(raw.match(/,/g)||[]).length===1?raw.split(','):raw.split(/[;x×\s]+/),nums=list.map(pnum);if(nums.length>(op&&op.t==='rect'?2:1)){status(`„${raw}“: zu viele Zahlen – ${op&&op.t==='rect'?'Breite;Tiefe, z. B. 600;400':'hier nur ein Maß'}.`);return}if(!nums.length||nums.some(v=>v==null)){status(`„${raw}“ nicht verstanden – Zahl oder Rechnung wie 720-2*19, zwei Maße mit Strichpunkt: 600;400`);return}if(nums.some(q=>Math.abs(q)>1e5)){status('Zu groß – höchstens 100 m (100000 mm).');return}const v=nums[0];
  if(op&&op.t==='rect'){const q=op.p1?rectOf(op.p0,op.p1,op.n):{sa:1,sb:1},[u,vv]=UV[op.face.i+','+op.face.sign],L=Math.abs(v),B=Math.abs(nums[1]!=null?nums[1]:v);op.p1=add(add(op.p0,mul(u,L*q.sa)),mul(vv,B*q.sb));finishRect();return}
  if(op&&op.t==='circ'){op.r=Math.abs(v);finishCirc();return}
  if(op&&op.t==='push'){pushTo(v);commitPush();return}
@@ -214,14 +218,18 @@ function lineT(ry,p0,n){const b=dot(ry.d,n),den=1-b*b;if(den<1e-6)return null;co
 function place(b){/* neben das Vorhandene stellen */const others=R().bodies.filter(x=>x!==b);if(others.length){const m=boxAll(others),q=box(b);moveBy(b,[m[3]+50-q[0],m[1]-q[1],-q[2]])}}
 const PRIM={box:{name:'Quader',L:600,B:400,H:19},sph:{name:'Kugel',L:200,B:200,H:200},cyl:{name:'Zylinder',L:200,B:200,H:300},cone:{name:'Kegel',L:200,B:200,H:300,D2:0},tor:{name:'Torus',L:300,B:300,H:60},plane:{name:'Ebene',L:1000,B:1000,H:0}};
 function addFromDrawing(){const c=A.contours(),H=val('rn_X')||19;if(!c.list.length){msg('In der Zeichnung ist keine geschlossene Kontur. Erst im Zeichenprogramm eine zeichnen (z. B. Rechteck oder Kreis).');return}
- A.commit(()=>{let last=null;for(const q of c.list){last=newBody({name:'Formteil',kind:'ext',L:q.w,B:q.h,H,poly:{outer:q.outer,holes:q.holes},o:[num(q.at[0]),num(q.at[1]),0]})}
+ let used=R().bodies.filter(b=>b.kind==='ext').reduce((s,b)=>s+extPts(b),0),skip=0,cutH=0;const list=[];
+ for(const q of c.list){if(q.outer.length>MAXPTS){skip++;continue}let hs=q.holes.slice(0,MAXHOLES),n=q.outer.length;cutH+=q.holes.length-hs.length;hs=hs.filter(h=>(n+h.length<=MAXPTS)?(n+=h.length,true):(cutH++,false));if(used+n>MAXALL){skip++;continue}used+=n;list.push({...q,holes:hs})}
+ if(!list.length){msg('Die Konturen sind zu fein oder zu viele für den 3D-Modus (höchstens 300 Löcher und 50 000 Punkte je Teil).');return}
+ if(skip||cutH)msg(`Für den 3D-Modus vereinfacht: ${skip?skip+' Kontur(en) zu groß und weggelassen':''}${skip&&cutH?', ':''}${cutH?cutH+' Löcher weggelassen (höchstens 300 je Teil)':''}.`);
+ c.list=list;A.commit(()=>{let last=null;for(const q of c.list){last=newBody({name:'Formteil',kind:'ext',L:q.w,B:q.h,H,poly:{outer:q.outer,holes:q.holes},o:[num(q.at[0]),num(q.at[1]),0]})}
   /* gemeinsam neben das Vorhandene schieben, Lage zueinander bleibt */const neu=R().bodies.slice(-c.list.length),alt=R().bodies.slice(0,-c.list.length);if(alt.length){const m=boxAll(alt),q=boxAll(neu);for(const b of neu)moveBy(b,[m[3]+50-q[0],m[1]-q[1],0])}selId=last.id});
  msg(`${c.list.length} Kontur${c.list.length>1?'en':''} ${c.bySel?'(die gewählten) ':''}hochgezogen.`);refresh()}
 function addFromKorpus(){const K=window.KORPUS,ps=K.parts();if(!ps.length)return;A.commit(()=>{const alt=[...R().bodies],neu=[];for(const p of ps)neu.push(newBody({name:p.name,L:p.W,B:p.H,H:p.T,o:[...p.o],u:[...p.u],v:[...p.v],mat:p.matId||'',...(p.rod?{tint:[0.8,0.83,0.87],rod:1}:{})}));
   if(alt.length){const m=boxAll(alt),q=boxAll(neu);for(const b of neu)moveBy(b,[m[3]+50-q[0],m[1]-q[1],0])}selId=null});msg(`Schrank übernommen: ${ps.length} Körper. Er ist jetzt vom Korpusplaner gelöst – Bohrungen bleiben im Planer.`);refresh();V&&V.fit()}
 const val=id=>{const el=$(id);if(!el)return null;const v=pnum(el.value);return v!=null&&v>0?v:null};
 function msg(t){$('rmmsg').textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()=>$('rmmsg').textContent='',7000)}
-const dims3=b=>[b.L,b.B,b.H].slice().sort((x,y)=>y-x),dimTxt=b=>b.kind==='sph'?'Ø '+de(b.L):b.kind==='cyl'||b.kind==='cone'?'Ø '+de(b.L)+' × '+de(b.H):b.kind==='tor'?'Ø '+de(b.L)+' · Rohr Ø '+de(b.H):b.kind==='plane'?de(b.L)+' × '+de(b.B):dims3(b).map(de).join(' × ');
+const dims3=b=>[b.L,b.B,b.H].slice().sort((x,y)=>y-x),dimTxt=b=>b.kind==='sph'?'Ø '+de(b.L):b.kind==='cyl'&&b.H<0.01?'Ø '+de(b.L)+' (Fläche)':b.kind==='cyl'||b.kind==='cone'?'Ø '+de(b.L)+' × '+de(b.H):b.kind==='tor'?'Ø '+de(b.L)+' · Rohr Ø '+de(b.H):b.kind==='plane'?de(b.L)+' × '+de(b.B):dims3(b).map(de).join(' × ');
 /* ----- Werkzeugleiste und Fächer (rechts) ----- */
 function buildTools(){$('rmtools').innerHTML=GRP.map(gr=>gr.map(k=>{const T=TOOLS[k];return`<button class="rmtb ${k===tool?'on':''}" data-tool="${k}" title="${T.n} (${T.kl})" aria-label="${T.n}"><svg viewBox="0 0 24 24"><path d="${T.i}"/></svg></button>`}).join('')).join('<span class="rmtsep"></span>')}
 const ICO={box:'M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8',sph:'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M3 12c0 2 4 3.5 9 3.5s9-1.5 9-3.5',cyl:'M5 6c0-1.7 3.1-3 7-3s7 1.3 7 3-3.1 3-7 3-7-1.3-7-3zM5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6',cone:'M12 3L5 18c0 1.7 3.1 3 7 3s7-1.3 7-3z',tor:'M12 6c5 0 9 2.7 9 6s-4 6-9 6-9-2.7-9-6 4-6 9-6zM12 10.5c1.9 0 3.5.7 3.5 1.5s-1.6 1.5-3.5 1.5-3.5-.7-3.5-1.5 1.6-1.5 3.5-1.5',plane:'M3 16l6-8h12l-6 8z'};
@@ -239,7 +247,8 @@ function side(){const r=R(),inp=(id,lab,v)=>`<div class="pr"><label for="${id}">
  $('rmside').querySelectorAll('[data-prim]').forEach(bt=>bt.onclick=()=>addPrim(bt.dataset.prim));$('rn_ext').onclick=addFromDrawing;$('rn_kp').onclick=addFromKorpus;
  $('rmside').querySelectorAll('[data-mat]').forEach(bt=>bt.onclick=()=>{curMat=bt.dataset.mat;const b=body(selId);if(b)A.commit(()=>{b.mat=curMat});refresh()});
  $('rmside').querySelectorAll('[data-rmid]').forEach(bt=>bt.onclick=()=>{selId=+bt.dataset.rmid;refresh(true)});fillSel()}
-function addPrim(kind){if(!PRIM[kind])return;let b;A.commit(()=>{b=newBody({kind,...PRIM[kind]});place(b);selId=b.id});refresh();ensureVisible(b)}
+const roundFull=k=>['sph','cyl','cone','tor'].includes(k)&&R().bodies.filter(b=>['sph','cyl','cone','tor'].includes(b.kind)).length>=MAXROUND;
+function addPrim(kind){if(!PRIM[kind])return;if(roundFull(kind)){msg('Höchstens 500 runde Körper (Kugel, Zylinder, Kegel, Torus).');return}let b;A.commit(()=>{b=newBody({kind,...PRIM[kind]});place(b);selId=b.id});refresh();ensureVisible(b)}
 function ensureVisible(b){if(!V||!b)return;const m=box(b),cv=$('rm3d'),ok=[[m[0],m[1],m[2]],[m[3],m[4],m[5]]].every(q=>{const p=V.project(q);return p&&p[0]>20&&p[1]>40&&p[0]<cv.clientWidth-20&&p[1]<cv.clientHeight-20});if(R().bodies.length===1||!ok){V.fit();drawOver()}}
 const addBox=()=>addPrim('box');
 function fillSel(){const el=$('rmsel'),b=body(selId);if(!el)return;if(!b){el.innerHTML='<p class="muted">Nichts gewählt. Körper anklicken (Auswählen, Leertaste).</p>';return}if(el.contains(document.activeElement)&&document.activeElement.tagName==='INPUT'&&op)return;
@@ -251,13 +260,14 @@ function fillSel(){const el=$('rmsel'),b=body(selId);if(!el)return;if(!b){el.inn
   <div class="rmrow"><button class="btn" id="rs_floor">Auf den Boden</button><button class="btn" id="rs_copy" title="Strg+D">Kopieren</button><button class="btn" id="rs_del" title="Entf">Löschen</button></div>`;
  const on=(id,fn)=>{const x=$(id);if(!x)return;x.addEventListener('keydown',e=>{if(e.key==='Enter')x.blur()});x.addEventListener('change',()=>{fn(x);refresh(true)})},nv=x=>pnum(x.value);
  on('rs_name',x=>{const t=x.value.trim();if(t)A.commit(()=>{b.name=t.slice(0,60)})});
- for(const[id,f]of[['rs_L','L'],['rs_B','B'],['rs_H','H']])on(id,x=>{const v=nv(x);if(v>0)A.commit(()=>{const c0=box(b);b[f]=num(Math.min(v,10000));if(b.kind==='plane'&&f==='H')b.kind='box';const n=box(b);moveBy(b,[c0[0]-n[0],c0[1]-n[1],c0[2]-n[2]])})});
- ['rs_x','rs_y','rs_z'].forEach((id,i)=>on(id,x=>{const v=nv(x);if(v!=null)A.commit(()=>{const d=[0,0,0];d[i]=v-box(b)[i];moveBy(b,d)})}));
- on('rs_D',x=>{const v=nv(x);if(v>0)A.commit(()=>{const c0=box(b);b.L=b.B=num(Math.min(v,10000));if(b.kind==='sph')b.H=b.L;if(b.kind==='tor')b.H=Math.min(b.H,num(b.L/2));if(b.kind==='cone')b.D2=Math.min(b.D2||0,b.L);const n=box(b);moveBy(b,[c0[0]-n[0],c0[1]-n[1],c0[2]-n[2]])})});
+ const bad=x=>status(`„${x.value}“ geht nicht – bitte eine Zahl über 0 (Rechnen geht, z. B. 800-2*19).`);
+ for(const[id,f]of[['rs_L','L'],['rs_B','B'],['rs_H','H']])on(id,x=>{const v=nv(x);if(!(v>0)){bad(x);return}if(v>10000)status('Höchstens 10 m – auf 10000 gesetzt.');A.commit(()=>{const c0=box(b);b[f]=num(Math.min(v,10000));if(b.kind==='plane'&&f==='H')b.kind='box';const n=box(b);moveBy(b,[c0[0]-n[0],c0[1]-n[1],c0[2]-n[2]])})});
+ ['rs_x','rs_y','rs_z'].forEach((id,i)=>on(id,x=>{const v=nv(x);if(v==null||Math.abs(v)>1e6){status(v==null?`„${x.value}“ ist keine Zahl.`:'Höchstens 1 km vom Nullpunkt.');return}A.commit(()=>{const d=[0,0,0];d[i]=v-box(b)[i];moveBy(b,d)})}));
+ on('rs_D',x=>{const v=nv(x);if(!(v>0)){bad(x);return}A.commit(()=>{const c0=box(b);b.L=b.B=num(Math.min(v,10000));if(b.kind==='sph')b.H=b.L;if(b.kind==='tor')b.H=Math.min(b.H,num(b.L/2));if(b.kind==='cone')b.D2=Math.min(b.D2||0,b.L);const n=box(b);moveBy(b,[c0[0]-n[0],c0[1]-n[1],c0[2]-n[2]])})});
  on('rs_D2',x=>{const v=nv(x);if(v!=null&&v>=0)A.commit(()=>{b.D2=num(Math.min(v,b.L))})});
  on('rs_mat',x=>A.commit(()=>{b.mat=x.value}));
  $('rs_floor').onclick=()=>{A.commit(()=>moveBy(b,[0,0,-box(b)[2]]));refresh(true)};$('rs_copy').onclick=copySel;$('rs_del').onclick=removeSel}
-function copySel(){const b=body(selId);if(!b)return;let n;A.commit(()=>{n=newBody(JSON.parse(JSON.stringify({...b,id:undefined})));n.id=R().nid-1;const m2=box(b);moveBy(n,[m2[3]-m2[0]+50,0,0]);selId=n.id});refresh();ensureVisible(n)}
+function copySel(){const b=body(selId);if(!b)return;if(roundFull(b.kind)){msg('Höchstens 500 runde Körper (Kugel, Zylinder, Kegel, Torus).');return}let n;A.commit(()=>{n=newBody(JSON.parse(JSON.stringify({...b,id:undefined})));n.id=R().nid-1;const m2=box(b);moveBy(n,[m2[3]-m2[0]+50,0,0]);selId=n.id});refresh();ensureVisible(n)}
 function removeSel(){const b=body(selId);if(!b)return;cancelOp();A.commit(()=>{const r=R();r.bodies=r.bodies.filter(x=>x!==b)});selId=null;refresh()}
 function refresh(light){const r=R();if(selId!=null&&!body(selId))selId=null;if(light){document.querySelectorAll('#rmside [data-rmid]').forEach(bt=>bt.classList.toggle('on',+bt.dataset.rmid===selId));fillSel()}else side();show();
  $('rmempty').hidden=r.bodies.length>0;const m=boxAll(r.bodies);$('rminfo').textContent=r.bodies.length?`${r.bodies.length} Körper · gesamt ${de(m[3]-m[0])} × ${de(m[4]-m[1])} × ${de(m[5]-m[2])} mm`:'leer'}
@@ -293,14 +303,15 @@ function key(e){const t=e.target,inField=t&&t.closest&&t.closest('#rm,#dRml')&&(
  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();A.save();return}
  if(e.key==='Escape'){e.preventDefault();if($('dRml').classList.contains('open'))$('dRml').classList.remove('open');else if(op){cancelOp()}else if(tapeRes){tapeRes=null;status();drawOver()}else if(tool!=='sel')setTool('sel');else if(selId!=null){selId=null;refresh(true)}return}
  if(inField)return;
- if(e.ctrlKey||e.metaKey){const k=e.key.toLowerCase();if(k==='z'){e.preventDefault();cancelOp();e.shiftKey?A.redo():A.undo();refresh()}else if(k==='y'){e.preventDefault();A.redo();refresh()}else if(k==='d'&&selId!=null){e.preventDefault();copySel()}
+ if(e.ctrlKey||e.metaKey){const k=e.key.toLowerCase();if(/^[a-z]$/.test(k)&&!'zysd'.includes(k)&&!e.altKey){e.preventDefault();if(k==='r'||k==='k'){setTool(k==='r'?'rect':'circ');return}status(k==='o'||k==='n'||k==='p'?'Öffnen, Neu und Drucken gehen im Zeichenprogramm – „Zurück“ oben rechts. Im 3D-Modus: „Drucken“ oben.':'Dieses Strg-Kürzel gibt es im 3D-Modus nicht – F1 zeigt die Tasten.');return}if(k==='z'){e.preventDefault();cancelOp();e.shiftKey?A.redo():A.undo();refresh()}else if(k==='y'){e.preventDefault();A.redo();refresh()}else if(k==='d'&&selId!=null){e.preventDefault();copySel()}
   else if((e.key==='Control'||e.key==='Meta')&&!e.repeat){if(op&&op.t==='move'){op.copy=!op.copy;status()}}return}
  /* Zahlen gehen direkt ins Feld „Maße“ (wie in SketchUp) */
- if(/^[0-9.,;+\-]$/.test(e.key)&&(op||TOOLS[tool].vl||(tool==='push'&&lastPush))){e.preventDefault();const el=$('rmvcb');el.value=document.activeElement===el?el.value+e.key:e.key;el.focus();el.setSelectionRange(el.value.length,el.value.length);return}
+ if(/^[0-9.,;+\-(]$/.test(e.key)&&(op||TOOLS[tool].vl||(tool==='push'&&lastPush))){e.preventDefault();const el=$('rmvcb');el.value=document.activeElement===el?el.value+e.key:e.key;el.focus();el.setSelectionRange(el.value.length,el.value.length);return}
  if(e.key==='Enter'&&$('rmvcb').value){e.preventDefault();vcbEnter();return}
  if(op&&op.t==='move'&&['ArrowRight','ArrowLeft','ArrowUp'].includes(e.key)){e.preventDefault();const k={ArrowRight:0,ArrowLeft:1,ArrowUp:2}[e.key];op.lock=op.lock===k?null:k;status(op.lock!=null?'Richtung gesperrt auf '+AXN[op.lock]+' – nochmal dieselbe Pfeiltaste hebt die Sperre auf':'');drawOver();return}
  if(tool==='rot'&&['ArrowRight','ArrowLeft','ArrowUp'].includes(e.key)){e.preventDefault();rotAx={ArrowRight:0,ArrowLeft:1,ArrowUp:2}[e.key];status();return}
  if(!e.altKey){const k=e.key===' '?' ':e.key;const hit=Object.keys(TOOLS).find(n=>TOOLS[n].k===k||(TOOLS[n].k===k.toLowerCase()&&k.length===1&&!e.shiftKey&&TOOLS[n].k!=='Z'));if(hit&&!(hit==='zall'&&!e.shiftKey)){e.preventDefault();if(hit==='zall')V.fit();else setTool(hit);return}}
+ if(!e.altKey&&(e.key==='k'||e.key==='v')){e.preventDefault();setTool(e.key==='k'?'circ':'move');status(e.key==='k'?'Kreis – im 3D-Modus auch mit C (wie in SketchUp).':'Verschieben – im 3D-Modus auch mit M (wie in SketchUp).');return}
  if(!e.altKey&&/^[lafsz]$/.test(e.key)){status({l:'Eine Linie gibt es hier nicht – Rechteck (R) oder Kreis (C) zeichnen, freie Formen im Zeichenprogramm und dann „Kontur hochziehen“.',a:'Bogen gibt es hier nicht – Kreis (C) oder Kontur aus dem Zeichenprogramm hochziehen.',f:'Versatz gibt es hier nicht – Maße unter „Objektinfo“ ändern.',s:'Skalieren gibt es hier nicht – Maße unter „Objektinfo“ oder mit Drücken/Ziehen (P) ändern.',z:'Zoomen mit dem Mausrad, alles zeigen mit Shift+Z.'}[e.key]);return}
  const b=body(selId);if(!b)return;
  if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();removeSel();return}
