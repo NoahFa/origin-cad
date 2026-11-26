@@ -643,6 +643,18 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
   r=await p.evaluate(()=>RAUM.state.bodies.map(b=>[b.L,b.B,b.H,b.o[0]].join('/')).join(' | '));ok(r==='100/100/100/0 | 50/50/50/300','STL mit zwei getrennten Würfeln: in 2 Körper zerlegt, Lage bleibt',r);
   await p.click('[data-rm="close"]');await fresh()}
 
+ console.log('ZIP und mehrere Dateien (v35)');
+ {const zlib=require('zlib'),svg=(w,h)=>Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}mm" height="${h}mm" viewBox="0 0 ${w} ${h}"><rect x="0" y="0" width="${w}" height="${h}" fill="none" stroke="#c00"/></svg>`);
+  const ent=[['A_Teil.svg',svg(100,50),0],['ordner/B_Teil.svg',svg(30,30),8],['__MACOSX/._A_Teil.svg',Buffer.from('x'),0],['liesmich.txt',Buffer.from('hallo'),0]];const loc=[],cen=[];let off=0;
+  for(const[n,d,m]of ent){const nb=Buffer.from(n),c=m?zlib.deflateRawSync(d):d,h=Buffer.alloc(30);h.writeUInt32LE(0x04034b50,0);h.writeUInt16LE(20,4);h.writeUInt16LE(0x800,6);h.writeUInt16LE(m,8);h.writeUInt32LE(c.length,18);h.writeUInt32LE(d.length,22);h.writeUInt16LE(nb.length,26);loc.push(h,nb,c);
+   const ch=Buffer.alloc(46);ch.writeUInt32LE(0x02014b50,0);ch.writeUInt16LE(20,4);ch.writeUInt16LE(20,6);ch.writeUInt16LE(0x800,8);ch.writeUInt16LE(m,10);ch.writeUInt32LE(c.length,20);ch.writeUInt32LE(d.length,24);ch.writeUInt16LE(nb.length,28);ch.writeUInt32LE(off,42);cen.push(ch,nb);off+=30+nb.length+c.length}
+  const cd=Buffer.concat(cen),eo=Buffer.alloc(22);eo.writeUInt32LE(0x06054b50,0);eo.writeUInt16LE(ent.length,8);eo.writeUInt16LE(ent.length,10);eo.writeUInt32LE(cd.length,12);eo.writeUInt32LE(off,16);const zip=Buffer.concat([...loc,cd,eo]);
+  await fresh();await p.setInputFiles('#file',{name:'Paket.zip',mimeType:'application/zip',buffer:zip});await p.waitForTimeout(500);
+  r=await p.evaluate(()=>({ly:__cad.S.layers.map(l=>l.n).filter(n=>/Teil/.test(n)).join(),b:['A_Teil','B_Teil'].map(n=>{const e=__cad.S.ents.filter(x=>x.ly===n);const bb=__cad.bbox(e);return bb?[Math.round(bb[2]-bb[0]),Math.round(bb[3]-bb[1]),Math.round(bb[0])].join('/'):'-'})}));
+  ok(r.ly==='A_Teil,B_Teil'&&r.b[0]==='100/50/0'&&r.b[1]==='30/30/180','ZIP (gespeichert und gepackt) öffnen: jede SVG auf eigener Ebene, nebeneinander, Fremdes übersprungen',JSON.stringify(r));
+  await p.setInputFiles('#file',[{name:'C.svg',mimeType:'image/svg+xml',buffer:svg(40,20)},{name:'D.svg',mimeType:'image/svg+xml',buffer:svg(60,20)}]);await p.waitForTimeout(500);
+  r=await p.evaluate(()=>__cad.S.layers.map(l=>l.n).filter(n=>/^[CD]$/.test(n)).join());ok(r==='C,D','Mehrere SVG-Dateien auf einmal öffnen',r);await fresh()}
+
  console.log('Sicherheit');
  r=await p.evaluate(async()=>{await document.fonts.ready;return{sans:document.fonts.check('500 14px "IBM Plex Sans"'),mono:document.fonts.check('14px "IBM Plex Mono"'),csp:!!document.querySelector('meta[http-equiv="Content-Security-Policy"]'),ext:[...document.querySelectorAll('link[href^="http"],script[src^="http"]')].length}});
  ok(r.sans&&r.mono&&r.csp&&r.ext===0,'Schrift aus dem Projekt geladen, nichts von fremden Servern, Sicherheitsregel gesetzt',JSON.stringify(r));

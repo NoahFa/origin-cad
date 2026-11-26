@@ -1019,7 +1019,33 @@ function addEnts(list,defLy,keepSrc){const made=[],names=new Set(S.layers.map(l=
   if(!keepSrc)delete n.src;n.id=S.nid++;S.ents.push(n);made.push(n)}
  if(over)log(`Mehr als ${MAXLY} Ebenen: ${over} Objekte liegen auf Ebene „${S.layers[0].n}“.`,'e');return made}
 let fileMode='open';
+/* ---------- ZIP lesen (gespeichert oder „deflate“, ohne Zusatzbibliothek) ---------- */
+async function unzip(buf){const dv=new DataView(buf),u8=new Uint8Array(buf);let eo=-1;for(let i=buf.byteLength-22;i>=Math.max(0,buf.byteLength-66000);i--)if(dv.getUint32(i,true)===0x06054b50){eo=i;break}
+ if(eo<0)throw new Error('Das ist keine lesbare ZIP-Datei.');const n=dv.getUint16(eo+10,true);let p=dv.getUint32(eo+16,true);const out=[];let total=0;
+ for(let k=0;k<n&&k<200;k++){if(p+46>buf.byteLength||dv.getUint32(p,true)!==0x02014b50)break;const flag=dv.getUint16(p+8,true),meth=dv.getUint16(p+10,true),csz=dv.getUint32(p+20,true),usz=dv.getUint32(p+24,true),nl=dv.getUint16(p+28,true),xl=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),lo=dv.getUint32(p+42,true);
+  const name=new TextDecoder(flag&0x800?'utf-8':'utf-8').decode(u8.subarray(p+46,p+46+nl));p+=46+nl+xl+cl;
+  const base=name.split('/').pop();if(!base||name.endsWith('/')||/(^|\/)__MACOSX\//.test(name)||base.startsWith('.')||!/\.(svg|dxf|json)$/i.test(base))continue;
+  if(usz>20e6||(total+=usz)>60e6){log(`${base}: zu groß – übersprungen.`,'e');continue}
+  if(dv.getUint32(lo,true)!==0x04034b50)continue;const ds=lo+30+dv.getUint16(lo+26,true)+dv.getUint16(lo+28,true),raw=u8.subarray(ds,ds+csz);let data;
+  if(meth===0)data=raw;else if(meth===8&&typeof DecompressionStream==='function'){data=new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());if(data.length>20e6)continue}
+  else{log(`${base}: diese ZIP-Art kann der Browser nicht entpacken – bitte die Datei einzeln öffnen.`,'e');continue}
+  out.push({name:base,text:new TextDecoder().decode(data)})}
+ return out}
+/* eine Datei (SVG, DXF oder Origin-CAD-Zeichnung) in Objekte umwandeln, ohne die Zeichnung zu ändern */
+function readDrawing(name,text){const ext=(name.split('.').pop()||'').toLowerCase();
+ if(ext==='json'||(/^\s*\{/.test(text)&&ext!=='svg'&&ext!=='dxf')){const o=JSON.parse(text);if(!Array.isArray(o.ents))throw new Error('keine Origin-CAD-Zeichnung');return{ents:cleanDoc(o).ents.map(({id,...r})=>r),note:''}}
+ const isSvg=ext==='svg'||/<svg[\s>]/i.test(text.slice(0,2000));if(!isSvg&&ext!=='dxf')throw new Error('unbekannte Dateiart');return isSvg?importSVG(text):importDXF(text)}
+/* mehrere Dateien auf einmal: jede auf eine eigene Ebene (Dateiname), nebeneinander gelegt */
+async function loadMany(files,mode,label){const parts=[];for(const f of files){let text;try{text=typeof f.text==='function'?await f.text():f.text}catch(e){log(`${f.name}: konnte nicht gelesen werden.`,'e');continue}
+  try{const r=readDrawing(f.name,text),good=r.ents.filter(e=>cleanEnt({...e,ly:e.ly||'0'}));if(!good.length){log(`${f.name}: nichts Zeichenbares gefunden.`,'e');continue}parts.push({name:f.name,ents:good,note:r.note})}catch(err){log(`${f.name}: ${err.message||'konnte nicht gelesen werden'}.`,'e')}}
+ if(!parts.length){log(`${label}: keine lesbare Zeichnung (SVG, DXF oder Origin-CAD) gefunden – die Zeichnung bleibt unverändert.`,'e');return}
+ const replace=mode!=='import'&&(pristine||!docSummary().length||mode==='open');pushUndo();if(replace){S={ents:[],layers:DEF_LAYERS(),cur:'Kontur',nid:1,def:{...S.def}};fileName=label.replace(/\.[^.]+$/,'')+'.json';setFname(label)}
+ const old=bbox(S.ents);let x=old?old[2]+80:0;const y0=old?old[1]:0;sel.clear();const lines=[];
+ for(const pt of parts){const b=bbox(pt.ents)||[0,0,0,0],d=[x-b[0],y0-b[1]],ly=pt.name.replace(/\.[^.]+$/,'').slice(0,60)||'Import';
+  const made=addEnts(pt.ents.map(e=>{const n=xf(e,mvF(d));n.ly=ly;return n}),ly);made.forEach(e=>sel.add(e.id));x+=(b[2]-b[0])+80;lines.push(`${ly} (${fmtDE(b[2]-b[0])} × ${fmtDE(b[3]-b[1])} mm, ${made.length} Objekt${made.length===1?'':'e'})`)}
+ afterChange();zoomAll();log(`${label}: ${parts.length} Datei(en) eingefügt, jede auf eigener Ebene und nebeneinander – ${lines.join(' · ')}. Sie sind gewählt; einzeln über die Ebenen ein-/ausblenden.`,'ok')}
 async function loadFile(f,mode){const name=f.name||'Datei',ext=(name.split('.').pop()||'').toLowerCase();
+ if(ext==='zip'){let list;try{list=await unzip(await f.arrayBuffer())}catch(err){log(`${name}: ${err.message}`,'e');return}if(!list.length){log(`In ${name} ist keine SVG-, DXF- oder Origin-CAD-Datei.`,'e');return}return loadMany(list,mode,name)}
  /* STL ist ein 3D-Modell: in den 3D-Modus einfügen */if(ext==='stl'){if(window.RAUM){if(!RAUM.isOpen())RAUM.open();RAUM.addSTL(f)}return}let text;try{text=await f.text()}catch(err){log('Datei konnte nicht gelesen werden.','e');return}
  try{
   if(ext==='json'||(/^\s*\{/.test(text)&&ext!=='svg'&&ext!=='dxf')){const o=JSON.parse(text);if(!Array.isArray(o.ents))throw new Error('Das ist keine Origin-CAD-Zeichnung.');
@@ -1035,9 +1061,9 @@ async function loadFile(f,mode){const name=f.name||'Datei',ext=(name.split('.').
   log(`${mode==='import'?'Dazugeladen':'Geöffnet'}: ${name} – ${made.length} Objekte, ${fmtDE(b[2]-b[0])} × ${fmtDE(b[3]-b[1])} mm.${mode==='import'?' Sie sind gewählt – mit V verschieben.':''} ${r.note}`,'ok');
   log(mode==='import'?'Stimmt die Größe nicht? Die neuen Teile sind gewählt – mit SK skalieren.':'Stimmt die Größe nicht? Alles wählen (Strg+A) und mit SK skalieren.')}
  catch(err){log(`${name}: ${err&&err.message?err.message:'Datei konnte nicht gelesen werden.'}`,'e')}}
-$('file').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(f)loadFile(f,fileMode)});
+$('file').addEventListener('change',e=>{const fs=[...e.target.files];e.target.value='';if(fs.length>1)loadMany(fs.slice(0,50),fileMode,fs.length+' Dateien');else if(fs[0])loadFile(fs[0],fileMode)});
 /* Datei aufs Fenster ziehen = öffnen */
-window.addEventListener('dragover',e=>{e.preventDefault()});window.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer&&e.dataTransfer.files[0];if(f)loadFile(f,!pristine&&docSummary().length?'import':'open')});
+window.addEventListener('dragover',e=>{e.preventDefault()});window.addEventListener('drop',e=>{e.preventDefault();const fs=e.dataTransfer?[...e.dataTransfer.files]:[],m=!pristine&&docSummary().length?'import':'open';if(fs.length>1)loadMany(fs.slice(0,50),m,fs.length+' Dateien');else if(fs[0])loadFile(fs[0],m)});
 
 /* ---------- Vorlagen ---------- */
 const TPLKEY='origincad.tpl';
@@ -1140,6 +1166,6 @@ log('Tipp: L + Enter für Linie, R für Rechteck, K für Kreis. F1 zeigt alle Be
 buildTools();updTools();updUndo();updDefs();updProps();updLayers();updPrompt();
 new ResizeObserver(()=>{const first=!W;resize();if(first)zoomAll()}).observe($('cvw'));
 if(matchMedia('(pointer:fine)').matches)inp.focus();
-window.__cad={buildPrintSVG,kp:{get chg(){return chg},get pristine(){return pristine},ev,save:()=>saveFile(),help:t=>openHelp(t),contours,sectionsOf,commit:doCommit,undo,redo,addEnts,saveBlob,baseName,log,fmtDE,bbox,esc,cancel:()=>cancel(true),after:()=>{sel.clear();afterChange();zoomAll()},select:es=>{sel.clear();es.forEach(e=>sel.add(e.id));updProps();render()}},build3D,open3D,get curP(){return curP},setMouse:sp=>{mouse.sp=sp;mouse.in=true;computeSnap();render()},buildSVG,buildDXF,importSVG,importDXF,loadFile,exportList,fitArcs,userTpls,w2s,get S(){return S},run,onEnter,inp,adv,get REQ(){return REQ},sel,zoomAll,cutOf,camOf,act,tg,updProps,bbox,
+window.__cad={unzip,loadMany,buildPrintSVG,kp:{get chg(){return chg},get pristine(){return pristine},ev,save:()=>saveFile(),help:t=>openHelp(t),contours,sectionsOf,commit:doCommit,undo,redo,addEnts,saveBlob,baseName,log,fmtDE,bbox,esc,cancel:()=>cancel(true),after:()=>{sel.clear();afterChange();zoomAll()},select:es=>{sel.clear();es.forEach(e=>sel.add(e.id));updProps();render()}},build3D,open3D,get curP(){return curP},setMouse:sp=>{mouse.sp=sp;mouse.in=true;computeSnap();render()},buildSVG,buildDXF,importSVG,importDXF,loadFile,exportList,fitArcs,userTpls,w2s,get S(){return S},run,onEnter,inp,adv,get REQ(){return REQ},sel,zoomAll,cutOf,camOf,act,tg,updProps,bbox,
  areaOf:(id,off)=>{const P=[ccw(toPaths(byId(id))[0].pts)];return(off?clOffset(P,off):P).reduce((s,q)=>s+area(q),0)}};
 }

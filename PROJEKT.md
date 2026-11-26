@@ -167,6 +167,9 @@ Eigener Bereich (Knopf „3D-Modus“), Datei `raum.js`, Daten in `S.raum = {bod
 ## In Einzelteile zerlegen (v34, 23.11.2026)
 - Objektinfo eines Freiform-Körpers: „In Einzelteile zerlegen“ (`splitSel`): Dreiecke mit gemeinsamen Ecken (auf 0,01 mm) bilden ein Teil; jedes Teil wird ein eigener Körper (`meshFromWorld`), Name „… – Teil n“, nach Größe sortiert, höchstens 500 Teile. Noahs Box mit Einlage → Korpus, Deckel, Einlage, 2 Klötze.
 
+## ZIP und mehrere Dateien (v35, 26.11.2026)
+- Datei › Öffnen/Dazuladen und Ziehen aufs Fenster nehmen ZIP-Dateien (eigener Leser `unzip`, gespeichert oder deflate über `DecompressionStream`) und mehrere Dateien auf einmal (`loadMany`). Jede SVG/DXF/JSON kommt auf eine eigene Ebene (Dateiname) und wird nebeneinander gelegt (80 mm Abstand). Grenzen: 200 Einträge, 20 MB je Datei, 60 MB zusammen; `__MACOSX` und andere Dateiarten werden übersprungen.
+
 ## Ideen / offen
 - **Entscheidung Noah:** Außenkonturen aus dem Korpusplaner mit Tiefe = Plattenstärke (jetzt) oder Stärke + 0,5 mm?
 - iPad ohne Tastatur im 3D-Modus: Knöpfe Rot/Grün/Blau für Verschiebe-Richtung und Drehachse (bisher Pfeiltasten).
