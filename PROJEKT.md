@@ -173,6 +173,9 @@ Eigener Bereich (Knopf „3D-Modus“), Datei `raum.js`, Daten in `S.raum = {bod
 ## Kanten abrunden im 3D-Modus (v36, 26.11.2026)
 - Quader: Objektinfo „Kanten oben abrunden, Radius“ + Kanten vorn/hinten/links/rechts (`b.rnd={r,e}`, freiwilliges Feld). Darstellung `roundBoxTris` (Bogen in 16 Stufen, je Stufe ein nach innen versetztes Rechteck), wirkt auch bei Booleschen Operationen und bleibt beim Ändern der Maße erhalten; Radius begrenzt auf Höhe bzw. halbe Breite (`rndR`). Stückliste: „Kanten oben gerundet R …“. Offen: untere Kanten, senkrechte Kanten.
 
+## Speichern unter (v37, 26.11.2026)
+- Datei › „Speichern unter …“ (Strg+Shift+S): Chrome/Edge mit Ordnerauswahl (`showSaveFilePicker`), die Datei wird gemerkt (`fileHandle`) und Strg+S schreibt direkt hinein; beim Öffnen/Neu wird sie vergessen. Safari/Firefox/iPad: Fenster `dSaveAs` mit Dateiname und Anleitung, wie der Browser jedes Mal nach dem Ort fragt; Strg+S lädt dort wie bisher direkt herunter.
+
 ## Ideen / offen
 - **Entscheidung Noah:** Außenkonturen aus dem Korpusplaner mit Tiefe = Plattenstärke (jetzt) oder Stärke + 0,5 mm?
 - iPad ohne Tastatur im 3D-Modus: Knöpfe Rot/Grün/Blau für Verschiebe-Richtung und Drehachse (bisher Pfeiltasten).

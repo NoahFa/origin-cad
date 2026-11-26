@@ -10,9 +10,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Origin CAD">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.webmanifest?v=36">
-<link rel="icon" href="icon.svg?v=36" type="image/svg+xml">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=36">
+<link rel="manifest" href="manifest.webmanifest?v=37">
+<link rel="icon" href="icon.svg?v=37" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=37">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <style>
 /* Schrift IBM Plex liegt im Projekt (SIL Open Font License, fonts/OFL.txt) – nichts wird von fremden Servern geladen */
@@ -281,6 +281,7 @@ button,input,select{font:inherit;color:inherit}
    <li><button data-a="oeffnen">Öffnen … <kbd>Strg+O</kbd></button></li>
    <li><button data-a="importieren">Dazuladen …</button></li>
    <li><button data-a="speichern">Speichern<kbd>Strg+S</kbd></button></li>
+   <li><button data-a="speichernUnter">Speichern unter …<kbd>Strg+Shift+S</kbd></button></li>
    <li><button data-a="drucken">Drucken / PDF …<kbd>PR</kbd></button></li><hr>
    <li><button data-a="exportSvg">SVG für Origin<kbd>Strg+E</kbd></button></li>
    <li><button data-a="exportDxf">Als DXF speichern</button></li><hr>
@@ -372,6 +373,7 @@ button,input,select{font:inherit;color:inherit}
    <tr><td>Hilfslinien</td><td>Shift+H, F2 oder unten „Hilfslinien“: ab jetzt blau, wird nicht gefräst. <code>HL</code> = unendliche Hilfslinie (<code>W</code> waagrecht, <code>S</code> senkrecht).</td></tr>
    <tr><td>Anlegen</td><td><code>AN</code>: gerade Kante eines Teils anklicken, dann die Zielkante – das Teil wird gedreht und verschoben, bis beide bündig liegen (oder mit Abstand).</td></tr>
    <tr><td>Bemaßen</td><td><code>BM</code> waagrecht/senkrecht · <code>BA</code> schräg · <code>BK</code> Kettenmaß · <code>BR</code> Radius oder Durchmesser</td></tr>
+   <tr><td>Speichern unter</td><td>Datei › „Speichern unter …“ (Strg+Shift+S): Ort und Namen wählen, z. B. Desktop. In Chrome/Edge schreibt „Speichern“ (Strg+S) danach direkt in dieselbe Datei. Safari/Firefox legen im Download-Ordner ab – im Fenster steht, wie der Browser jedes Mal nach dem Ort fragt.</td></tr>
    <tr><td>Fremde Dateien</td><td>Datei › Öffnen liest auch SVG und DXF – auch mehrere auf einmal oder als ZIP-Datei (jede Datei kommt auf eine eigene Ebene, nebeneinander); „Dazuladen“ fügt eine Datei ein. Eine Datei aufs Fenster ziehen: Ist das Fenster leer, wird sie geöffnet, sonst dazugeladen (nur die Zeichnung, nicht Korpusplaner/3D).</td></tr>
    <tr><td>Drucken</td><td>Datei › „Drucken / PDF“: Zeichnung mit Bemaßung auf A4; im Druckfenster „Als PDF speichern“ wählen.</td></tr>
    <tr><td>Zwei Finger</td><td>auf dem iPad: auseinander/zusammen = Zoom, schieben = Ansicht verschieben</td></tr>
@@ -413,6 +415,12 @@ button,input,select{font:inherit;color:inherit}
   </table>
  </section>
  <div class="row"><button class="btn pri" data-close>Alles klar</button></div>
+</div></div>
+<div class="dlg" id="dSaveAs"><div class="box" style="max-width:480px">
+ <h3>Speichern unter</h3>
+ <div class="pr"><label for="saName">Dateiname</label><input id="saName" type="text" autocomplete="off"></div>
+ <p class="muted" id="saHint">Dieser Browser legt die Datei im Ordner <b>Downloads</b> ab. Damit er jedes Mal fragt, wohin (z. B. Desktop): <b>Safari</b> (Mac): Einstellungen › Allgemein › „Ablageort für geladene Dateien“ › „Bei jedem Laden fragen“. <b>Firefox</b>: Einstellungen › Allgemein › Downloads › „Jedes Mal nachfragen, wo eine Datei gespeichert werden soll“. <b>iPad</b>: Im folgenden Fenster „In Dateien sichern“ wählen und den Ordner aussuchen. In <b>Chrome</b> und <b>Edge</b> erscheint die Ordnerauswahl von selbst.</p>
+ <div class="row"><button class="btn" data-close>Abbrechen</button><button class="btn pri" id="saB">Speichern</button></div>
 </div></div>
 <div class="dlg" id="dSave"><div class="box">
  <h3>Zeichnung sichern</h3>
@@ -503,14 +511,14 @@ button,input,select{font:inherit;color:inherit}
  <div class="row"><button class="btn" data-close>Abbrechen</button><button class="btn" id="newSave">Vorher speichern</button><button class="btn pri" id="newB">Leeren</button></div>
 </div></div>
 
-<script src="vendor/clipper.js?v=36"></script>
-<script src="font.js?v=36"></script>
-<script src="vendor/earcut.min.js?v=36"></script>
-<script src="view3d.js?v=36"></script>
-<script src="cad.js?v=36"></script>
-<script src="korpus.js?v=36"></script>
-<script src="csg.js?v=36"></script>
-<script src="raum.js?v=36"></script>
-<script src="start.js?v=36"></script>
+<script src="vendor/clipper.js?v=37"></script>
+<script src="font.js?v=37"></script>
+<script src="vendor/earcut.min.js?v=37"></script>
+<script src="view3d.js?v=37"></script>
+<script src="cad.js?v=37"></script>
+<script src="korpus.js?v=37"></script>
+<script src="csg.js?v=37"></script>
+<script src="raum.js?v=37"></script>
+<script src="start.js?v=37"></script>
 </body>
 </html>

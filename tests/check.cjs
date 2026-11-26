@@ -665,6 +665,12 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
  r=await p.evaluate(()=>RAUM.clean({bodies:[{kind:'box',L:100,B:100,H:50,o:[0,0,0],u:[1,0,0],v:[0,1,0],rnd:{r:10,e:'x<y'}}]}).bodies[0].rnd);ok(r===undefined,'Unsinnige Rundung in einer Datei wird verworfen');
  await p.click('[data-rm="close"]');await fresh();
 
+ console.log('Speichern unter (v37)');
+ await fresh();await C('R','0;0','@100;50');await p.keyboard.press('Escape');await p.evaluate(()=>__cad.act('speichernUnter'));r=await p.evaluate(()=>document.getElementById('dSaveAs').classList.contains('open'));ok(r,'„Speichern unter …“ öffnet das Fenster mit dem Dateinamen (Browser ohne Ordnerauswahl)');
+ await p.fill('#saName','Mein Teil');{const dl=p.waitForEvent('download');await p.click('#saB');const D=await dl;r=D.suggestedFilename();ok(r==='Mein Teil.json'&&(await p.evaluate(()=>document.getElementById('fname').textContent))==='Mein Teil.json','Datei heißt wie eingegeben: '+r)}
+ {const dl=p.waitForEvent('download');await p.keyboard.press('Control+s');const D=await dl;ok(D.suggestedFilename()==='Mein Teil.json','Strg+S speichert danach unter demselben Namen')}
+ await fresh();
+
  console.log('Sicherheit');
  r=await p.evaluate(async()=>{await document.fonts.ready;return{sans:document.fonts.check('500 14px "IBM Plex Sans"'),mono:document.fonts.check('14px "IBM Plex Mono"'),csp:!!document.querySelector('meta[http-equiv="Content-Security-Policy"]'),ext:[...document.querySelectorAll('link[href^="http"],script[src^="http"]')].length}});
  ok(r.sans&&r.mono&&r.csp&&r.ext===0,'Schrift aus dem Projekt geladen, nichts von fremden Servern, Sicherheitsregel gesetzt',JSON.stringify(r));

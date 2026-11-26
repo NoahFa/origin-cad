@@ -697,7 +697,7 @@ function toggleGuide(){if(S.cur==='Hilfslinien'){S.cur=lyr(prevLy)&&prevLy!=='Hi
 function selectMode(){inp.value='';const was=!!G;cancel(true);mouse.in&&computeSnap();log(was?'Auswahlmodus: Befehl beendet – jetzt Objekte anklicken oder Rahmen aufziehen.':'Auswahlmodus: Objekte anklicken oder Rahmen aufziehen. Shift+Klick nimmt wieder heraus.');updTools();render()}
 function act(a){const T={osnap:1,polar:1,ortho:1,grid:1,gsnap:1,cam:1};if(T[a]){tg[a]=!tg[a];log(({osnap:'Objektfang',polar:'Winkelfang',ortho:'Nur gerade',grid:'Raster',gsnap:'Rasterfang',cam:'Fräsvorschau'})[a]+(tg[a]?' an':' aus')+(a==='cam'&&tg[a]?' – gestrichelt: Weg der Fräsermitte · rot: hier bleibt Material stehen':''));updTools();computeSnap();render();saveUI();return}
  ({raum:()=>window.RAUM&&window.RAUM.open(),drucken:printDrawing,korpus:()=>window.KORPUS&&window.KORPUS.open(),view3d:open3D,guide:toggleGuide,select:selectMode,enter:onEnter,esc:()=>{inp.value='';cancel(false)},neu:()=>askReplace('neu'),oeffnen:()=>askReplace('open'),importieren:()=>{fileMode='import';$('file').click()},
-  exportSvg:openExport,exportDxf:exportDXF,tpl:openTpls,tplSave:openSaveTpl,speichern:saveFile,undo,redo,zoomAll,help:()=>openHelp('z'),
+  exportSvg:openExport,exportDxf:exportDXF,tpl:openTpls,tplSave:openSaveTpl,speichern:saveFile,speichernUnter:()=>saveAs(),undo,redo,zoomAll,help:()=>openHelp('z'),
   alle:()=>{S.ents.filter(vis).forEach(e=>sel.add(e.id));updProps();render()}})[a]?.()}
 window.addEventListener('keydown',e=>{if(window.RAUM&&window.RAUM.isOpen()){window.RAUM.key(e);return}if(window.KORPUS&&window.KORPUS.isOpen()){window.KORPUS.key(e);return}
  const t=e.target,inProp=t!==inp&&(t.tagName==='INPUT'||t.tagName==='SELECT'||t.tagName==='TEXTAREA');
@@ -709,7 +709,7 @@ window.addEventListener('keydown',e=>{if(window.RAUM&&window.RAUM.isOpen()){wind
    if(K==='O'){e.preventDefault();act('oeffnen');return}
    if(e.key==='0'){e.preventDefault();zoomAll();return}
    if(CTRL[K]&&!(inp.value&&'CVX'.includes(K))){e.preventDefault();inp.value='';run(CTRL[K]);return}}
-  if(k==='z'){e.preventDefault();e.shiftKey?redo():undo()}else if(k==='y'){e.preventDefault();redo()}else if(k==='s'){e.preventDefault();saveFile()}else if(k==='a'&&!inp.value){e.preventDefault();act('alle')}return}
+  if(k==='z'){e.preventDefault();e.shiftKey?redo():undo()}else if(k==='y'){e.preventDefault();redo()}else if(k==='s'){e.preventDefault();e.shiftKey?saveAs():saveFile()}else if(k==='a'&&!inp.value){e.preventDefault();act('alle')}return}
  if(e.key==='Escape'){e.preventDefault();inp.value='';cancel(false);return}
  if(e.shiftKey&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&(e.code==='KeyA'||e.key==='A')&&!inp.value&&!(REQ&&REQ.k==='str')){e.preventDefault();selectMode();return}
  if(e.shiftKey&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&(e.code==='KeyH'||e.key==='H')&&!inp.value&&!(REQ&&REQ.k==='str')){e.preventDefault();toggleGuide();return}
@@ -757,7 +757,7 @@ function openHelp(tab){$('dHelp').classList.add('open');if(tab)showHelpTab(tab)}
 function showHelpTab(t){document.querySelectorAll('[data-htab]').forEach(b=>b.classList.toggle('on',b.dataset.htab===t));document.querySelectorAll('[data-hsec]').forEach(s=>s.hidden=s.dataset.hsec!==t)}
 $('dHelp').addEventListener('click',e=>{const b=e.target.closest('[data-htab]');if(b)showHelpTab(b.dataset.htab)});
 $('optbar').addEventListener('click',e=>{const b=e.target.closest('[data-opt]');if(!b)return;inp.value=b.dataset.opt;onEnter();focusInp()});
-$('newB').addEventListener('click',()=>{if(replaceMode==='open'&&$('dNew').classList.contains('open')){$('dNew').classList.remove('open');fileMode='open';replaceMode='neu';$('file').click();return}replaceMode='neu';pushUndo();S={ents:[],layers:DEF_LAYERS(),cur:'Kontur',nid:1,def:{...S.def}};fileName='Zeichnung.json';sel.clear();$('dNew').classList.remove('open');afterChange();zoomAll();log('Neue Zeichnung.','ok')});
+$('newB').addEventListener('click',()=>{if(replaceMode==='open'&&$('dNew').classList.contains('open')){$('dNew').classList.remove('open');fileMode='open';replaceMode='neu';$('file').click();return}replaceMode='neu';pushUndo();S={ents:[],layers:DEF_LAYERS(),cur:'Kontur',nid:1,def:{...S.def}};fileName='Zeichnung.json';fileHandle=null;sel.clear();$('dNew').classList.remove('open');afterChange();zoomAll();log('Neue Zeichnung.','ok')});
 
 /* ---------- Bögen wiedererkennen (nach Formen kombinieren, Versatz, Import) ---------- */
 /* pts: Punktfolge; liefert {circle:{c,r}} oder {pts,bl}. Erkannt wird nur, was wirklich fein angenähert ist (Pfeilhöhe ≤ sag). */
@@ -794,9 +794,20 @@ async function saveBlob(name,data,mime,desc){const ext='.'+name.split('.').pop()
  catch(err){if(err&&err.name==='AbortError')return null}
  const url=URL.createObjectURL(new Blob([data],{type:mime})),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);return name}
 const baseName=()=>fileName.replace(/\.(json|svg|dxf)$/i,'')||'Zeichnung';
-async function saveFile(){const data=JSON.stringify({app:'OriginCAD',v:3,...S});
- try{const n=await saveBlob(baseName()+'.json',data,'application/json','Origin-CAD-Zeichnung');if(!n){log('Speichern abgebrochen.');return}fileName=n;setFname(n);fileChg=chg;log('Gespeichert: '+n,'ok')}
- catch(err){$('saveT').value=data;$('dSave').classList.add('open')}}
+/* Speichern: in die zuletzt gewählte Datei schreiben (Chrome/Edge); „Speichern unter“: Ort und Namen selbst wählen (z. B. Desktop) */
+let fileHandle=null;const docJSON=()=>JSON.stringify({app:'OriginCAD',v:3,...S});
+const savedOk=n=>{fileName=n;setFname(n);fileChg=chg;log('Gespeichert: '+n,'ok')};
+async function saveFile(){if(fileHandle){try{const w=await fileHandle.createWritable();await w.write(docJSON());await w.close();savedOk(fileHandle.name);return}catch(err){fileHandle=null}}if(window.showSaveFilePicker)return saveAs();
+ /* ohne Ordnerauswahl: direkt mit dem bisherigen Namen herunterladen (Ort wählen: „Speichern unter …“) */const n=await saveBlob(baseName()+'.json',docJSON(),'application/json','Origin-CAD-Zeichnung');if(n)savedOk(n)}
+async function saveAs(){const data=docJSON(),name=baseName()+'.json';
+ if(window.showSaveFilePicker){try{const h=await showSaveFilePicker({suggestedName:name,types:[{description:'Origin-CAD-Zeichnung',accept:{'application/json':['.json']}}]});const w=await h.createWritable();await w.write(data);await w.close();fileHandle=h;savedOk(h.name);return}
+  catch(err){if(err&&err.name==='AbortError'){log('Speichern abgebrochen.');return}}}
+ /* Browser ohne Ordnerauswahl (Safari, Firefox, iPad): Name wählen, dann herunterladen */
+ $('saName').value=baseName();$('dSaveAs').classList.add('open');setTimeout(()=>{$('saName').focus();$('saName').select()},50)}
+$('saB').addEventListener('click',()=>{let n=$('saName').value.trim().replace(/[\\/:*?"<>|]+/g,'-').slice(0,120)||'Zeichnung';if(!/\.json$/i.test(n))n+='.json';
+ try{const url=URL.createObjectURL(new Blob([docJSON()],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download=n;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);$('dSaveAs').classList.remove('open');savedOk(n)}
+ catch(err){$('dSaveAs').classList.remove('open');$('saveT').value=docJSON();$('dSave').classList.add('open')}});
+$('saName').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('saB').click()}e.stopPropagation()});
 
 /* ---------- SVG für die Shaper Origin ---------- */
 /* Teilstrecken eines Objekts: [{s:Start, segs:[{p, r?, big?, ccw?}], closed}] */
@@ -1039,7 +1050,7 @@ function readDrawing(name,text){const ext=(name.split('.').pop()||'').toLowerCas
 async function loadMany(files,mode,label){const parts=[];for(const f of files){let text;try{text=typeof f.text==='function'?await f.text():f.text}catch(e){log(`${f.name}: konnte nicht gelesen werden.`,'e');continue}
   try{const r=readDrawing(f.name,text),good=r.ents.filter(e=>cleanEnt({...e,ly:e.ly||'0'}));if(!good.length){log(`${f.name}: nichts Zeichenbares gefunden.`,'e');continue}parts.push({name:f.name,ents:good,note:r.note})}catch(err){log(`${f.name}: ${err.message||'konnte nicht gelesen werden'}.`,'e')}}
  if(!parts.length){log(`${label}: keine lesbare Zeichnung (SVG, DXF oder Origin-CAD) gefunden – die Zeichnung bleibt unverändert.`,'e');return}
- const replace=mode!=='import'&&(pristine||!docSummary().length||mode==='open');pushUndo();if(replace){S={ents:[],layers:DEF_LAYERS(),cur:'Kontur',nid:1,def:{...S.def}};fileName=label.replace(/\.[^.]+$/,'')+'.json';setFname(label)}
+ const replace=mode!=='import'&&(pristine||!docSummary().length||mode==='open');pushUndo();if(replace){S={ents:[],layers:DEF_LAYERS(),cur:'Kontur',nid:1,def:{...S.def}};fileName=label.replace(/\.[^.]+$/,'')+'.json';fileHandle=null;setFname(label)}
  const old=bbox(S.ents);let x=old?old[2]+80:0;const y0=old?old[1]:0;sel.clear();const lines=[];
  for(const pt of parts){const b=bbox(pt.ents)||[0,0,0,0],d=[x-b[0],y0-b[1]],ly=pt.name.replace(/\.[^.]+$/,'').slice(0,60)||'Import';
   const made=addEnts(pt.ents.map(e=>{const n=xf(e,mvF(d));n.ly=ly;return n}),ly);made.forEach(e=>sel.add(e.id));x+=(b[2]-b[0])+80;lines.push(`${ly} (${fmtDE(b[2]-b[0])} × ${fmtDE(b[3]-b[1])} mm, ${made.length} Objekt${made.length===1?'':'e'})`)}
@@ -1052,11 +1063,11 @@ async function loadFile(f,mode){const name=f.name||'Datei',ext=(name.split('.').
    const cd=cleanDoc(o),drop=o.ents.length-cd.ents.length;if(o.ents.length&&!cd.ents.length){log(`${name}: Keins der ${o.ents.length} Objekte in der Datei ist lesbar – die Zeichnung bleibt unverändert.`,'e');return}if(drop)log(`${drop} fehlerhafte Objekt(e) in der Datei übersprungen.`,'e');
    if(mode==='import'){pushUndo();{const nm=new Set(S.layers.map(l=>l.n));for(const l of cd.layers)if(!nm.has(l.n)&&S.layers.length<MAXLY){S.layers.push({...l});nm.add(l.n)}}if(o.korpus||o.raum)log(`Hinweis: Korpusplaner und 3D-Körper aus ${name} wurden nicht übernommen – zum Übernehmen Datei › Öffnen.`);sel.clear();addEnts(cd.ents.map(({id,...r})=>r)).forEach(e=>sel.add(e.id));afterChange();zoomAll();log(`Dazugeladen: ${name} (${cd.ents.length} Objekte, sind gewählt – mit V verschieben).`,'ok');return}
    pushUndo();S=cd;
-   sel.clear();afterChange();updDefs();zoomAll();fileName=name;setFname(name);log('Geöffnet: '+name,'ok');return}
+   sel.clear();afterChange();updDefs();zoomAll();fileName=name;fileHandle=null;setFname(name);log('Geöffnet: '+name,'ok');return}
   const isSvg=ext==='svg'||/<svg[\s>]/i.test(text.slice(0,2000));if(!isSvg&&ext!=='dxf'&&!/^\s*0\s*[\r\n]+\s*SECTION/i.test(text.slice(0,200))){log(`${name}: Diese Art Datei kann ich nicht öffnen – nur Zeichnungen (.json), SVG und DXF.`,'e');return}const r=isSvg?importSVG(text):importDXF(text);
   const good=r.ents.filter(e=>cleanEnt({...e,ly:e.ly||'0'})).length;
   if(!good){log(`In ${name} wurde nichts Zeichenbares gefunden – die Zeichnung bleibt unverändert. ${r.note}`,'e');return}if(good<r.ents.length)log(`${r.ents.length-good} fehlerhafte Objekt(e) in ${name} übersprungen.`,'e');
-  pushUndo();if(mode!=='import'){S={ents:[],layers:DEF_LAYERS(),cur:'Kontur',nid:1,def:{...S.def}};fileName=name.replace(/\.[^.]+$/,'')+'.json';setFname(name)}
+  pushUndo();if(mode!=='import'){S={ents:[],layers:DEF_LAYERS(),cur:'Kontur',nid:1,def:{...S.def}};fileName=name.replace(/\.[^.]+$/,'')+'.json';fileHandle=null;setFname(name)}
   sel.clear();const made=addEnts(r.ents,isSvg?'Kontur':'0');if(mode==='import')made.forEach(e=>sel.add(e.id));afterChange();zoomAll();const b=bbox(made);
   log(`${mode==='import'?'Dazugeladen':'Geöffnet'}: ${name} – ${made.length} Objekte, ${fmtDE(b[2]-b[0])} × ${fmtDE(b[3]-b[1])} mm.${mode==='import'?' Sie sind gewählt – mit V verschieben.':''} ${r.note}`,'ok');
   log(mode==='import'?'Stimmt die Größe nicht? Die neuen Teile sind gewählt – mit SK skalieren.':'Stimmt die Größe nicht? Alles wählen (Strg+A) und mit SK skalieren.')}
