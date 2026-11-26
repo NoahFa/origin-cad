@@ -10,9 +10,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Origin CAD">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.webmanifest?v=35">
-<link rel="icon" href="icon.svg?v=35" type="image/svg+xml">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=35">
+<link rel="manifest" href="manifest.webmanifest?v=36">
+<link rel="icon" href="icon.svg?v=36" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=36">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <style>
 /* Schrift IBM Plex liegt im Projekt (SIL Open Font License, fonts/OFL.txt) – nichts wird von fremden Servern geladen */
@@ -258,6 +258,7 @@ button,input,select{font:inherit;color:inherit}
 @media(pointer:coarse){#cnt{display:none}#rmvcb{min-height:30px}.rmsw{grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media(max-width:620px){.kpnset label{display:flex;flex-direction:column;gap:3px}.kpnset input{margin-left:0;width:100%}.kpbar .btn{padding-left:8px;padding-right:8px}}
 #rmlBody td{white-space:nowrap}
+.rmedges{display:flex;flex-wrap:wrap;gap:4px 12px;margin:-2px 0 8px;font-size:13px}.rmedges label{display:flex;gap:4px;align-items:center}@media(pointer:coarse){.rmedges input{width:22px;height:22px}}
 #kpnNote:empty{display:none}
 .unsaved{flex:none;background:#d43c22;color:#fff;border-radius:5px;padding:3px 8px;font-size:12px;font-weight:600;margin-left:8px}.unsaved[hidden]{display:none}
 .v3bar [data-v3=close]{margin-left:auto}
@@ -406,6 +407,7 @@ button,input,select{font:inherit;color:inherit}
    <tr><td>O · H · Shift+Z</td><td>Ansicht drehen · schieben · alles zeigen (mittlere Maustaste dreht, mit Shift schiebt)</td></tr>
    <tr><td>Maße</td><td>Zahlen einfach lostippen, sie landen unten rechts im Feld „Maße“; Enter übernimmt. Zwei Maße mit Strichpunkt: <code>600;400</code>.</td></tr>
    <tr><td>Einfügen</td><td>Rechts: Grundkörper, Kontur aus der Zeichnung hochziehen, Schrank aus dem Korpusplaner holen, „STL-Datei einfügen …“ (3D-Modell, z. B. aus einem anderen Programm; Maße in mm, bis 20 000 Dreiecke). Eine STL-Datei lässt sich auch aufs Fenster ziehen.</td></tr>
+   <tr><td>Kanten abrunden</td><td>Quader wählen, rechts unter „Objektinfo“ bei „Kanten oben abrunden“ den Radius eintragen (z. B. 20) und die Kanten anhaken (vorn, hinten, links, rechts). 0 = wieder eckig. Der Radius ist höchstens so groß wie die Höhe bzw. die halbe Breite.</td></tr>
    <tr><td>Boolesche Operationen</td><td>Körper wählen, rechts unter „Objektinfo“ <b>Vereinigen …</b>, <b>Abziehen …</b> oder <b>Schnittmenge …</b>, dann den zweiten Körper anklicken (z. B. Zylinder von einer Platte abziehen = Loch). Ergebnis ist ein Freiform-Körper; Strg+Z macht es rückgängig. Freiform-Körper kommen nicht in den Zuschnittplan.</td></tr>
    <tr><td>In Einzelteile zerlegen</td><td>Bei einem Freiform-Körper (z. B. STL-Datei) unter „Objektinfo“: getrennte Teile (Korpus, Deckel, Einlage …) werden zu eigenen Körpern. Was fest zusammenhängt, bleibt ein Teil – das trennst du mit „Abziehen …“ oder „Schnittmenge …“.</td></tr>
   </table>
@@ -501,14 +503,14 @@ button,input,select{font:inherit;color:inherit}
  <div class="row"><button class="btn" data-close>Abbrechen</button><button class="btn" id="newSave">Vorher speichern</button><button class="btn pri" id="newB">Leeren</button></div>
 </div></div>
 
-<script src="vendor/clipper.js?v=35"></script>
-<script src="font.js?v=35"></script>
-<script src="vendor/earcut.min.js?v=35"></script>
-<script src="view3d.js?v=35"></script>
-<script src="cad.js?v=35"></script>
-<script src="korpus.js?v=35"></script>
-<script src="csg.js?v=35"></script>
-<script src="raum.js?v=35"></script>
-<script src="start.js?v=35"></script>
+<script src="vendor/clipper.js?v=36"></script>
+<script src="font.js?v=36"></script>
+<script src="vendor/earcut.min.js?v=36"></script>
+<script src="view3d.js?v=36"></script>
+<script src="cad.js?v=36"></script>
+<script src="korpus.js?v=36"></script>
+<script src="csg.js?v=36"></script>
+<script src="raum.js?v=36"></script>
+<script src="start.js?v=36"></script>
 </body>
 </html>

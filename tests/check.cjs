@@ -655,6 +655,16 @@ const near=(a,b,t=0.05)=>Math.abs(a-b)<=t;
   await p.setInputFiles('#file',[{name:'C.svg',mimeType:'image/svg+xml',buffer:svg(40,20)},{name:'D.svg',mimeType:'image/svg+xml',buffer:svg(60,20)}]);await p.waitForTimeout(500);
   r=await p.evaluate(()=>__cad.S.layers.map(l=>l.n).filter(n=>/^[CD]$/.test(n)).join());ok(r==='C,D','Mehrere SVG-Dateien auf einmal öffnen',r);await fresh()}
 
+ console.log('Kanten abrunden (v36)');
+ await fresh();await p.click('.mbtn[data-a="raum"]');await p.click('#rmside [data-prim="box"]');await p.fill('#rs_H','100');await p.keyboard.press('Enter');await p.fill('#rs_rr','20');await p.keyboard.press('Enter');
+ r=await p.evaluate(()=>{const b=RAUM.state.bodies[0];let V=0;for(const[t0,t1,t2]of RAUM.worldTris(b))V+=(t0[0]*(t1[1]*t2[2]-t1[2]*t2[1])-t0[1]*(t1[0]*t2[2]-t1[2]*t2[0])+t0[2]*(t1[0]*t2[1]-t1[1]*t2[0]))/6;return{e:b.rnd&&b.rnd.e,r:b.rnd&&b.rnd.r,V}});
+ {const k=(1-Math.PI/4)*400,soll=24e6-k*2000+4*400*20*(1-2/3*1)*0;ok(r.e==='fblr'&&r.r===20&&Math.abs(r.V-(24e6-k*2000))/24e6<0.0005,'Quader 600×400×100: obere Kanten R 20 abgerundet (Volumen stimmt)',JSON.stringify(r))}
+ await p.click('[data-edge="b"]');r=await p.evaluate(()=>RAUM.state.bodies[0].rnd.e);ok(r==='flr','Kante „hinten“ abwählen',r);
+ await p.fill('#rs_rr','500');await p.keyboard.press('Enter');r=await p.evaluate(()=>document.getElementById('rmstat').textContent);ok(/begrenzt/.test(r),'Zu großer Radius wird gemeldet',r);
+ await p.fill('#rs_rr','0');await p.keyboard.press('Enter');r=await p.evaluate(()=>!!RAUM.state.bodies[0].rnd);ok(!r,'Radius 0 = wieder eckig');
+ r=await p.evaluate(()=>RAUM.clean({bodies:[{kind:'box',L:100,B:100,H:50,o:[0,0,0],u:[1,0,0],v:[0,1,0],rnd:{r:10,e:'x<y'}}]}).bodies[0].rnd);ok(r===undefined,'Unsinnige Rundung in einer Datei wird verworfen');
+ await p.click('[data-rm="close"]');await fresh();
+
  console.log('Sicherheit');
  r=await p.evaluate(async()=>{await document.fonts.ready;return{sans:document.fonts.check('500 14px "IBM Plex Sans"'),mono:document.fonts.check('14px "IBM Plex Mono"'),csp:!!document.querySelector('meta[http-equiv="Content-Security-Policy"]'),ext:[...document.querySelectorAll('link[href^="http"],script[src^="http"]')].length}});
  ok(r.sans&&r.mono&&r.csp&&r.ext===0,'Schrift aus dem Projekt geladen, nichts von fremden Servern, Sicherheitsregel gesetzt',JSON.stringify(r));
